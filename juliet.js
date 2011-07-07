@@ -132,12 +132,140 @@ var TOKEN_BOOLEAN = next_token++;
 var LITERAL_CHAR = next_token++;
 var LITERAL_BYTE = next_token++;
 var LITERAL_SHORT = next_token++;
-var LITERAL_INTEGER = next_token++;
+var LITERAL_INT = next_token++;
 var LITERAL_LONG = next_token++;
 var LITERAL_FLOAT = next_token++;
 var LITERAL_DOUBLE = next_token++;
 var LITERAL_STRING = next_token++;
 var LITERAL_BOOLEAN = next_token++;
+
+var token_name_table = [
+  '???',
+  'TOKEN_ID',
+  'TOKEN_ERROR',
+
+  'TOKEN_EOF',
+  'TOKEN_EOL',
+
+  'TOKEN_IDENTIFIER',
+  'TOKEN_UNKNOWN',
+  'TOKEN_BANG',
+  'TOKEN_PERCENT',
+  'TOKEN_AMPERSAND',
+  'TOKEN_LPAREN',
+  'TOKEN_RPAREN',
+  'TOKEN_STAR',
+  'TOKEN_PLUS',
+  'TOKEN_COMMA',
+  'TOKEN_MINUS',
+  'TOKEN_PERIOD',
+  'TOKEN_SLASH',
+  'TOKEN_COLON',
+  'TOKEN_SEMICOLON',
+  'TOKEN_LT',
+  'TOKEN_ASSIGN',
+  'TOKEN_GT',
+  'TOKEN_QUESTIONMARK',
+  'TOKEN_LBRACKET',
+  'TOKEN_BACKSLASH',
+  'TOKEN_RBRACKET',
+  'TOKEN_CARET',
+  'TOKEN_LCURLY',
+  'TOKEN_PIPE',
+  'TOKEN_RCURLY',
+  'TOKEN_TILDE',
+
+  'TOKEN_NE',
+  'TOKEN_MOD_ASSIGN',
+  'TOKEN_LOGICAL_AND',
+  'TOKEN_AND_ASSIGN',
+  'TOKEN_MUL_ASSIGN',
+  'TOKEN_ADD_ASSIGN',
+  'TOKEN_INCREMENT',
+  'TOKEN_DECREMENT',
+  'TOKEN_SUB_ASSIGN',
+  'TOKEN_DIV_ASSIGN',
+
+  'TOKEN_SHL',
+  'TOKEN_SHL_ASSIGN',
+  'TOKEN_LE',
+  'TOKEN_EQ',
+  'TOKEN_GE',
+  'TOKEN_SHRX',
+  'TOKEN_SHRX_ASSIGN',
+  'TOKEN_SHR',
+  'TOKEN_SHR_ASSIGN',
+
+  'TOKEN_XOR_ASSIGN',
+  'TOKEN_OR_ASSIGN',
+  'TOKEN_LOGICAL_OR',
+
+  'TOKEN_ABSTRACT',
+  'TOKEN_ASSERT',
+  'TOKEN_BREAK',
+  'TOKEN_CASE',
+  'TOKEN_CATCH',
+  'TOKEN_CLASS',
+  'TOKEN_CONST',
+  'TOKEN_CONTINUE',
+  'TOKEN_DEFAULT',
+  'TOKEN_DO',
+  'TOKEN_ELSE',
+  'TOKEN_ENUM',
+  'TOKEN_EXTENDS',
+  'TOKEN_FALSE',
+  'TOKEN_FINAL',
+  'TOKEN_FINALLY',
+  'TOKEN_FOR',
+  'TOKEN_GOTO',
+  'TOKEN_IF',
+  'TOKEN_IMPLEMENTS',
+  'TOKEN_IMPORT',
+  'TOKEN_INSTANCEOF',
+  'TOKEN_INTERFACE',
+  'TOKEN_NATIVE',
+  'TOKEN_NEW',
+  'TOKEN_NULL',
+  'TOKEN_PACKAGE',
+  'TOKEN_PRIVATE',
+  'TOKEN_PROTECTED',
+  'TOKEN_PUBLIC',
+  'TOKEN_RETURN',
+  'TOKEN_STATIC',
+  'TOKEN_STRICTFP',
+  'TOKEN_SUPER',
+  'TOKEN_SWITCH',
+  'TOKEN_SYNCHRONIZED',
+  'TOKEN_THROW',
+  'TOKEN_THROWS',
+  'TOKEN_TRANSIENT',
+  'TOKEN_TRUE',
+  'TOKEN_TRY',
+  'TOKEN_VOLATILE',
+  'TOKEN_WHILE',
+
+  'TOKEN_CHAR',
+  'TOKEN_BYTE',
+  'TOKEN_SHORT',
+  'TOKEN_INT',
+  'TOKEN_LONG',
+  'TOKEN_FLOAT',
+  'TOKEN_DOUBLE',
+  'TOKEN_STRING',
+  'TOKEN_BOOLEAN',
+
+  'LITERAL_CHAR',
+  'LITERAL_BYTE',
+  'LITERAL_SHORT',
+  'LITERAL_INT',
+  'LITERAL_LONG',
+  'LITERAL_FLOAT',
+  'LITERAL_DOUBLE',
+  'LITERAL_STRING',
+  'LITERAL_BOOLEAN',
+  '???'
+
+];
 
 var token_seperator = {
   ' ': true,
@@ -303,6 +431,21 @@ var keywords = {
   '???': TOKEN_UNKNOWN
 };
 
+var JOG_QUALIFIER_PUBLIC      =   1;
+var JOG_QUALIFIER_PROTECTED   =   2;
+var JOG_QUALIFIER_PRIVATE     =   4;
+var JOG_QUALIFIER_STATIC      =   8;
+var JOG_QUALIFIER_NATIVE      =  16;
+var JOG_QUALIFIER_CLASS       =  32;
+var JOG_QUALIFIER_INTERFACE   =  64;
+var JOG_QUALIFIER_PRIMITIVE   = 128;
+var JOG_QUALIFIER_CONSTRUCTOR = 256;
+var JOG_QUALIFIER_ABSTRACT    = 512;
+
+var JOG_QUALIFIER_REFERENCE = (JOG_QUALIFIER_CLASS | JOG_QUALIFIER_INTERFACE);
+
+var trace = true;
+
 var data = '';
 var data_i = 0;
 var pending = [];
@@ -351,6 +494,7 @@ var tokenize = function() {
     }
     if (buffer in keywords) {
       next.type = keywords[buffer];
+      next.content = buffer;
     } else {
       next.type = TOKEN_ID;
       next.content = buffer;
@@ -635,7 +779,7 @@ var tokenize = function() {
       }
       next.content = z;
     } else {
-      if (next.type == TYPE_DEFAULT) next.type = LITERAL_INTEGER;
+      if (next.type == TYPE_DEFAULT) next.type = LITERAL_INT;
       if (is_negative) buffer = '-' + buffer;
       var z = parseInt(buffer, base);
       if (z > 2147483647) {
@@ -813,85 +957,873 @@ var tokenize = function() {
   return false;
 };
 
+var consume_ws = function() {
+};
+
+var has_another = function() {
+  return (peek().type != TOKEN_EOF);
+};
+
+var peek = function(num_ahead) {
+  var t = null;
+  if (num_ahead !== undefined) {
+    if (num_ahead <= 1) return peek();
+
+    set_mark();
+    while (--num_ahead) read();
+    t = peek();
+    rewind_to_mark();
+    return t;
+  }
+
+  var len = pending.length;
+  if (len) {
+    return pending[len - 1];
+  } else if (tokenize() == false) {
+    return null;
+  }
+
+  return peek();
+};
+
+var read = function() {
+  var t = null;
+  if (pending.length) {
+    t = pending.pop();
+  } else {
+    if (tokenize() == false) return false;
+    t = read();
+  }
+
+  return t;
+};
+
+var set_mark = function() {
+  // TODO:
+};
+
+var clear_mark = function() {
+  // TODO:
+};
+
+var rewind_to_mark = function() {
+};
+
+var next_is = function(token_type) {
+  var t = peek();
+  return (t) ? (t.type == token_type) : false;
+};
 
 var consume = function(token_type) {
-  if (pending.length == 0) {
-    if (tokenize() == false) return false;
-  }
-  if ((token_type === undefined) ||
-      (pending[pending.length - 1].type == token_type)) {
-    processed.push(pending.pop());
+  var t = null;
+  var p = peek();
+  if (p && ('type' in p) && (p.type == token_type)) {
+    t = read();
+    processed.push(t);
     return true;
   }
   return false;
 };
 
+var must_consume = function(token_type, error_message) {
+  if (consume(token_type)) return;
+  throw new Error(error_message);
+};
+
+var must_consume_semicolon = function(t) {
+  if (!consume(TOKEN_SEMICOLON)) {
+    throw new Error('Syntax error: expected ;.');
+    // TODO: complete semicolon handling
+  }
+};
+
+var must_read_id = function(error_message) {
+  var t = peek();
+  var result = '';
+
+  if (t.type != TOKEN_ID) {
+    throw new Error(error_message);
+  }
+
+  result = read().content;
+  return result;
+};
+
 var cmd = function(op, t, lhs, rhs) {
 };
 
-var parse_expression = function() {
-  return parse_assignment();
+var Parser = {
+  this_method: null,
+  parsed_types: [],
 };
 
-var _pax = {};
-for (var i in [TOKEN_ASSIGN,
-               TOKEN_ADD_ASSIGN,
-               TOKEN_SUB_ASSIGN,
-               TOKEN_MUL_ASSIGN,
-               TOKEN_DIV_ASSIGN,
-               TOKEN_MOD_ASSIGN,
-               TOKEN_AND_ASSIGN,
-               TOKEN_OR_ASSIGN,
-               TOKEN_XOR_ASSIGN,
-               TOKEN_SHL_ASSIGN,
-               TOKEN_SHR_ASSIGN,
-               TOKEN_SHRX_ASSIGN]) {
-  _pax[i] = i;
+var parse = function() {
+  var type = parser.parse_type_def();
+  while (type) {
+    type = parser.parse_type_def();
+  }
+
+  type = null;
+  for (var i = 0, len = paser.parsed_types.count; i < len; i++) {
+    type = parser.parsed_types[i];
+    if (type.is_template()) continue;
+
+    parsed_types.push(type);
+  }
 }
 
+var parse_type_def = function() {
+  var quals = null;
+  var t = null;
+  var mesg = '';
+  var name = '';
+  var type = null;
+  var t2 = null;
+
+  if (arguments.length == 0) {
+    quals = parse_type_qualifiers();
+    t = peek();
+
+    if (consume(TOKEN_CLASS)) {
+      return parse_type_def(t, quals | JOG_QUALIFIER_CLASS , "Class name expected.");
+    } else if (consume(TOKEN_INTERFACE)) {
+      return parse_type_def(t, quals | JOG_QUALIFIER_INTERFACE | JOG_QUALIFIER_ABSTRACT, "Interface name expected.");
+    } else {
+      if (quals) throw new Error("Expected class or interface.");
+    }
+
+    return null;
+  } else if (arguments.length == 3) {
+    t = arguments[0];
+    quals = arguments[1];
+    mesg = arguments[2];
+
+    if ((quals & (JOG_QUALIFIER_PUBLIC | JOG_QUALIFIER_PROTECTED | JOG_QUALIFIER_PRIVATE)) == 0) {
+      // default to protected
+      quals |= JOG_QUALIFIER_PROTECTED;
+    }
+
+    name = must_read_id(mesg);
+    type = {token:t, qualifiers:quals, name:name};
+    Parser.parsed_types.push(type);
+
+    // TODO: Template type (Jog implements templates instead of generics).
+    if (consume(TOKEN_LT)) {
+      throw new Error('Java generics are not implemented');
+    }
+
+    parse_type_def(t, type);
+
+    return type;
+  } else if (arguments.length == 2) {
+    t = arguments[0];
+    type = arguments[1];
+
+    if (consume(TOKEN_EXTENDS)) type.base_class = parse_data_type();
+
+    t2 = peek();
+    if (consume(TOKEN_IMPLEMENTS)) {
+      if (is_interface(type)) throw new Error('Interface cannot implement another.');
+      type.interfaces = [parse_data_type()];
+      while (consume(TOKEN_COMMA)) {
+        type.interfaces.push(parse_data_type());
+      }
+    }
+
+    // make one empty static initializer for setting up initial class
+    // property values
+    if (is_class() && !is_template()) {
+      type.static_initializers = [{token:t,
+                                   qualifiers:JOG_QUALIFIER_STATIC,
+                                   type:type,
+                                   notsure:null,
+                                   notsure2:'static'}];
+    }
+
+    must_consume(TOKEN_LCURLY, 'Expected {.');
+
+    while (true) {
+      set_mark();
+      try {
+        result = parse_member(type);
+        clear_mark();
+        if (!result) break;
+      } catch (e) {
+        rewind_to_mark();
+        try {
+          if (!parse_type_def()) throw e;
+        } finally { throw e; }
+      }
+    }
+
+    must_consume(TOKEN_RCURLY, 'Expected }.');
+  }
+}
+
+var parse_placeholder_type = function() {
+  var placeholder_type = parse_data_type();
+  return placeholder_type;
+}
+
+var parse_type_qualifiers = function() {
+  var quals = 0;
+  var t = null;
+
+  while (true) {
+    t = peek();
+
+    if (consume(TOKEN_ABSTRACT)) {
+      quals |= JOG_QUALIFIER_ABSTRACT;
+      continue;
+    }
+
+    if (consume(TOKEN_PUBLIC)) {
+      quals |= JOG_QUALIFIER_PUBLIC;
+      if (quals & (JOG_QUALIFIER_PROTECTED | JOG_QUALIFIER_PRIVATE)) {
+        throw new Error('Cannot be public if protected or private.');
+      }
+      continue;
+    }
+
+    if (consume(TOKEN_PROTECTED)) {
+      quals |= JOG_QUALIFIER_PROTECTED;
+      if (quals & (JOG_QUALIFIER_PUBLIC | JOG_QUALIFIER_PRIVATE)) {
+        throw new Error('Cannot be protected if public or private.');
+      }
+      continue;
+    }
+
+    if (consume(TOKEN_PRIVATE)) {
+      quals |= JOG_QUALIFIER_PRIVATE;
+      if (quals & (JOG_QUALIFIER_PUBLIC | JOG_QUALIFIER_PROTECTED)) {
+        throw new Error('Cannot be private if public or protected.');
+      }
+      continue;
+    }
+
+    if (consume(TOKEN_STATIC)) {
+      quals |= JOG_QUALIFIER_STATIC;
+      continue;
+    }
+
+    if (consume(TOKEN_NATIVE)) {
+      quals |= JOG_QUALIFIER_NATIVE;
+      continue;
+    }
+
+    return quals;
+  }
+}
+
+var parse_member_qualifiers = function() {
+  var quals = 0;
+  var t = null;
+
+  while(true) {
+    t = peek();
+
+    if (consume(TOKEN_ABSTRACT)) {
+      quals |= JOG_QUALIFIER_ABSTRACT;
+      continue;
+    }
+
+    if (consume(TOKEN_PUBLIC)) {
+      quals |= JOG_QUALIFIER_PUBLIC;
+      if (quals & (JOG_QUALIFIER_PROTECTED | JOG_QUALIFIER_PRIVATE)) {
+        throw new Error('Cannot be public if protected or private.');
+      }
+      continue;
+    }
+
+    if (consume(TOKEN_PROTECTED)) {
+      quals |= JOG_QUALIFIER_PROTECTED;
+      if (quals & (JOG_QUALIFIER_PUBLIC | JOG_QUALIFIER_PRIVATE)) {
+        throw new Error('Cannot be protected if public or private.');
+      }
+      continue;
+    }
+
+    if (consume(TOKEN_PRIVATE)) {
+      quals |= JOG_QUALIFIER_PRIVATE;
+      if (quals & (JOG_QUALIFIER_PUBLIC | JOG_QUALIFIER_PROTECTED)) {
+        throw new Error('Cannot be private if public or protected.');
+      }
+      continue;
+    }
+
+    if (consume(TOKEN_STATIC)) {
+      quals |= JOG_QUALIFIER_STATIC;
+      continue;
+    }
+
+    if (cosume(TOKEN_NATIVE)) {
+      quals |= JOG_QUALIFIER_NATIVE;
+      continue;
+    }
+
+    return quals;
+  }
+}
+
+var parse_member = function(type) {
+  if (next_is(TOKEN_RCURLY)) return false;
+
+  var t = peek();
+  var quals = parse_member_qualifiers();
+  var t2 = peek();
+  var m = null;
+  var stm = null;
+  var name_t = null;
+  var name = '';
+  var first = true;
+
+  // static initiaizer
+  if (quals == JOG_QUALIFIER_STATIC && next_is(TOKEN_LCURLY)) {
+    if (is_interface(type)) {
+      throw new Error('Static initialization block not allowed here.');
+    }
+
+    m = {token:t,
+         qualifiers:quals,
+         type:type,
+         return_type:null,
+         name:'static'};
+    Parser.this_method = m;
+    if (!type.static_initializers) type.static_initializers = [];
+    type.static_initializers.push(m);
+
+    read();
+    while (!next_is(TOKEN_RCURLY)) {
+      stm = parse_statement();
+      if (stm) {
+        if (!m.statements) m.statements = [];
+        m.push(stm);
+      }
+    }
+    must_consume(TOKEN_RCURLY, 'Expected }');
+    return true;
+  }
+
+  data_type = parse_data_type();
+
+  // constructor
+  if (next_is(TOKEN_LPAREN)) {
+    if (data_type.name == type.name) {
+      if (quals & JOG_QUALIFIER_STATIC) {
+        throw new Error('Constructor cannot be static.');
+      }
+      if (is_interface(type)) {
+        throw new Error('Constructor not allowed here.');
+      }
+
+      quals |= JOG_QUALIFIER_CONSTRUCTOR;
+      m = {token:t,
+           qualifiers:quals,
+           type:type,
+           return_type: null,
+           name:'<init>'};
+      Parser.this_method = m;
+      parse_params(m);
+      if (!type.methods) type.methods = [];
+      type.methods.push(m);
+
+      must_consume(TOKEN_LCURLY, 'Expected {.');
+      while (!next_is(TOKEN_RCURLY)) {
+        stm = parse_statement();
+        if (stm) {
+          if (!m.statements) m.statements = [];
+          m.statements.push(stm);
+        }
+      }
+      must_consume(TOKEN_RCURLY, 'Expected }.');
+      return true;
+    } else {
+      throw new Error('Method missing return type.');
+    }
+  }
+
+  name_t = peek();
+  name = must_read_id('Expected identifier after type.');
+
+  // Method
+  if (next_is(TOKEN_LPAREN)) {
+    if (name == type.name) {
+      throw new Error('Constructors cannot specify a return type.');
+    }
+
+    if (is_interface(type)) quals |= JOG_QUALIFIER_ABSTRACT;
+
+    m = {token:t,
+         qualifiers:quals,
+         type:type,
+         return_type:data_type,
+         name:name};
+
+    if (is_interface(type) && is_static(m)) {
+      throw new Error('Interface method cannot be static.');
+    }
+
+    Parser.this_method = m;
+    parse_params(m);
+    if (is_static(m)) {
+      if (!type.class_methods) type.class_methods = [];
+      type.class_methods.push(m);
+    } else {
+      if (!type.methods) type.methods = [];
+      type.methods.push(m);
+    }
+
+    if (quals & JOG_QUALIFIER_NATIVE) {
+      if (is_interface(m)) {
+        throw new Error('Interface method cannot be native.');
+      }
+      must_consume(TOKEN_SEMICOLON, 'Expexted ;.');
+    } else if (consume(TOKEN_SEMICOLON)) {
+      if (!is_abstract(m)) {
+        throw new Error('Method missing body.');
+      }
+      if (!is_abstract(m)) {
+        throw new Error('Abstract method not allowed in non-abstract class.');
+      }
+    } else {
+      if (is_abstract(m)) {
+        throw new Error('Abstract method cannot have body.');
+      }
+
+      must_consume(TOKEN_LCURLY, 'Expected {.');
+      while (next_is(TOKEN_RCURLY)) {
+        stm = parse_statement();
+        if (stm) {
+          if (!m.statements) m.statements = [];
+          m.statements.push(stm);
+        }
+      }
+      must_consume(TOKEN_RCURLY, 'Expected }.');
+    }
+  } else {
+    if (data_type == null) {
+      throw new Error('void cannot be use as property type.');
+    }
+    if (quals & JOG_QUALIFIER_NATIVE) {
+      throw new Error('native qualifier cannot be used for properties.');
+    }
+    if (is_interface(type)) {
+      throw new Error('Interface cannot have properties.');
+    }
+
+    // property
+    first = true;
+    do {
+      if (first) first = false;
+      else {
+        name_t = peek();
+        name = must_read_id('Expected identifier.');
+      }
+
+      p = {token:name_t,
+           qualifiers:quals,
+           type_context:type,
+           type:data_type,
+           name:name,
+           initial_value:parse_initial_value(data_type)};
+      if (is_static(p)) {
+        if (!type.class_propertis) type.class_properties = [];
+        type.class_propertis.push(p);
+      } else {
+        if (!type.properties) type.properties = [];
+        type.properties.push(p);
+      }
+    }
+
+    while (consume(TOKEN_COMMA));
+
+    must_consume_semicolon(t);
+  }
+
+  return true;
+};
+
+var parse_params = function(m) {
+  var t = null;
+  var type = null;
+  var name = '';
+
+  must_consume(TOKEN_LPAREN, 'Expected (.');
+
+  if (!consume(TOKEN_RPAREN)) {
+    do {
+      t = peek();
+      type = parse_data_type();
+      if (!type) {
+        throw new Error('void cannot be parameter type');
+      }
+
+      name = must_read_id('Expected identifier.');
+      if (!m.parameters) m.parameters = [];
+      m.parameters.push({token:t, type:type, name:name});
+    } while (consume(TOKEN_COMMA));
+    must_consume(TOKEN_RPAREN, 'Expected ).');
+  }
+};
+
+var parse_data_type = function() {
+  var t = peek();
+  var name = must_read_id('Expected type');
+  name = name.substr(0);
+
+  // TODO: generics
+
+  // TODO: subscript
+
+  // TODO: add type to type table
+  return {token:t, name:name};
+};
+
+var parse_initial_value = function(of_type) {
+  if (consume(TOKEN_ASSIGN)) {
+    if (next_is(TOKEN_LCURLY)) {
+      // TODO: parse literal array
+      throw new Error('literal array not implemented');
+    } else {
+      return parse_expression();
+    }
+  } else {
+    return null;
+  }
+};
+
+var parse_statement = function(require_semicolon) {
+  if (trace) print('parse_statement');
+  if (require_semicolon && consume(TOKEN_SEMICOLON)) return null;
+  else if (next_is(TOKEN_RPAREN)) return null;
+
+  var t = peek();
+  var block = null;
+  var stm = null;
+  var cmd = null;
+  var conditional = null;
+  var loop = null;
+  var init_expr;
+  var local_type = null;
+  var local_name = '';
+  var iterable_expr = null;
+  var condition = null;
+  var var_mod = null;
+  var expr = null;
+  var var_type = null;
+
+  if (consume(TOKEN_LCURLY)) {
+    while (!consume(TOKEN_RCURLY)) {
+      stm = parse_statement();
+      if (stm) {
+        if (!block.statements) block.statements = [];
+        block.statements.push(stm);
+      }
+    }
+    return block;
+  }
+
+  if (consume(TOKEN_RETURN)) {
+    if (consume(TOKEN_SEMICOLON)) {
+      if (Parser.this_method.return_type) {
+        throw new Error('Missing return value.');
+      }
+      return {token:t, value:'void'};
+    }
+
+    cmd = {token:t, expression:parse_expression()};
+    if (require_semicolon) must_consume_semicolon(t);
+    return cmd;
+  }
+
+  if (consume(TOKEN_IF)) {
+    must_consume(TOKEN_LPAREN, 'Expected (.');
+    conditional = {token:t, expression:parse_expression()};
+    must_consume(TOKEN_RPAREN, 'Expected ).');
+
+    if (next_is(TOKEN_SEMICOLON)) {
+      throw new Error('Unexpected ;.');
+    }
+
+    conditional.body = parse_statement();
+    if (consume(TOKEN_ELSE)) {
+      if (next_is(TOKEN_SEMICOLON)) {
+        throw new Error('Unexpected ;.');
+      }
+      conditional.else_body = parse_statement();
+    }
+    return conditional;
+  }
+
+  if (consume(TOKEN_WHILE)) {
+    must_consume(TOKEN_LPAREN, 'Expected (.');
+    loop = {token:t, expression:parse_expression()};
+    must_consume(TOKEN_RPAREN, 'Expected ).');
+    if (next_is(TOKEN_SEMICOLON)) {
+      throw new Error('Unexpected ;.');
+    }
+    loop.body = parse_statement();
+    return loop;
+  }
+
+  if (consume(TOKEN_FOR)) {
+    must_consume(TOKEN_LPAREN, 'Expected (.');
+
+    set_mark();
+    init_expr = parse_statement(false);
+    if (next_is(TOKEN_COLON)) {
+      rewind_to_mark();
+      local_type = parse_data_type();
+      local_name = must_read_id('Expected identifier.');
+
+      must_consume(TOKEN_COLON, 'Expected :.');
+      iterable_expr = parse_expression();
+      must_consume(TOKEN_RPAREN, 'Expected ).');
+
+      loop = {token:t,
+              type:local_type,
+              name:local_name,
+              iterable:iterable_expr};
+      if (next_is(TOKEN_SEMICOLON)) {
+        throw new Error('Unexpected ;.');
+      }
+      loop.body = parse_statement();
+      return loop;
+    } else {
+      clear_mark();
+      must_consume(TOKEN_SEMICOLON,  'Expected ;.');
+    }
+
+    if (consume(TOKEN_SEMICOLON)) {
+      condition = {token:t, expression:true};
+    } else {
+      condition = parse_expression();
+      must_consume(TOKEN_SEMICOLON, 'Expected ;.');
+    }
+    var_mod = parse_statement(false);
+    must_consume(TOKEN_RPAREN, 'Expected ).');
+    loop = {token:t,
+            intialization:init_expr,
+            condition:condition,
+            var_mod:var_mod};
+    if (next_is(TOKEN_SEMICOLON)) {
+      throw new Error('Unexpected ;.');
+    }
+    loop.body = parse_statement();
+    return loop;
+  }
+
+  if (consume(TOKEN_BREAK)) {
+    cmd = {token:t};
+    if (require_semicolon) must_consume_semicolon(t);
+    return cmd;
+  }
+
+  if (consume(TOKEN_CONTINUE)) {
+    cmd = {token:t};
+    if (require_semicolon) must_consume_semicolon(t);
+    return cmd;
+  }
+
+  if (consume(TOKEN_ASSERT)) {
+    must_consume(TOKEN_LPAREN, 'Expected (.');
+    cmd = {token:t, expression:parse_expression()};
+    if (consume(TOKEN_COMMA)) {
+      if (peek().type != TOKEN_STRING) {
+        throw new Error('Expected string literal.');
+      }
+      cmd.message = read().content;
+    }
+    must_consume(TOKEN_RPAREN, 'Expected ).');
+    return cmd;
+  }
+
+  expr = parse_expression();
+  print(to_str(expr));
+  if (next_is(TOKEN_ID)) {
+    var var_type = reinterpret_as_type(expr);
+    return parse_local_var_decl( expr.token, var_type, require_semicolon);
+  }
+
+  if (require_semicolon) must_consume_semicolon(t);
+
+  return expr; // TODO: discarding_result
+};
+
+var parse_local_var_decl = function(t, var_type, req_semi) {
+  var locals = [];
+  var t2 = null;
+  var name = '';
+  var decl = null;
+
+  if (!var_type) {
+    throw new Error('Expected datatype.');
+  }
+
+  do {
+    t2 = peek();
+    name = must_read_id('Expected identifier');
+    decl = {token:t2,
+            type:var_type,
+            name:name,
+            initial_value:parse_initial_value(var_type)};
+    locals.push(decl);
+  } while (consume(TOKEN_COMMA));
+
+  if (req_semi) must_consume_semicolon(t);
+
+  return locals;
+};
+
+var parse_expression = function() {
+  if (trace) print('parse_expression');
+  var cmd = parse_assignment();
+  return cmd;
+};
+
 var parse_assignment = function() {
+  if (trace) print('parse_assignment');
   var expr = parse_conditional();
   var t = peek();
-  if (_pax[t.type] != undefined) {
-    consume(t.type);
-    expr = cmd(t.type, t, expr, parse_assignment());
+  if (consume(TOKEN_ASSIGN)) {
+    expr = {token:t, location:expr, new_value:parse_assignment()};
+  } else if (consume(TOKEN_ADD_ASSIGN)) {
+    expr = {token:t, location:expr, new_value:parse_assignment()};
+  } else if (consume(TOKEN_SUB_ASSIGN)) {
+    expr = {token:t, location:expr, new_value:parse_assignment()};
+  } else if (consume(TOKEN_MUL_ASSIGN)) {
+    expr = {token:t, location:expr, new_value:parse_assignment()};
+  } else if (consume(TOKEN_DIV_ASSIGN)) {
+    expr = {token:t, location:expr, new_value:parse_assignment()};
+  } else if (consume(TOKEN_MOD_ASSIGN)) {
+    expr = {token:t, location:expr, new_value:parse_assignment()};
+  } else if (consume(TOKEN_AND_ASSIGN)) {
+    expr = {token:t, location:expr, new_value:parse_assignment()};
+  } else if (consume(TOKEN_OR_ASSIGN)) {
+    expr = {token:t, location:expr, new_value:parse_assignment()};
+  } else if (consume(TOKEN_XOR_ASSIGN)) {
+    expr = {token:t, location:expr, new_value:parse_assignment()};
+  } else if (consume(TOKEN_SHL_ASSIGN)) {
+    expr = {token:t, location:expr, new_value:parse_assignment()};
+  } else if (consume(TOKEN_SHRX_ASSIGN)) {
+    expr = {token:t, location:expr, new_value:parse_assignment()};
+  } else if (consume(TOKEN_SHR_ASSIGN)) {
+    expr = {token:t, location:expr, new_value:parse_assignment()};
   }
   return expr;
 };
 
-var _psx = {};
-for (var i in [TOKEN_SHL,
-               TOKEN_SHR,
-               TOKEN_SHRX]) {
-  _psx[i] = i;
+var parse_conditional = function() {
+  if (trace) print('parse_conditional');
+  var expr = parse_logical_or();
+  var t = peek();
+  if (consume(TOKEN_QUESTIONMARK)) {
+    // TODO: ternary conditional
+    throw new Error('Ternary not implemented.');
+  }
+  return expr;
 }
+
+var parse_logical_or = function(lhs) {
+  if (trace) print('parse_logical_or');
+  var t = null;
+  if (lhs === undefined) {
+    return parse_logical_or(parse_logical_and());
+  } else {
+    t = peek();
+    if (consume(TOKEN_LOGICAL_OR)) {
+      return parse_logical_or({token:t, lhs:lhs, rhs:parse_logical_and()});
+    }
+    return lhs;
+  }
+}
+
+var parse_logical_and = function(lhs) {
+  if (trace) print('parse_logical_and');
+  var t = null;
+  if (lhs === undefined) {
+    return parse_logical_and(parse_bitwise_or());
+  } else {
+    t = peek();
+    if (consume(TOKEN_LOGICAL_AND)) {
+      return parse_logical_and({token:t, lhs:lhs, rhs:parse_bitwise_or()});
+    }
+    return lhs;
+  }
+}
+
+var parse_bitwise_or = function(lhs) {
+  if (trace) print('parse_bitwise_or');
+  var t = null;
+  if (lhs === undefined) {
+    return parse_bitwise_or(parse_bitwise_xor());
+  } else {
+    t = peek();
+    if (consume(TOKEN_PIPE)) {
+      return parse_bitwise_or({token:t, lhs:lhs, rhs:parse_bitwise_xor()});
+    }
+    return lhs;
+  }
+}
+
+var parse_bitwise_xor = function(lhs) {
+  if (trace) print('parse_bitwise_xor');
+  var t = null;
+  if (lhs === undefined) {
+    return parse_bitwise_xor(parse_bitwise_and());
+  } else {
+    t = peek();
+    if (consume(TOKEN_CARET)) {
+      return parse_bitwise_xor({token:t, lhs:lhs, rhs:parse_bitwise_and()});
+    }
+    return lhs;
+  }
+}
+
+var parse_bitwise_and = function(lhs) {
+  if (trace) print('parse_bitwise_and');
+  var t = null;
+  if (lhs === undefined) {
+    return parse_bitwise_and(parse_equality());
+  } else {
+    t = peek();
+    if (consume(TOKEN_AMPERSAND)) {
+      return parse_bitwise_and({token:t, lhs:lhs, rhs:parse_equality()});
+    }
+    return lhs;
+  }
+}
+
 // <<, >>, >>>
 var parse_shift = function(lhs) {
+  if (trace) print('parse_shift');
   if (lhs === undefined) return parse_shift(parse_translate());
-  if (scanner.consume(TOKEN_SHL))
-    return JogCmdSHL.alloc(t, lhs, parse_translate());
-  if (scanner.consume(TOKEN_SHR))
-    return JogCmdSHR.alloc(t, lhs, parse_translate());
-  if (scanner.consume(TOKEN_SHRX))
-    return JogCmdSHRX.alloc(t, lhs, parse_translate());
+  var t = peek();
+  if (consume(TOKEN_SHL))
+    return parse_shift({token:t, lhs:lhs, rhs:parse_translate()});
+  if (consume(TOKEN_SHR))
+    return parse_shift({token:t, lhs:lhs, rhs:parse_translate()});
+  if (consume(TOKEN_SHRX))
+    return parse_shift({token:t, lhs:lhs, rhs:parse_translate()});
   return lhs;
 };
 
 // <, <=, >, >=, instanceof
 var parse_relational = function(lhs) {
+  if (trace) print('parse_relational');
   if (lhs === undefined)
     return parse_relational(parse_shift());
-  var t = scanner.peek();
-  if (scanner.consume(TOKEN_LT))
-    return JogCmdLT.alloc(t, lhs, parse_shift());
-  if (scanner.consume(TOKEN_LE))
-    return JogCmdLE.alloc(t, lhs, parse_shift());
-  if (scanner.consume(TOKEN_GT))
-    return JogCmdGT.alloc(t, lhs, parse_shift());
-  if (scanner.consume(TOKEN_GE))
-    return JogCmdGE.alloc(t, lhs, parse_shift());
-  if (scanner.consume(TOKEN_INSTANCEOF))
-    return JogCmdInstanceOf.alloc(t, lhs, parse_data_type());
+  var t = peek();
+  if (consume(TOKEN_LT))
+    return parse_relational({token:t, lhs:lhs, rhs:parse_shift()});
+  if (consume(TOKEN_LE))
+    return parse_relational({token:t, lhs:lhs, rhs:parse_shift()});
+  if (consume(TOKEN_GT))
+    return parse_relational({token:t, lhs:lhs, rhs:parse_shift()});
+  if (consume(TOKEN_GE))
+    return parse_relational({token:t, lhs:lhs, rhs:parse_shift()});
+  if (consume(TOKEN_INSTANCEOF))
+    return parse_relational({token:t, lhs:lhs, rhs:parse_data_type()});
   return lhs;
 };
 
@@ -899,107 +1831,448 @@ var parse_relational = function(lhs) {
 // ==, !=
 var parse_equality = function(lhs) {
   if (lhs === undefined)
-    return parse_relational(parse_shift());
-  if (scanner.consume(TOKEN_EQ))
-    return JogCmdEQ.alloc(t, lhs, parse_shift());
-  if (scanner.consume(TOKEN_NE))
-    return JogCmdNE.alloc(t, lhs, parse_shift());
+    return parse_equality(parse_relational());
+  var t = peek();
+  if (consume(TOKEN_EQ))
+    return parse_equality({token:t, lhs:lhs, rhs:parse_relational()});
+  if (consume(TOKEN_NE))
+    return parse_equality({token:t, lhs:lhs, rhs:parse_relational()});
   return lhs;
 };
 
 
 // +, -
 var parse_translate = function(lhs) {
+  if (trace) print('parse_translate');
   if (lhs === undefined)
     return parse_translate(parse_scale());
-  if (scanner.consume(TOKEN_PLUS))
-    return JogCmdEQ.alloc(t, lhs, parse_scale());
-  if (scanner.consume(TOKEN_MINUS))
-    return JogCmdNE.alloc(t, lhs, parse_scale());
+  var t = peek();
+  if (consume(TOKEN_PLUS))
+    return parse_translate({token:t, lhs:lhs, rhs:parse_scale()});
+  if (consume(TOKEN_MINUS))
+    return parse_translate({token:t, lhs:lhs, rhs:parse_scale()});
   return lhs;
 };
 
 
 // *, /
 var parse_scale = function(lhs) {
+  if (trace) print('parse_scale');
   if (lhs === undefined)
     return parse_scale(parse_prefix_unary());
-  if (scanner.consume(TOKEN_STAR))
-    return JogCmdEQ.alloc(t, lhs, parse_prefix_unary());
-  if (scanner.consume(TOKEN_SLASH))
-    return JogCmdEQ.alloc(t, lhs, parse_prefix_unary());
-  if (scanner.consume(TOKEN_PERCENT))
-    return JogCmdEQ.alloc(t, lhs, parse_prefix_unary());
+  var t = peek();
+  if (consume(TOKEN_STAR))
+    return parse_scale({token:t, lhs:lhs, rhs:parse_prefix_unary()});
+  if (consume(TOKEN_SLASH))
+    return parse_scale({token:t, lhs:lhs, rhs:parse_prefix_unary()});
+  if (consume(TOKEN_PERCENT))
+    return parse_scale({token:t, lhs:lhs, rhs:parse_prefix_unary()});
   return lhs;
 };
 
 // (cast), new, ++, --, +, -, !, ~
 var parse_prefix_unary = function() {
+  if (trace) print('parse_prefix_unary');
   // (cast) - TODO
   // new - TODO
-  if (scanner.consume(TOKEN_INCREMENT))
-    return JogCmdIncrement.alloc(t, parse_prefix_unary());
-  if (scanner.consume(TOKEN_DECREMENT))
-    return JogCmdDecrement.alloc(t, parse_prefix_unary());
-  // discard '+a' and just keep "a"."
-  if (scanner.consume(TOKEN_PLUS))
+  var t = peek();
+  if (consume(TOKEN_INCREMENT))
+    return {token:t, operand:parse_prefix_unary()};
+  if (consume(TOKEN_DECREMENT))
+    return {token:t, operand:parse_prefix_unary()};
+  // discard '+a' and just keep 'a'.
+  if (consume(TOKEN_PLUS))
     return parse_prefix_unary();
-  if (scanner.consume(TOKEN_MINUS))
-    return JogCmdNegate.alloc(t, parse_prefix_unary());
-  if (scanner.consume(TOKEN_BANG))
-    return JogCmdLogicalNot.alloc(t, parse_prefix_unary());
-  if (scanner.consume(TOKEN_TILDE))
-    return JogCmdBitwiseNot.alloc(t, parse_prefix_unary());
+  if (consume(TOKEN_MINUS))
+    return {token:t, operand:parse_prefix_unary()};
+  if (consume(TOKEN_BANG))
+    return {token:t, operand:parse_prefix_unary()};
+  if (consume(TOKEN_TILDE))
+    return {token:t, operand:parse_prefix_unary()};
   return parse_postfix_unary();
+};
+
+var parse_array_decl = function(t, array_type) {
+  var saw_empty = false;
+  var dim_specified = false;
+  var dim_expr = [];
+  var t = peek();
+  var base_name = '';
+  var new_array = null;
+  var cur = null;
+  var element_type = null;
+  var element_expr = null;
+
+  while (consume(TOKEN_LBRACKET)) {
+    if (consume(TOKEN_RBRACKET)) {
+      saw_empty = true;
+      dim_expr.add(null);
+    } else {
+      if (saw_empty) {
+        throw new Error('Must provide proceeding dimension.');
+      }
+      dim_specified = true;
+      dim_expr.push(parse_expression());
+      must_consume(TOKEN_RBRACKET, 'Expected ].');
+    }
+  }
+
+  base_name = array_type.name;
+  array_type = {token:array_type.token,
+                name:base_name,
+                length:dim_expr.length};
+
+  if (!dim_specified) {
+    if (next_is(TOKEN_LCURLY)) {
+      throw new Error('Expected literal array.');
+    }
+    return parse_literal_array(array_type);
+  }
+
+  new_array = {token:t,
+               type:array_type,
+               length:dim_expr.length};
+  if (dim_expr.length > 1) {
+    cur = new_array;
+    for (var i = 1; i < dim_expr.length; ++i) {
+      if (dim_expr[i] == null) break;
+      element_type = {token:dim_expr[i].token,
+                      name:base_name,
+                      length:dim_expr.length-i};
+      element_expr = {token:t,
+                      type:element_type,
+                      expression:dim_expr[i]};
+      cur.element_expr = element_expr;
+      cur = element_expr;
+    }
+  }
+  return new_array;
 };
 
 // ++, --, ., (), []
 var parse_postfix_unary = function(operand) {
+  if (trace) print('parse_postfix_unary');
+  var op_type = null;
+  var new_name = '';
+  var index = null;
   if (operand === undefined)
     return parse_postfix_unary(parse_term());
+  var t = peek();
+  if (consume(TOKEN_INCREMENT)) {
+    return parse_postfix_unary({token:t, operand:operand});
+  } else if (consume(TOKEN_DECREMENT)) {
+    return parse_postfix_unary({token:t, operand:operand});
+  } else if (consume(TOKEN_PERIOD)) {
+    cmd = parse_postfix_unary({token:t, operand:operand, term:parse_term});
+    return cmd;
+  } else if (consume(TOKEN_LBRACKET)) {
+    if (next_is(TOKEN_RBRACKET)) {
+      op_type = reinterpret_as_type(operand);
+      if (op_type == null) {
+        throw new Error('Expected datatype.');
+      }
+      new_name = op_type.name;
+      must_consume(TOKEN_RBRACKET, 'Expected ].');
+      new_name + '[]';
+      while (next_is(TOKEN_LBRACKET)) {
+        must_consume(TOKEN_RBRACKET, 'Expected ].');
+        new_name + '[]';
+      }
+      return parse_local_var_decl(t, {token:t, name:new_name}, false);
+    } else {
+      index = parse_expression();
+      must_consume(TOKEN_RBRACKET, 'Expected ].');
+      return parse_postfix_unary({token:t, context:operand, expression:index});
+    }
+  }
+
   return operand;
 };
 
+var parse_construct = function() {
+  if (trace) print('parse_construct');
+  var t = peek();
+  var name = '';
+  var type = null;
+  var args = null;
+
+  set_mark();
+  try {
+    type = parse_data_type(true);
+    name = type.name;
+    clear_mark();
+  } catch (e) {
+    rewind_to_mark();
+    name = must_read_id('Identifier expected.');
+  }
+
+  // TODO: handle generics
+
+  if (args == null) return {token:t, name:name};
+
+  // TODO: handle method call
+};
+
+var parse_args = function(required) {
+  var t = peek();
+  var args = null;
+
+  if (consume(TOKEN_LPAREN)) {
+    if (required) {
+      throw new Error('Expected (.');
+    }
+    return null;
+  }
+
+  args = {token:t};
+  if (!consume(TOKEN_RPAREN)) {
+    do {
+      if (!args['arguments']) args['arguments'] = [];
+      args['arguments'].push(parse_expression());
+    } while(consume(TOKEN_COMMA));
+    must_consume(TOKEN_RPAREN, 'Expected ).');
+  }
+
+  return args;
+}
+
+var parse_literal_array = function(of_type) {
+  var t = read();
+  var t2 = null;
+  var first = true;
+  var terms = [];
+  var element_type_name = '';
+  var element_type = null;
+
+  if (!consume(TOKEN_RCURLY)) {
+    first = true;
+    while (first || consume(TOKEN_COMMA)) {
+      first = false;
+      if (next_is(TOKEN_LCURLY)) {
+        element_type_name = of_type.name;
+        t2 = peek();
+        if (element_type_name.charAt(-3) != ']') {
+          throw new Error('Array type does not support this many dimensions.');
+        }
+        element_type = {token:t2, name:element_type_name};
+        terms.push(parse_literal_array(element_type));
+      } else {
+        terms.push(parse_expression());
+      }
+    }
+    must_consume(TOKEN_RCURLY, 'Expected , or }.');
+  }
+
+  return {token:t, type:of_type, terms:terms};
+}
+
 var parse_term = function() {
-  switch (scanner.nextType()) {
-  case TOKEN_LITERAL_DOUBLE:
-    return JogLiteralDouble(t);
-  case TOKEN_LITERAL_FLOAT:
-    return JogLiteralFloat(t);
-  case TOKEN_LITERAL_INT:
-    return JogLiteralInt(t);
-  case TOKEN_LITERAL_CHAR:
-    return JogLiteralChar(t);
-  case TOKEN_STRING:
-    return JogLiteralString(t);
-  case TOKEN_FALSE:
-    return JogLiteralBoolean(t);
-  case TOKEN_TRUE:
-    return JogLiteralBoolean(t);
-  case TOKEN_NULL:
-    return JogLiteralNull(t);
+  if (trace) print('parse_term');
+  var t = null;
+  var expr = null;
+  var args = null;
+  var name = '';
+
+  switch (peek().type) {
+  case LITERAL_DOUBLE:
+    t = read();
+    return {token:t, value:t.content};
+  case LITERAL_FLOAT:
+    t = read();
+    return {token:t, value:t.content};
+  case LITERAL_INT:
+    t = read();
+    return {token:t, value:t.content};
+  case LITERAL_CHAR:
+    t = read();
+    return {token:t, value:t.content};
+  case LITERAL_STRING:
+    t = read();
+    return {token:t, value:t.content};
+  // case TOKEN_FALSE:
+  //   t = read();
+  //   return {token:t, value:t.content};
+  // case TOKEN_TRUE:
+  //   t = read();
+  //   return {token:t, value:t.content};
+  case LITERAL_BOOLEAN:
+    t = read();
+    return {token:t, value:t.content};
   case TOKEN_LPAREN:
-    // TODO
+    read();
+    expr = parse_expression();
+    must_consume(TOKEN_RPAREN, 'Expected ).');
+    return expr;
   case TOKEN_SUPER:
     // TODO
+    print('super');
   case TOKEN_ID:
     return parse_construct();
-    // TODO
+  case TOKEN_NULL:
+    t = read();
+    return {token:t, value:t.content};
   }
+
+  // TODO: ???
+  t = read();
+  return {token:t, value:t.content};
+
+  throw new Error('Something really bad!');
 };
 
 
 
+var is_token =  function(a) { return ('type' in a) || ('content' in a); };
+var token_str = function(token) {
+  var ret = token_name_table[token.type];
+  //ret = ret.replace('TOKEN_', '');
+  //ret = ret.replace('LITERAL_', '');
+  if ('content' in token) ret = ret + ' ' + token.content;
+  return ret;
+};
+var print_token = function(token) {
+  print(token_str(token));
+};
+var print_pending = function() {
+  for (var i in pending) {
+    print_term(pending[i]);
+  }
+}
 
+var is_data_type = function(a) { return ('token' in a) && ('name' in a); };
+var data_type_str = function(data_type) {
+  return '[' + token_str(data_type.token) + ' ' + data_type.name + ']';
+};
+var print_data_type = function(data_type) {
+  print(data_type_str(data_type));
+};
 
+var is_statement = function(a) {
+  return ('token' in a) && ('expression' in a);
+};
+var statement_str = function(stm) {};
+var print_statement = function(stm) {
+};
 
+var is_assignment = function(a) {
+  return ('token' in a) && ('location' in a) && ('new_value' in a);
+};
+var assignment_str = function(assign) {
+  return '['
+      + token_str(assign.token)
+      + ' ' + to_str(assign.location)
+      + ' ' + to_str(assign.new_value)
+      + ']';
+};
+var print_assignment = function(assign) {
+  print(assignment_str(assign));
+};
 
+var is_expression = function(a) {
+  return ('token' in a) && ('lhs' in a) && ('rhs' in a);
+};
+var expression_str = function(expr) {
+  return '['
+      + token_str(expr.token)
+      + ' ' + to_str(expr.lhs)
+      + ' ' + to_str(expr.rhs)
+      + ']';
+};
+var print_expr = function(expr) {
+  print(expression_str(expr));
+};
 
+var is_unary = function(a) {
+  return ('token' in a) && ('operand' in a);
+};
+var unary_str = function(unary) {
+  return '[' + token_str(unary.token) + ' ' + to_str(unary.operand) + ']';
+};
+var print_unary = function(unary) {
+  print(unary_str(unary));
+};
+
+var is_term = function(a) {
+  return ('token' in a) && ('value' in a);
+};
+var term_str = function(term) {
+  return '[' + token_str(term.token) + ' ' + term.value + ']';
+};
+var print_term = function(term) {
+  print(term_str(term));
+};
+
+/*
+  static initializer, constructor, method
+  m = {token:t,
+    qualifiers:quals,
+    type:type,
+    return_type:null,
+    name:'static'};
+*/
+var is_method = function(a) {};
+
+/*
+   {token:name_t,
+     qualifiers:quals,
+     type_context:type,
+     type:data_type,
+     name:name,
+     initial_value:parse_initial_value(data_type)};
+*/
+var is_property = function(a) {};
+
+// {token:t2,
+//  type:var_type,
+//  name:name,
+//  initial_value:parse_initial_value(var_type)};
+var is_var_decl = function(a) {
+  return (('token' in a)
+      && ('type' in a)
+      && ('name' in a)
+      && ('initial_value' in a));
+};
+var var_decl_str = function(var_decl) {
+  return '['
+      + token_str(var_decl.token)
+      + ' ' + to_str(var_decl.type)
+      + ' ' + var_decl.name
+      + ' ' + to_str(var_decl.initial_value)
+      + ']';
+};
+var is_var_decls = function (a) {
+  return (isArray(a) && is_var_decl(a[0]));
+}
+var var_decls_str = function(a) {
+  var str = '[';
+  for (var i = 0, len = a.length; i < len; i++) {
+    str = str + var_decl_str(a[i]) + ' ';
+  }
+  return str + ']';
+}
+
+var to_str = function(a) {
+  if (a == null) return '';
+  if (is_token(a)) return token_str(a);
+  if (is_data_type(a)) return data_type_str(a);
+  if (is_statement(a)) return statement_str(a);
+  if (is_assignment(a)) return assignment_str(a);
+  if (is_expression(a)) return expression_str(a);
+  if (is_unary(a)) return unary_str(a);
+  if (is_term(a)) return term_str(a);
+  if (is_var_decl(a)) return var_decl_str(a);
+  if (is_var_decls(a)) return var_decls_str(a);
+  return a;
+}
+
+var reinterpret_as_type = function(a) {
+  return a;
+}
 
 // TODO: Built in lint.
 
 var tests = [
-  ['123', LITERAL_INTEGER, 123],
+  ['123', LITERAL_INT, 123],
   ['123l', LITERAL_LONG, 123],
   ['123L', LITERAL_LONG, 123],
   ['1.23f', LITERAL_FLOAT, 1.23],
@@ -1014,21 +2287,21 @@ var tests = [
   ['1.23e10e3', TOKEN_ERROR],
   ['1_.23e10', TOKEN_ERROR],
   ['1._23e10', TOKEN_ERROR],
-  ['5____2', LITERAL_INTEGER, 52],
+  ['5____2', LITERAL_INT, 52],
   ['52_', TOKEN_ERROR],
-  ['2147483647', LITERAL_INTEGER, 2147483647],
+  ['2147483647', LITERAL_INT, 2147483647],
   ['2147483648', TOKEN_ERROR], // Too large
   ['0x_52', TOKEN_ERROR],
   ['0_x52', TOKEN_ERROR],
-  ['0x5_a', LITERAL_INTEGER, 0x5a],
-  ['26', LITERAL_INTEGER, 26],
-  ['032', LITERAL_INTEGER, 26],
-  ['0b11010', LITERAL_INTEGER, 26],
+  ['0x5_a', LITERAL_INT, 0x5a],
+  ['26', LITERAL_INT, 26],
+  ['032', LITERAL_INT, 26],
+  ['0b11010', LITERAL_INT, 26],
   ['0b11310', TOKEN_ERROR],
   ['039', TOKEN_ERROR],
   ['093', TOKEN_ERROR],
-  ['0000032', LITERAL_INTEGER, 26],
-  ['0x00005a', LITERAL_INTEGER, 0x5a],
+  ['0000032', LITERAL_INT, 26],
+  ['0x00005a', LITERAL_INT, 0x5a],
   ['0.3', LITERAL_DOUBLE, 0.3],
   ['0.3d', LITERAL_DOUBLE, 0.3],
   ['0.3D', LITERAL_DOUBLE, 0.3],
@@ -1046,11 +2319,11 @@ var tests = [
   ['3.14_15F', LITERAL_FLOAT, 3.1415],
   ['0xFF_EC_DE_5E', TOKEN_ERROR],
   ['0xCAFE_BABE', TOKEN_ERROR], // Too large
-  ['0b0010_0101', LITERAL_INTEGER, 37],
-  ['-42', LITERAL_INTEGER, -42],
-  ['-0x0001', LITERAL_INTEGER, -1],
-  ['-0b0001', LITERAL_INTEGER, -1],
-  ['-01', LITERAL_INTEGER, -1],
+  ['0b0010_0101', LITERAL_INT, 37],
+  ['-42', LITERAL_INT, -42],
+  ['-0x0001', LITERAL_INT, -1],
+  ['-0b0001', LITERAL_INT, -1],
+  ['-01', LITERAL_INT, -1],
   ['-0.42', LITERAL_DOUBLE, -0.42],
   ['-.42', LITERAL_DOUBLE, -0.42],
   ['-.42e-2', LITERAL_DOUBLE, -0.42e-2],
@@ -1097,15 +2370,22 @@ var tests = [
   ['while() {}',
    [TOKEN_WHILE, TOKEN_LPAREN, TOKEN_RPAREN, TOKEN_LCURLY, TOKEN_RCURLY]],
   ['int a = 7;',
-   [TOKEN_INT, TOKEN_ID, TOKEN_ASSIGN, LITERAL_INTEGER, TOKEN_SEMICOLON]],
+   [TOKEN_INT, TOKEN_ID, TOKEN_ASSIGN, LITERAL_INT, TOKEN_SEMICOLON]],
   ['int[] a = new int[77];',
    [TOKEN_INT, TOKEN_LBRACKET, TOKEN_RBRACKET, TOKEN_ID, TOKEN_ASSIGN,
-    TOKEN_NEW, TOKEN_INT, TOKEN_LBRACKET, LITERAL_INTEGER, TOKEN_RBRACKET,
+    TOKEN_NEW, TOKEN_INT, TOKEN_LBRACKET, LITERAL_INT, TOKEN_RBRACKET,
     TOKEN_SEMICOLON]],
   ['"\\n"', LITERAL_STRING, '\n'],
   ['"\\u77"', TOKEN_ERROR],
   ['"Hello\\nWorld"', LITERAL_STRING, 'Hello\nWorld'],
-  ['"abc', TOKEN_ERROR]
+  ['"abc', TOKEN_ERROR],
+  ['int a = 1 + 2;', [TOKEN_INT, TOKEN_ID, TOKEN_ASSIGN, LITERAL_INT,
+                      TOKEN_PLUS, LITERAL_INT, TOKEN_SEMICOLON]],
+  ['int a = b + c;', [TOKEN_INT, TOKEN_ID, TOKEN_ASSIGN, TOKEN_ID,
+                      TOKEN_PLUS, TOKEN_ID, TOKEN_SEMICOLON]],
+  ['int a = 1 << 2;', [TOKEN_INT, TOKEN_ID, TOKEN_ASSIGN, LITERAL_INT,
+                      TOKEN_SHL, LITERAL_INT, TOKEN_SEMICOLON]],
+
 ];
 
 print('BEGIN TESTS');
@@ -1118,6 +2398,26 @@ var isArray = function(obj) {
     return true;
 };
 
+
+var equal = function(a, b) {
+  // print('a ' + to_str(a));
+  // print('b ' + to_str(b));
+  for (var prop in a) {
+    if (a.hasOwnProperty(prop) && b.hasOwnProperty(prop)) {
+      if (typeof(a[prop]) !== 'object') {
+        if (a[prop] != b[prop]) return false;
+      } else {
+        return equal(a[prop], b[prop]);
+        //if (!r) return false;
+      }
+    } else {
+      return false;
+    }
+  }
+  return true;
+};
+
+var test_tokenize = function () {
 var pass_count = 0;
 var fail_count = 0;
 for (i in tests) {
@@ -1159,12 +2459,82 @@ for (i in tests) {
   }
   print('');
 }
-
 print('SUMMARY');
 print('=======');
 print('Passed ' + pass_count + ' tests.');
 print('Failed ' + fail_count + ' tests.');
 print('END TESTS');
+}
+//test_tokenize();
+
+var test_parse = function() {
+  var tests = [
+
+    ['3.14', {token:LITERAL_DOUBLE, value:3.14}],
+    ['42', {token:LITERAL_INT, value:42}],
+    ['\'a\'', {token:LITERAL_CHAR, value:'a'}],
+    ['"hello"', {token:TOKEN_STRING, value:'hello'}],
+    ['false', {token:LITERAL_BOOLEAN, value:false}],
+    ['true', {token:LITERAL_BOOLEAN, value:true}],
+    ['null', {token:TOKEN_NULL, value:'null'}],
+    ['a = true || false;', {
+      token:TOKEN_ASSIGN,
+      location:{token:TOKEN_ID, value:'a'},
+      new_value:{token:TOKEN_LOGICAL_OR,
+                 lhs:{token:LITERAL_BOOLEAN, value:true},
+                 rhs:{token:LITERAL_BOOLEAN, value:false}}}],
+    ['var1 |= (true || false);', {
+      token:TOKEN_OR_ASSIGN,
+      location:{token:TOKEN_ID, value:'var1'},
+      new_value:{token:TOKEN_LOGICAL_OR,
+                 lhs:{token:LITERAL_BOOLEAN, value:true},
+                 rhs:{token:LITERAL_BOOLEAN, value:false}}}],
+    ['var1 = (a + b) * c;', {
+      token:TOKEN_ASSIGN,
+      location:{token:TOKEN_ID, value:'var1'},
+      new_value:{token:TOKEN_STAR,
+                 lhs:{token:TOKEN_PLUS,
+                      lhs:{token:TOKEN_ID, value:'a'},
+                      rhs:{token:TOKEN_ID, value:'b'}},
+                 rhs:{token:TOKEN_ID, value:'c'}}}],
+
+/*    ['int num = 1;', [{
+      token:{type:TOKEN_ID},
+      type:{token:{type:TOKEN_INT}, name:'int'},
+      name:'num',
+      initial_value:{token:{type:LITERAL_INT}, value:1}}]]
+*/
+  ];
+
+  var pass_count = 0;
+  var fail_count = 0;
+  for (i in tests) {
+    var t = tests[i];
+    print('Testing the parsing of ' + t[0]);
+    init();
+    data = t[0];
+
+    var stm = parse_statement();
+    //print(to_str(stm));
+    //print(to_str(t[1]));
+    if (equal(stm, t[1])) {
+      print('Passed.');
+      pass_count++;
+    } else {
+      print('FAILED.');
+      fail_count++;
+    }
+
+    print('');
+  }
+
+  print('SUMMARY');
+  print('=======');
+  print('Passed ' + pass_count + ' tests.');
+  print('Failed ' + fail_count + ' tests.');
+  print('END TESTS');
+}
+test_parse();
 
 // TODO:
 // Negative Numbers
