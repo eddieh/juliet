@@ -294,7 +294,6 @@ var token_seperator = {
   ']': true
 };
 
-// No commas..
 var operators = {
   '!': TOKEN_BANG,
   '!=': TOKEN_NE,
@@ -316,6 +315,7 @@ var operators = {
   '+': TOKEN_PLUS,
   '++': TOKEN_INCREMENT,
   '+=': TOKEN_ADD_ASSIGN,
+  ',': TOKEN_COMMA,
   '*': TOKEN_STAR,
   '*=': TOKEN_MUL_ASSIGN,
   '/=': TOKEN_DIV_ASSIGN,
@@ -1481,6 +1481,7 @@ var parse_data_type = function() {
 };
 
 var parse_initial_value = function(of_type) {
+  if (trace) print('parse_initial_value');
   if (consume(TOKEN_ASSIGN)) {
     if (next_is(TOKEN_LCURLY)) {
       // TODO: parse literal array
@@ -1652,6 +1653,7 @@ var parse_statement = function(require_semicolon) {
 };
 
 var parse_local_var_decl = function(t, var_type, req_semi) {
+  if (trace) print('parse_local_var_decl');
   var locals = [];
   var t2 = null;
   var name = '';
@@ -2404,6 +2406,7 @@ var equal = function(a, b) {
   print('a ' + to_str(a));
   print('b ' + to_str(b));
   for (var prop in a) {
+    print(prop);
     if (a.hasOwnProperty(prop) && b.hasOwnProperty(prop)) {
       if (typeof(a[prop]) !== 'object') {
         if (a[prop] != b[prop]) return false;
@@ -2498,13 +2501,20 @@ var test_parse = function() {
                       lhs:{token:TOKEN_ID, name:'a'},
                       rhs:{token:TOKEN_ID, name:'b'}},
                  rhs:{token:TOKEN_ID, name:'c'}}}],
-
-/*    ['int num = 1;', [{
-      token:{type:TOKEN_ID},
-      type:{token:{type:TOKEN_INT}, name:'int'},
+    ['int num = 1;', [{
+      token:TOKEN_ID,
+      type:{token:TOKEN_INT, value:'int'},
       name:'num',
-      initial_value:{token:{type:LITERAL_INT}, value:1}}]]
-*/
+      initial_value:{token:LITERAL_INT, value:1}}]],
+    ['float num = 1.0, num2 = 6.28;', [{
+      token:TOKEN_ID,
+      type:{token:TOKEN_FLOAT, value:'float'},
+      name:'num',
+      initial_value:{token:LITERAL_DOUBLE, value:1.0}},
+      {token:TOKEN_ID,
+       type:{token:TOKEN_FLOAT, value:'float'},
+       name:'num2',
+       initial_value:{token:LITERAL_DOUBLE, value:6.28}}]]
   ];
 
   var pass_count = 0;
