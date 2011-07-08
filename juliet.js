@@ -1500,7 +1500,7 @@ var parse_statement = function(require_semicolon) {
   else if (next_is(TOKEN_RPAREN)) return null;
 
   var t = peek();
-  var block = null;
+  var block = {};
   var stm = null;
   var cmd = null;
   var conditional = null;
@@ -1516,7 +1516,7 @@ var parse_statement = function(require_semicolon) {
 
   if (consume(TOKEN_LCURLY)) {
     while (!consume(TOKEN_RCURLY)) {
-      stm = parse_statement();
+      stm = parse_statement(true);
       if (stm) {
         if (!block.statements) block.statements = [];
         block.statements.push(stm);
@@ -1527,7 +1527,7 @@ var parse_statement = function(require_semicolon) {
 
   if (consume(TOKEN_RETURN)) {
     if (consume(TOKEN_SEMICOLON)) {
-      if (Parser.this_method.return_type) {
+      if (Parser.this_method && Parser.this_method.return_type) {
         throw new Error('Missing return value.');
       }
       return {token:t.type, value:'void'};
@@ -2153,8 +2153,11 @@ var print_data_type = function(data_type) {
 var is_statement = function(a) {
   return ('token' in a) && ('expression' in a);
 };
-var statement_str = function(stm) {};
+var statement_str = function(stm) {
+  return '[' + token_str(stm.token) + ' ' + to_str(stm.expression) + ']';
+};
 var print_statement = function(stm) {
+  print(statement_str(stm));
 };
 
 var is_assignment = function(a) {
@@ -2254,6 +2257,17 @@ var var_decls_str = function(a) {
   return str + ']';
 }
 
+var is_block = function(a) {
+  return ('statements' in a);
+};
+var block_str = function(block) {
+  var str = '{\n';
+  for (var i = 0, len = block.statements.length; i < len; i++) {
+    str = str + '  ' + to_str(block.statements[i]) + '\n';
+  }
+  return str + '}';
+}
+
 var to_str = function(a) {
   if (a == null) return '';
   if (is_token(a)) return token_str(a);
@@ -2265,6 +2279,14 @@ var to_str = function(a) {
   if (is_term(a)) return term_str(a);
   if (is_var_decl(a)) return var_decl_str(a);
   if (is_var_decls(a)) return var_decls_str(a);
+  if (is_block(a)) return block_str(a);
+  if (isArray(a)) {
+    var str = '[';
+    for (var i = 0, len = a.length; i < len; i++) {
+      str = str + to_str(a[i]) + ' ';
+    }
+    return str + ']';
+  }
   return a;
 }
 
@@ -2514,7 +2536,32 @@ var test_parse = function() {
       {token:TOKEN_ID,
        type:{token:TOKEN_FLOAT, value:'float'},
        name:'num2',
-       initial_value:{token:LITERAL_DOUBLE, value:6.28}}]]
+       initial_value:{token:LITERAL_DOUBLE, value:6.28}}]],
+    ['return;', {
+      token:TOKEN_RETURN,
+      value:'void'}],
+    ['return 1;', {
+      token:TOKEN_RETURN,
+      expression:{token:LITERAL_INT, value:'1'}}],
+    ['{ return; }', {
+      statements:[{
+        token:TOKEN_RETURN,
+        value:'void'}]}],
+    ['{ a = 1; b = 2; }', {
+      statements:[
+        {
+          token:TOKEN_ASSIGN,
+          location:{token:TOKEN_ID, name:'a'},
+          new_value:{token:LITERAL_INT, value:1}
+        },
+        {
+          token:TOKEN_ASSIGN,
+          location:{token:TOKEN_ID, name:'b'},
+          new_value:{token:LITERAL_INT, value:2}
+        }
+      ]}]
+
+
   ];
 
   var pass_count = 0;
