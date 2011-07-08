@@ -323,6 +323,7 @@ var operators = {
   '&&': TOKEN_LOGICAL_AND,
   '||': TOKEN_LOGICAL_OR,
   '&': TOKEN_AMPERSAND,
+  '|=': TOKEN_OR_ASSIGN,
   '&=': TOKEN_XOR_ASSIGN,
   '%': TOKEN_PERCENT
 };
@@ -1104,7 +1105,7 @@ var parse_type_def = function() {
     }
 
     name = must_read_id(mesg);
-    type = {token:t, qualifiers:quals, name:name};
+    type = {token:t.type, qualifiers:quals, name:name};
     Parser.parsed_types.push(type);
 
     // TODO: Template type (Jog implements templates instead of generics).
@@ -1133,7 +1134,7 @@ var parse_type_def = function() {
     // make one empty static initializer for setting up initial class
     // property values
     if (is_class() && !is_template()) {
-      type.static_initializers = [{token:t,
+      type.static_initializers = [{token:t.type,
                                    qualifiers:JOG_QUALIFIER_STATIC,
                                    type:type,
                                    notsure:null,
@@ -1283,7 +1284,7 @@ var parse_member = function(type) {
       throw new Error('Static initialization block not allowed here.');
     }
 
-    m = {token:t,
+    m = {token:t.type,
          qualifiers:quals,
          type:type,
          return_type:null,
@@ -1317,7 +1318,7 @@ var parse_member = function(type) {
       }
 
       quals |= JOG_QUALIFIER_CONSTRUCTOR;
-      m = {token:t,
+      m = {token:t.type,
            qualifiers:quals,
            type:type,
            return_type: null,
@@ -1353,7 +1354,7 @@ var parse_member = function(type) {
 
     if (is_interface(type)) quals |= JOG_QUALIFIER_ABSTRACT;
 
-    m = {token:t,
+    m = {token:t.type,
          qualifiers:quals,
          type:type,
          return_type:data_type,
@@ -1460,7 +1461,7 @@ var parse_params = function(m) {
 
       name = must_read_id('Expected identifier.');
       if (!m.parameters) m.parameters = [];
-      m.parameters.push({token:t, type:type, name:name});
+      m.parameters.push({token:t.type, type:type, name:name});
     } while (consume(TOKEN_COMMA));
     must_consume(TOKEN_RPAREN, 'Expected ).');
   }
@@ -1476,7 +1477,7 @@ var parse_data_type = function() {
   // TODO: subscript
 
   // TODO: add type to type table
-  return {token:t, name:name};
+  return {token:t.type, name:name};
 };
 
 var parse_initial_value = function(of_type) {
@@ -1528,17 +1529,17 @@ var parse_statement = function(require_semicolon) {
       if (Parser.this_method.return_type) {
         throw new Error('Missing return value.');
       }
-      return {token:t, value:'void'};
+      return {token:t.type, value:'void'};
     }
 
-    cmd = {token:t, expression:parse_expression()};
+    cmd = {token:t.type, expression:parse_expression()};
     if (require_semicolon) must_consume_semicolon(t);
     return cmd;
   }
 
   if (consume(TOKEN_IF)) {
     must_consume(TOKEN_LPAREN, 'Expected (.');
-    conditional = {token:t, expression:parse_expression()};
+    conditional = {token:t.type, expression:parse_expression()};
     must_consume(TOKEN_RPAREN, 'Expected ).');
 
     if (next_is(TOKEN_SEMICOLON)) {
@@ -1557,7 +1558,7 @@ var parse_statement = function(require_semicolon) {
 
   if (consume(TOKEN_WHILE)) {
     must_consume(TOKEN_LPAREN, 'Expected (.');
-    loop = {token:t, expression:parse_expression()};
+    loop = {token:t.type, expression:parse_expression()};
     must_consume(TOKEN_RPAREN, 'Expected ).');
     if (next_is(TOKEN_SEMICOLON)) {
       throw new Error('Unexpected ;.');
@@ -1580,7 +1581,7 @@ var parse_statement = function(require_semicolon) {
       iterable_expr = parse_expression();
       must_consume(TOKEN_RPAREN, 'Expected ).');
 
-      loop = {token:t,
+      loop = {token:t.type,
               type:local_type,
               name:local_name,
               iterable:iterable_expr};
@@ -1595,14 +1596,14 @@ var parse_statement = function(require_semicolon) {
     }
 
     if (consume(TOKEN_SEMICOLON)) {
-      condition = {token:t, expression:true};
+      condition = {token:t.type, expression:true};
     } else {
       condition = parse_expression();
       must_consume(TOKEN_SEMICOLON, 'Expected ;.');
     }
     var_mod = parse_statement(false);
     must_consume(TOKEN_RPAREN, 'Expected ).');
-    loop = {token:t,
+    loop = {token:t.type,
             intialization:init_expr,
             condition:condition,
             var_mod:var_mod};
@@ -1614,20 +1615,20 @@ var parse_statement = function(require_semicolon) {
   }
 
   if (consume(TOKEN_BREAK)) {
-    cmd = {token:t};
+    cmd = {token:t.type};
     if (require_semicolon) must_consume_semicolon(t);
     return cmd;
   }
 
   if (consume(TOKEN_CONTINUE)) {
-    cmd = {token:t};
+    cmd = {token:t.type};
     if (require_semicolon) must_consume_semicolon(t);
     return cmd;
   }
 
   if (consume(TOKEN_ASSERT)) {
     must_consume(TOKEN_LPAREN, 'Expected (.');
-    cmd = {token:t, expression:parse_expression()};
+    cmd = {token:t.type, expression:parse_expression()};
     if (consume(TOKEN_COMMA)) {
       if (peek().type != TOKEN_STRING) {
         throw new Error('Expected string literal.');
@@ -1663,7 +1664,7 @@ var parse_local_var_decl = function(t, var_type, req_semi) {
   do {
     t2 = peek();
     name = must_read_id('Expected identifier');
-    decl = {token:t2,
+    decl = {token:t2.type,
             type:var_type,
             name:name,
             initial_value:parse_initial_value(var_type)};
@@ -1686,29 +1687,29 @@ var parse_assignment = function() {
   var expr = parse_conditional();
   var t = peek();
   if (consume(TOKEN_ASSIGN)) {
-    expr = {token:t, location:expr, new_value:parse_assignment()};
+    expr = {token:t.type, location:expr, new_value:parse_assignment()};
   } else if (consume(TOKEN_ADD_ASSIGN)) {
-    expr = {token:t, location:expr, new_value:parse_assignment()};
+    expr = {token:t.type, location:expr, new_value:parse_assignment()};
   } else if (consume(TOKEN_SUB_ASSIGN)) {
-    expr = {token:t, location:expr, new_value:parse_assignment()};
+    expr = {token:t.type, location:expr, new_value:parse_assignment()};
   } else if (consume(TOKEN_MUL_ASSIGN)) {
-    expr = {token:t, location:expr, new_value:parse_assignment()};
+    expr = {token:t.type, location:expr, new_value:parse_assignment()};
   } else if (consume(TOKEN_DIV_ASSIGN)) {
-    expr = {token:t, location:expr, new_value:parse_assignment()};
+    expr = {token:t.type, location:expr, new_value:parse_assignment()};
   } else if (consume(TOKEN_MOD_ASSIGN)) {
-    expr = {token:t, location:expr, new_value:parse_assignment()};
+    expr = {token:t.type, location:expr, new_value:parse_assignment()};
   } else if (consume(TOKEN_AND_ASSIGN)) {
-    expr = {token:t, location:expr, new_value:parse_assignment()};
+    expr = {token:t.type, location:expr, new_value:parse_assignment()};
   } else if (consume(TOKEN_OR_ASSIGN)) {
-    expr = {token:t, location:expr, new_value:parse_assignment()};
+    expr = {token:t.type, location:expr, new_value:parse_assignment()};
   } else if (consume(TOKEN_XOR_ASSIGN)) {
-    expr = {token:t, location:expr, new_value:parse_assignment()};
+    expr = {token:t.type, location:expr, new_value:parse_assignment()};
   } else if (consume(TOKEN_SHL_ASSIGN)) {
-    expr = {token:t, location:expr, new_value:parse_assignment()};
+    expr = {token:t.type, location:expr, new_value:parse_assignment()};
   } else if (consume(TOKEN_SHRX_ASSIGN)) {
-    expr = {token:t, location:expr, new_value:parse_assignment()};
+    expr = {token:t.type, location:expr, new_value:parse_assignment()};
   } else if (consume(TOKEN_SHR_ASSIGN)) {
-    expr = {token:t, location:expr, new_value:parse_assignment()};
+    expr = {token:t.type, location:expr, new_value:parse_assignment()};
   }
   return expr;
 };
@@ -1732,7 +1733,7 @@ var parse_logical_or = function(lhs) {
   } else {
     t = peek();
     if (consume(TOKEN_LOGICAL_OR)) {
-      return parse_logical_or({token:t, lhs:lhs, rhs:parse_logical_and()});
+      return parse_logical_or({token:t.type, lhs:lhs, rhs:parse_logical_and()});
     }
     return lhs;
   }
@@ -1746,7 +1747,7 @@ var parse_logical_and = function(lhs) {
   } else {
     t = peek();
     if (consume(TOKEN_LOGICAL_AND)) {
-      return parse_logical_and({token:t, lhs:lhs, rhs:parse_bitwise_or()});
+      return parse_logical_and({token:t.type, lhs:lhs, rhs:parse_bitwise_or()});
     }
     return lhs;
   }
@@ -1760,7 +1761,7 @@ var parse_bitwise_or = function(lhs) {
   } else {
     t = peek();
     if (consume(TOKEN_PIPE)) {
-      return parse_bitwise_or({token:t, lhs:lhs, rhs:parse_bitwise_xor()});
+      return parse_bitwise_or({token:t.type, lhs:lhs, rhs:parse_bitwise_xor()});
     }
     return lhs;
   }
@@ -1774,7 +1775,7 @@ var parse_bitwise_xor = function(lhs) {
   } else {
     t = peek();
     if (consume(TOKEN_CARET)) {
-      return parse_bitwise_xor({token:t, lhs:lhs, rhs:parse_bitwise_and()});
+      return parse_bitwise_xor({token:t.type, lhs:lhs, rhs:parse_bitwise_and()});
     }
     return lhs;
   }
@@ -1788,7 +1789,7 @@ var parse_bitwise_and = function(lhs) {
   } else {
     t = peek();
     if (consume(TOKEN_AMPERSAND)) {
-      return parse_bitwise_and({token:t, lhs:lhs, rhs:parse_equality()});
+      return parse_bitwise_and({token:t.type, lhs:lhs, rhs:parse_equality()});
     }
     return lhs;
   }
@@ -1800,11 +1801,11 @@ var parse_shift = function(lhs) {
   if (lhs === undefined) return parse_shift(parse_translate());
   var t = peek();
   if (consume(TOKEN_SHL))
-    return parse_shift({token:t, lhs:lhs, rhs:parse_translate()});
+    return parse_shift({token:t.type, lhs:lhs, rhs:parse_translate()});
   if (consume(TOKEN_SHR))
-    return parse_shift({token:t, lhs:lhs, rhs:parse_translate()});
+    return parse_shift({token:t.type, lhs:lhs, rhs:parse_translate()});
   if (consume(TOKEN_SHRX))
-    return parse_shift({token:t, lhs:lhs, rhs:parse_translate()});
+    return parse_shift({token:t.type, lhs:lhs, rhs:parse_translate()});
   return lhs;
 };
 
@@ -1815,15 +1816,15 @@ var parse_relational = function(lhs) {
     return parse_relational(parse_shift());
   var t = peek();
   if (consume(TOKEN_LT))
-    return parse_relational({token:t, lhs:lhs, rhs:parse_shift()});
+    return parse_relational({token:t.type, lhs:lhs, rhs:parse_shift()});
   if (consume(TOKEN_LE))
-    return parse_relational({token:t, lhs:lhs, rhs:parse_shift()});
+    return parse_relational({token:t.type, lhs:lhs, rhs:parse_shift()});
   if (consume(TOKEN_GT))
-    return parse_relational({token:t, lhs:lhs, rhs:parse_shift()});
+    return parse_relational({token:t.type, lhs:lhs, rhs:parse_shift()});
   if (consume(TOKEN_GE))
-    return parse_relational({token:t, lhs:lhs, rhs:parse_shift()});
+    return parse_relational({token:t.type, lhs:lhs, rhs:parse_shift()});
   if (consume(TOKEN_INSTANCEOF))
-    return parse_relational({token:t, lhs:lhs, rhs:parse_data_type()});
+    return parse_relational({token:t.type, lhs:lhs, rhs:parse_data_type()});
   return lhs;
 };
 
@@ -1834,9 +1835,9 @@ var parse_equality = function(lhs) {
     return parse_equality(parse_relational());
   var t = peek();
   if (consume(TOKEN_EQ))
-    return parse_equality({token:t, lhs:lhs, rhs:parse_relational()});
+    return parse_equality({token:t.type, lhs:lhs, rhs:parse_relational()});
   if (consume(TOKEN_NE))
-    return parse_equality({token:t, lhs:lhs, rhs:parse_relational()});
+    return parse_equality({token:t.type, lhs:lhs, rhs:parse_relational()});
   return lhs;
 };
 
@@ -1848,9 +1849,9 @@ var parse_translate = function(lhs) {
     return parse_translate(parse_scale());
   var t = peek();
   if (consume(TOKEN_PLUS))
-    return parse_translate({token:t, lhs:lhs, rhs:parse_scale()});
+    return parse_translate({token:t.type, lhs:lhs, rhs:parse_scale()});
   if (consume(TOKEN_MINUS))
-    return parse_translate({token:t, lhs:lhs, rhs:parse_scale()});
+    return parse_translate({token:t.type, lhs:lhs, rhs:parse_scale()});
   return lhs;
 };
 
@@ -1862,11 +1863,11 @@ var parse_scale = function(lhs) {
     return parse_scale(parse_prefix_unary());
   var t = peek();
   if (consume(TOKEN_STAR))
-    return parse_scale({token:t, lhs:lhs, rhs:parse_prefix_unary()});
+    return parse_scale({token:t.type, lhs:lhs, rhs:parse_prefix_unary()});
   if (consume(TOKEN_SLASH))
-    return parse_scale({token:t, lhs:lhs, rhs:parse_prefix_unary()});
+    return parse_scale({token:t.type, lhs:lhs, rhs:parse_prefix_unary()});
   if (consume(TOKEN_PERCENT))
-    return parse_scale({token:t, lhs:lhs, rhs:parse_prefix_unary()});
+    return parse_scale({token:t.type, lhs:lhs, rhs:parse_prefix_unary()});
   return lhs;
 };
 
@@ -1877,18 +1878,18 @@ var parse_prefix_unary = function() {
   // new - TODO
   var t = peek();
   if (consume(TOKEN_INCREMENT))
-    return {token:t, operand:parse_prefix_unary()};
+    return {token:t.type, operand:parse_prefix_unary()};
   if (consume(TOKEN_DECREMENT))
-    return {token:t, operand:parse_prefix_unary()};
+    return {token:t.type, operand:parse_prefix_unary()};
   // discard '+a' and just keep 'a'.
   if (consume(TOKEN_PLUS))
     return parse_prefix_unary();
   if (consume(TOKEN_MINUS))
-    return {token:t, operand:parse_prefix_unary()};
+    return {token:t.type, operand:parse_prefix_unary()};
   if (consume(TOKEN_BANG))
-    return {token:t, operand:parse_prefix_unary()};
+    return {token:t.type, operand:parse_prefix_unary()};
   if (consume(TOKEN_TILDE))
-    return {token:t, operand:parse_prefix_unary()};
+    return {token:t.type, operand:parse_prefix_unary()};
   return parse_postfix_unary();
 };
 
@@ -1929,7 +1930,7 @@ var parse_array_decl = function(t, array_type) {
     return parse_literal_array(array_type);
   }
 
-  new_array = {token:t,
+  new_array = {token:t.type,
                type:array_type,
                length:dim_expr.length};
   if (dim_expr.length > 1) {
@@ -1939,7 +1940,7 @@ var parse_array_decl = function(t, array_type) {
       element_type = {token:dim_expr[i].token,
                       name:base_name,
                       length:dim_expr.length-i};
-      element_expr = {token:t,
+      element_expr = {token:t.type,
                       type:element_type,
                       expression:dim_expr[i]};
       cur.element_expr = element_expr;
@@ -1959,11 +1960,11 @@ var parse_postfix_unary = function(operand) {
     return parse_postfix_unary(parse_term());
   var t = peek();
   if (consume(TOKEN_INCREMENT)) {
-    return parse_postfix_unary({token:t, operand:operand});
+    return parse_postfix_unary({token:t.type, operand:operand});
   } else if (consume(TOKEN_DECREMENT)) {
-    return parse_postfix_unary({token:t, operand:operand});
+    return parse_postfix_unary({token:t.type, operand:operand});
   } else if (consume(TOKEN_PERIOD)) {
-    cmd = parse_postfix_unary({token:t, operand:operand, term:parse_term});
+    cmd = parse_postfix_unary({token:t.type, operand:operand, term:parse_term});
     return cmd;
   } else if (consume(TOKEN_LBRACKET)) {
     if (next_is(TOKEN_RBRACKET)) {
@@ -1978,11 +1979,11 @@ var parse_postfix_unary = function(operand) {
         must_consume(TOKEN_RBRACKET, 'Expected ].');
         new_name + '[]';
       }
-      return parse_local_var_decl(t, {token:t, name:new_name}, false);
+      return parse_local_var_decl(t, {token:t.type, name:new_name}, false);
     } else {
       index = parse_expression();
       must_consume(TOKEN_RBRACKET, 'Expected ].');
-      return parse_postfix_unary({token:t, context:operand, expression:index});
+      return parse_postfix_unary({token:t.type, context:operand, expression:index});
     }
   }
 
@@ -2008,7 +2009,7 @@ var parse_construct = function() {
 
   // TODO: handle generics
 
-  if (args == null) return {token:t, name:name};
+  if (args == null) return {token:t.type, name:name};
 
   // TODO: handle method call
 };
@@ -2024,7 +2025,7 @@ var parse_args = function(required) {
     return null;
   }
 
-  args = {token:t};
+  args = {token:t.type};
   if (!consume(TOKEN_RPAREN)) {
     do {
       if (!args['arguments']) args['arguments'] = [];
@@ -2054,7 +2055,7 @@ var parse_literal_array = function(of_type) {
         if (element_type_name.charAt(-3) != ']') {
           throw new Error('Array type does not support this many dimensions.');
         }
-        element_type = {token:t2, name:element_type_name};
+        element_type = {token:t.type2, name:element_type_name};
         terms.push(parse_literal_array(element_type));
       } else {
         terms.push(parse_expression());
@@ -2063,7 +2064,7 @@ var parse_literal_array = function(of_type) {
     must_consume(TOKEN_RCURLY, 'Expected , or }.');
   }
 
-  return {token:t, type:of_type, terms:terms};
+  return {token:t.type, type:of_type, terms:terms};
 }
 
 var parse_term = function() {
@@ -2076,28 +2077,28 @@ var parse_term = function() {
   switch (peek().type) {
   case LITERAL_DOUBLE:
     t = read();
-    return {token:t, value:t.content};
+    return {token:t.type, value:t.content};
   case LITERAL_FLOAT:
     t = read();
-    return {token:t, value:t.content};
+    return {token:t.type, value:t.content};
   case LITERAL_INT:
     t = read();
-    return {token:t, value:t.content};
+    return {token:t.type, value:t.content};
   case LITERAL_CHAR:
     t = read();
-    return {token:t, value:t.content};
+    return {token:t.type, value:t.content};
   case LITERAL_STRING:
     t = read();
-    return {token:t, value:t.content};
+    return {token:t.type, value:t.content};
   // case TOKEN_FALSE:
   //   t = read();
-  //   return {token:t, value:t.content};
+  //   return {token:t.type, value:t.content};
   // case TOKEN_TRUE:
   //   t = read();
-  //   return {token:t, value:t.content};
+  //   return {token:t.type, value:t.content};
   case LITERAL_BOOLEAN:
     t = read();
-    return {token:t, value:t.content};
+    return {token:t.type, value:t.content};
   case TOKEN_LPAREN:
     read();
     expr = parse_expression();
@@ -2110,24 +2111,24 @@ var parse_term = function() {
     return parse_construct();
   case TOKEN_NULL:
     t = read();
-    return {token:t, value:t.content};
+    return {token:t.type, value:t.content};
   }
 
   // TODO: ???
   t = read();
-  return {token:t, value:t.content};
+  return {token:t.type, value:t.content};
 
   throw new Error('Something really bad!');
 };
 
 
 
-var is_token =  function(a) { return ('type' in a) || ('content' in a); };
+var is_token =  function(a) { return typeof(a) == 'number' }
 var token_str = function(token) {
-  var ret = token_name_table[token.type];
+  var ret = token_name_table[token];
   //ret = ret.replace('TOKEN_', '');
   //ret = ret.replace('LITERAL_', '');
-  if ('content' in token) ret = ret + ' ' + token.content;
+  //if ('content' in token) ret = ret + ' ' + token.content;
   return ret;
 };
 var print_token = function(token) {
@@ -2204,7 +2205,7 @@ var print_term = function(term) {
 
 /*
   static initializer, constructor, method
-  m = {token:t,
+  m = {token:t.type,
     qualifiers:quals,
     type:type,
     return_type:null,
@@ -2222,7 +2223,7 @@ var is_method = function(a) {};
 */
 var is_property = function(a) {};
 
-// {token:t2,
+// {token:t2.type,
 //  type:var_type,
 //  name:name,
 //  initial_value:parse_initial_value(var_type)};
@@ -2400,15 +2401,15 @@ var isArray = function(obj) {
 
 
 var equal = function(a, b) {
-  // print('a ' + to_str(a));
-  // print('b ' + to_str(b));
+  print('a ' + to_str(a));
+  print('b ' + to_str(b));
   for (var prop in a) {
     if (a.hasOwnProperty(prop) && b.hasOwnProperty(prop)) {
       if (typeof(a[prop]) !== 'object') {
         if (a[prop] != b[prop]) return false;
       } else {
-        return equal(a[prop], b[prop]);
-        //if (!r) return false;
+        var r = equal(a[prop], b[prop]);
+        if (!r) return false;
       }
     } else {
       return false;
@@ -2473,30 +2474,30 @@ var test_parse = function() {
     ['3.14', {token:LITERAL_DOUBLE, value:3.14}],
     ['42', {token:LITERAL_INT, value:42}],
     ['\'a\'', {token:LITERAL_CHAR, value:'a'}],
-    ['"hello"', {token:TOKEN_STRING, value:'hello'}],
+    ['"hello"', {token:LITERAL_STRING, value:'hello'}],
     ['false', {token:LITERAL_BOOLEAN, value:false}],
     ['true', {token:LITERAL_BOOLEAN, value:true}],
     ['null', {token:TOKEN_NULL, value:'null'}],
     ['a = true || false;', {
       token:TOKEN_ASSIGN,
-      location:{token:TOKEN_ID, value:'a'},
+      location:{token:TOKEN_ID, name:'a'},
       new_value:{token:TOKEN_LOGICAL_OR,
                  lhs:{token:LITERAL_BOOLEAN, value:true},
                  rhs:{token:LITERAL_BOOLEAN, value:false}}}],
     ['var1 |= (true || false);', {
       token:TOKEN_OR_ASSIGN,
-      location:{token:TOKEN_ID, value:'var1'},
+      location:{token:TOKEN_ID, name:'var1'},
       new_value:{token:TOKEN_LOGICAL_OR,
                  lhs:{token:LITERAL_BOOLEAN, value:true},
                  rhs:{token:LITERAL_BOOLEAN, value:false}}}],
     ['var1 = (a + b) * c;', {
       token:TOKEN_ASSIGN,
-      location:{token:TOKEN_ID, value:'var1'},
+      location:{token:TOKEN_ID, name:'var1'},
       new_value:{token:TOKEN_STAR,
                  lhs:{token:TOKEN_PLUS,
-                      lhs:{token:TOKEN_ID, value:'a'},
-                      rhs:{token:TOKEN_ID, value:'b'}},
-                 rhs:{token:TOKEN_ID, value:'c'}}}],
+                      lhs:{token:TOKEN_ID, name:'a'},
+                      rhs:{token:TOKEN_ID, name:'b'}},
+                 rhs:{token:TOKEN_ID, name:'c'}}}],
 
 /*    ['int num = 1;', [{
       token:{type:TOKEN_ID},
