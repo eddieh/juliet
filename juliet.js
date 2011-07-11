@@ -316,6 +316,7 @@ var operators = {
   '++': TOKEN_INCREMENT,
   '+=': TOKEN_ADD_ASSIGN,
   ',': TOKEN_COMMA,
+  ':': TOKEN_COLON,
   '*': TOKEN_STAR,
   '*=': TOKEN_MUL_ASSIGN,
   '/=': TOKEN_DIV_ASSIGN,
@@ -1008,6 +1009,7 @@ var clear_mark = function() {
 };
 
 var rewind_to_mark = function() {
+  // TODO:
 };
 
 var next_is = function(token_type) {
@@ -1574,6 +1576,7 @@ var parse_statement = function(require_semicolon) {
     set_mark();
     init_expr = parse_statement(false);
     if (next_is(TOKEN_COLON)) {
+      print('FORIN');
       rewind_to_mark();
       local_type = parse_data_type();
       local_name = must_read_id('Expected identifier.');
@@ -1592,6 +1595,7 @@ var parse_statement = function(require_semicolon) {
       loop.body = parse_statement();
       return loop;
     } else {
+      print('FORLOOP');
       clear_mark();
       must_consume(TOKEN_SEMICOLON,  'Expected ;.');
     }
@@ -1605,7 +1609,7 @@ var parse_statement = function(require_semicolon) {
     var_mod = parse_statement(false);
     must_consume(TOKEN_RPAREN, 'Expected ).');
     loop = {token:t.type,
-            intialization:init_expr,
+            initialization:init_expr,
             condition:condition,
             var_mod:var_mod};
     if (next_is(TOKEN_SEMICOLON)) {
@@ -2559,7 +2563,124 @@ var test_parse = function() {
           location:{token:TOKEN_ID, name:'b'},
           new_value:{token:LITERAL_INT, value:2}
         }
-      ]}]
+      ]}],
+    ['if (true) {}', {
+      token:TOKEN_IF,
+      expression:{token:LITERAL_BOOLEAN, value:true},
+      body:{}
+    }],
+    ['if (a) {}', {
+      token:TOKEN_IF,
+      expression:{token:TOKEN_ID, name:'a'},
+      body:{}
+    }],
+    ['if (a && b) {} else {}', {
+      token:TOKEN_IF,
+      expression:{
+        token:TOKEN_LOGICAL_AND,
+        lhs:{token:TOKEN_ID, name:'a'},
+        rhs:{token:TOKEN_ID, name:'b'}
+      },
+      body:{},
+      else_body: {}
+    }],
+    ['if (a != null) { a = null; } else if (b) { a = b; }', {
+      token:TOKEN_IF,
+      expression:{
+        token:TOKEN_NE,
+        lhs:{token:TOKEN_ID, name:'a'},
+        rhs:{token:TOKEN_NULL, value:'null'}
+      },
+      body: {
+        statements: [{
+          token:TOKEN_ASSIGN,
+          location:{token:TOKEN_ID, name:'a'},
+          new_value:{token:TOKEN_NULL, value:'null'}
+        }],
+      },
+      else_body: {
+        token:TOKEN_IF,
+        expression:{token:TOKEN_ID, name:'b'},
+        body: {
+          statements: [{
+            token:TOKEN_ASSIGN,
+            location:{token:TOKEN_ID, name:'a'},
+            new_value:{token:TOKEN_ID, name:'b'}
+          }]
+        }
+      }
+    }],
+    ['while (a) a = b;', {
+      token:TOKEN_WHILE,
+      expression:{token:TOKEN_ID, name:'a'},
+      body: {
+        token:TOKEN_ASSIGN,
+        location:{token:TOKEN_ID, name:'a'},
+        new_value:{token:TOKEN_ID, name:'b'}
+      }
+    }],
+    ['while (!a) { c = a; a = b; b = a; }', {
+      token:TOKEN_WHILE,
+      expression:{
+        token:TOKEN_BANG,
+        operand:{token:TOKEN_ID, name:'a'}
+      },
+      body: {
+        statements: [
+          {
+            token:TOKEN_ASSIGN,
+            location:{token:TOKEN_ID, name:'c'},
+            new_value:{token:TOKEN_ID, name:'a'}
+          },
+          {
+            token:TOKEN_ASSIGN,
+            location:{token:TOKEN_ID, name:'a'},
+            new_value:{token:TOKEN_ID, name:'b'}
+          },
+          {
+            token:TOKEN_ASSIGN,
+            location:{token:TOKEN_ID, name:'b'},
+            new_value:{token:TOKEN_ID, name:'a'}
+          }
+        ]
+      }
+    }],
+    ['for (int i = 0; i < len; i++) a *= i;', {
+      token:TOKEN_FOR,
+      initialization:[{
+        token:TOKEN_ID,
+        type:{token:TOKEN_INT, value:'int'},
+        name:'i',
+        initial_value:{token:LITERAL_INT, value:0}
+      }],
+      condition: {
+        token:TOKEN_LT,
+        lhs:{token:TOKEN_ID, name:'i'},
+        rhs:{token:TOKEN_ID, name:'len'}
+      },
+      var_mod:{
+        token:TOKEN_INCREMENT,
+        operand:{token:TOKEN_ID, name:'i'}
+      },
+      body: {
+        token:TOKEN_MUL_ASSIGN,
+        location:{token:TOKEN_ID, name:'a'},
+        new_value:{token:TOKEN_ID, name:'i'}
+      }
+    }],
+    ['for (Object obj : collection) { obj = null; }', {
+      token:TOKEN_FOR,
+      type:{token:TOKEN_ID, value:'Object'},
+      name:'obj',
+      iterable: {token:TOKEN_ID, name:'collection'},
+      body:{
+        statements: [{
+          token:TOKEN_ASSIGN,
+          location:{token:TOKEN_ID, name:'obj'},
+          new_value:{token:TOKEN_NULL, value:'null'}
+        }]
+      }
+    }]
 
 
   ];
