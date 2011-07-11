@@ -291,7 +291,8 @@ var token_seperator = {
   '}': true,
   '?': true,
   '[': true,
-  ']': true
+  ']': true,
+  '.': true
 };
 
 var operators = {
@@ -328,7 +329,11 @@ var operators = {
   '&=': TOKEN_AND_ASSIGN,
   '^=': TOKEN_XOR_ASSIGN,
   '%': TOKEN_PERCENT,
-  '%=': TOKEN_MOD_ASSIGN
+  '%=': TOKEN_MOD_ASSIGN,
+  '|': TOKEN_PIPE,
+  '^': TOKEN_CARET,
+  '~': TOKEN_TILDE,
+  '?': TOKEN_QUESTIONMARK
 };
 
 // Symbol combination (prefixes) that are not valid
@@ -699,7 +704,7 @@ var tokenize = function() {
 
         if (base != 10) {
           // ERROR
-          print('Invalid number.');
+          print('Invalid number (Error1).');
           next.type = TOKEN_ERROR;
           return false;
         }
@@ -719,14 +724,14 @@ var tokenize = function() {
         has_decimal_digits = true;
         // digits 2-7 are valid for octal or better
         if (base < 8) {
-          print('Invalid number.');
+          print('Invalid number (Error2).');
           next.type = TOKEN_ERROR;
           return false;
         }
       } else if (ch2 == 56 || ch2 == 57) {
         has_decimal_digits = true;
         if (base < 10) {
-          print('Invalid number.');
+          print('Invalid number (Error3).');
           next.type = TOKEN_ERROR;
           return false;
         }
@@ -745,20 +750,20 @@ var tokenize = function() {
           if (next.type == TYPE_DEFAULT) next.type = LITERAL_DOUBLE;
         }
         if (base < 10) {
-          print('Invalid number.');
+          print('Invalid number (Error4).');
           next.type = TOKEN_ERROR;
           return false;
         }
       } else if (((ch2 >= 65) && (ch2 <= 70)) ||
                  ((ch2 >= 97) && (ch2 <= 102))) { // a-f, A-F
         if (base < 16) {
-          print('Invalid number.');
+          print('Invalid number (Error5).');
           next.type = TOKEN_ERROR;
           return false;
         }
       } else {
         // ERROR
-        print('Invalid number.');
+        print('Invalid number (Error6).');
         next.type = TOKEN_ERROR;
         return false;
       }
@@ -2569,6 +2574,143 @@ var test_parse = function() {
       new_value:{token:TOKEN_LOGICAL_OR,
                  lhs:{token:LITERAL_BOOLEAN, value:true},
                  rhs:{token:LITERAL_BOOLEAN, value:false}}}],
+    ['a = true && false;', {
+      token:TOKEN_ASSIGN,
+      location:{token:TOKEN_ID, name:'a'},
+      new_value:{token:TOKEN_LOGICAL_AND,
+                 lhs:{token:LITERAL_BOOLEAN, value:true},
+                 rhs:{token:LITERAL_BOOLEAN, value:false}}}],
+    ['a = 1 | 0;', {
+      token:TOKEN_ASSIGN,
+      location:{token:TOKEN_ID, name:'a'},
+      new_value:{token:TOKEN_PIPE,
+                 lhs:{token:LITERAL_INT, value:1},
+                 rhs:{token:LITERAL_INT, value:0}}}],
+    ['a = 1 ^ 0;', {
+      token:TOKEN_ASSIGN,
+      location:{token:TOKEN_ID, name:'a'},
+      new_value:{token:TOKEN_CARET,
+                 lhs:{token:LITERAL_INT, value:1},
+                 rhs:{token:LITERAL_INT, value:0}}}],
+    ['a = 1 & 0;', {
+      token:TOKEN_ASSIGN,
+      location:{token:TOKEN_ID, name:'a'},
+      new_value:{token:TOKEN_AMPERSAND,
+                 lhs:{token:LITERAL_INT, value:1},
+                 rhs:{token:LITERAL_INT, value:0}}}],
+    ['a = 1 << 0;', {
+      token:TOKEN_ASSIGN,
+      location:{token:TOKEN_ID, name:'a'},
+      new_value:{token:TOKEN_SHL,
+                 lhs:{token:LITERAL_INT, value:1},
+                 rhs:{token:LITERAL_INT, value:0}}}],
+    ['a = 1 >> 0;', {
+      token:TOKEN_ASSIGN,
+      location:{token:TOKEN_ID, name:'a'},
+      new_value:{token:TOKEN_SHR,
+                 lhs:{token:LITERAL_INT, value:1},
+                 rhs:{token:LITERAL_INT, value:0}}}],
+    ['a = 1 >>> 0;', {
+      token:TOKEN_ASSIGN,
+      location:{token:TOKEN_ID, name:'a'},
+      new_value:{token:TOKEN_SHRX,
+                 lhs:{token:LITERAL_INT, value:1},
+                 rhs:{token:LITERAL_INT, value:0}}}],
+    ['a = 1 < 0;', {
+      token:TOKEN_ASSIGN,
+      location:{token:TOKEN_ID, name:'a'},
+      new_value:{token:TOKEN_LT,
+                 lhs:{token:LITERAL_INT, value:1},
+                 rhs:{token:LITERAL_INT, value:0}}}],
+    ['a = 1 <= 0;', {
+      token:TOKEN_ASSIGN,
+      location:{token:TOKEN_ID, name:'a'},
+      new_value:{token:TOKEN_LE,
+                 lhs:{token:LITERAL_INT, value:1},
+                 rhs:{token:LITERAL_INT, value:0}}}],
+    ['a = 1 > 0;', {
+      token:TOKEN_ASSIGN,
+      location:{token:TOKEN_ID, name:'a'},
+      new_value:{token:TOKEN_GT,
+                 lhs:{token:LITERAL_INT, value:1},
+                 rhs:{token:LITERAL_INT, value:0}}}],
+    ['a = 1 >= 0;', {
+      token:TOKEN_ASSIGN,
+      location:{token:TOKEN_ID, name:'a'},
+      new_value:{token:TOKEN_GE,
+                 lhs:{token:LITERAL_INT, value:1},
+                 rhs:{token:LITERAL_INT, value:0}}}],
+    ['a = b instanceof c;', {
+      token:TOKEN_ASSIGN,
+      location:{token:TOKEN_ID, name:'a'},
+      new_value:{token:TOKEN_INSTANCEOF,
+                 lhs:{token:TOKEN_ID, name:'b'},
+                 rhs:{token:TOKEN_ID, name:'c'}}}],
+    ['a = 1 == 0;', {
+      token:TOKEN_ASSIGN,
+      location:{token:TOKEN_ID, name:'a'},
+      new_value:{token:TOKEN_EQ,
+                 lhs:{token:LITERAL_INT, value:1},
+                 rhs:{token:LITERAL_INT, value:0}}}],
+    ['a = 1 != 0;', {
+      token:TOKEN_ASSIGN,
+      location:{token:TOKEN_ID, name:'a'},
+      new_value:{token:TOKEN_NE,
+                 lhs:{token:LITERAL_INT, value:1},
+                 rhs:{token:LITERAL_INT, value:0}}}],
+    ['a = 1 + 0;', {
+      token:TOKEN_ASSIGN,
+      location:{token:TOKEN_ID, name:'a'},
+      new_value:{token:TOKEN_PLUS,
+                 lhs:{token:LITERAL_INT, value:1},
+                 rhs:{token:LITERAL_INT, value:0}}}],
+    ['a = 1 - 0;', {
+      token:TOKEN_ASSIGN,
+      location:{token:TOKEN_ID, name:'a'},
+      new_value:{token:TOKEN_MINUS,
+                 lhs:{token:LITERAL_INT, value:1},
+                 rhs:{token:LITERAL_INT, value:0}}}],
+    ['a = 1 * 0;', {
+      token:TOKEN_ASSIGN,
+      location:{token:TOKEN_ID, name:'a'},
+      new_value:{token:TOKEN_STAR,
+                 lhs:{token:LITERAL_INT, value:1},
+                 rhs:{token:LITERAL_INT, value:0}}}],
+    ['a = 1 / 1;', {
+      token:TOKEN_ASSIGN,
+      location:{token:TOKEN_ID, name:'a'},
+      new_value:{token:TOKEN_SLASH,
+                 lhs:{token:LITERAL_INT, value:1},
+                 rhs:{token:LITERAL_INT, value:1}}}],
+    ['++a', {
+      token:TOKEN_INCREMENT,
+      operand:{token:TOKEN_ID, name:'a'}}],
+    ['--a', {
+      token:TOKEN_DECREMENT,
+      operand:{token:TOKEN_ID, name:'a'}}],
+    ['+a', {
+      token:TOKEN_ID, name:'a'}],
+    ['-a', {
+      token:TOKEN_MINUS,
+      operand:{token:TOKEN_ID, name:'a'}}],
+    ['!a', {
+      token:TOKEN_BANG,
+      operand:{token:TOKEN_ID, name:'a'}}],
+    ['~a', {
+      token:TOKEN_TILDE,
+      operand:{token:TOKEN_ID, name:'a'}}],
+    ['a++', {
+      token:TOKEN_INCREMENT,
+      operand:{token:TOKEN_ID, name:'a'}}],
+    ['a--', {
+      token:TOKEN_DECREMENT,
+      operand:{token:TOKEN_ID, name:'a'}}],
+
+    // ['a.b', {
+    //   token:TOKEN_PERIOD,
+    //   operand:{token:TOKEN_ID, name:'a'},
+    //   term:{token:TOKEN_ID, name:'b'}}],
+
     ['var1 |= (true || false);', {
       token:TOKEN_OR_ASSIGN,
       location:{token:TOKEN_ID, name:'var1'},
