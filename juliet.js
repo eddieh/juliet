@@ -458,6 +458,7 @@ var init = function() {
   data_i = 0;
   pending = [];
   processed = [];
+  marks = [];
 };
 
 var tokenize = function() {
@@ -997,19 +998,25 @@ var read = function() {
     t = read();
   }
 
+  processed.push(t);
+  if (marks.length > 0) marks[marks.length - 1]++;
+
   return t;
 };
 
 var set_mark = function() {
-  // TODO:
+  marks.push(1);
 };
 
 var clear_mark = function() {
-  // TODO:
+  marks.pop();
 };
 
 var rewind_to_mark = function() {
-  // TODO:
+  var depth = marks.pop();
+  for (var i = 0; i < depth; i ++) {
+    pending.push(processed.pop());
+  }
 };
 
 var next_is = function(token_type) {
@@ -1022,7 +1029,6 @@ var consume = function(token_type) {
   var p = peek();
   if (p && ('type' in p) && (p.type == token_type)) {
     t = read();
-    processed.push(t);
     return true;
   }
   return false;
@@ -1576,7 +1582,6 @@ var parse_statement = function(require_semicolon) {
     set_mark();
     init_expr = parse_statement(false);
     if (next_is(TOKEN_COLON)) {
-      print('FORIN');
       rewind_to_mark();
       local_type = parse_data_type();
       local_name = must_read_id('Expected identifier.');
@@ -1595,7 +1600,6 @@ var parse_statement = function(require_semicolon) {
       loop.body = parse_statement();
       return loop;
     } else {
-      print('FORLOOP');
       clear_mark();
       must_consume(TOKEN_SEMICOLON,  'Expected ;.');
     }
@@ -2433,6 +2437,8 @@ var equal = function(a, b) {
   print('b ' + to_str(b));
   for (var prop in a) {
     print(prop);
+    //print('a[' + prop + '] ' + a[prop]);
+    //print('b[' + prop + '] ' + b[prop]);
     if (a.hasOwnProperty(prop) && b.hasOwnProperty(prop)) {
       if (typeof(a[prop]) !== 'object') {
         if (a[prop] != b[prop]) return false;
@@ -2441,6 +2447,7 @@ var equal = function(a, b) {
         if (!r) return false;
       }
     } else {
+      //print('doesn\'t share ' + prop + '!');
       return false;
     }
   }
@@ -2670,7 +2677,7 @@ var test_parse = function() {
     }],
     ['for (Object obj : collection) { obj = null; }', {
       token:TOKEN_FOR,
-      type:{token:TOKEN_ID, value:'Object'},
+      type:{token:TOKEN_ID, name:'Object'},
       name:'obj',
       iterable: {token:TOKEN_ID, name:'collection'},
       body:{
