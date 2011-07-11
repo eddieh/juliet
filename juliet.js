@@ -325,8 +325,10 @@ var operators = {
   '||': TOKEN_LOGICAL_OR,
   '&': TOKEN_AMPERSAND,
   '|=': TOKEN_OR_ASSIGN,
-  '&=': TOKEN_XOR_ASSIGN,
-  '%': TOKEN_PERCENT
+  '&=': TOKEN_AND_ASSIGN,
+  '^=': TOKEN_XOR_ASSIGN,
+  '%': TOKEN_PERCENT,
+  '%=': TOKEN_MOD_ASSIGN
 };
 
 // Symbol combination (prefixes) that are not valid
@@ -2513,6 +2515,54 @@ var test_parse = function() {
     ['false', {token:LITERAL_BOOLEAN, value:false}],
     ['true', {token:LITERAL_BOOLEAN, value:true}],
     ['null', {token:TOKEN_NULL, value:'null'}],
+    ['a = b', {
+      token:TOKEN_ASSIGN,
+      location:{token:TOKEN_ID, name:'a'},
+      new_value:{token:TOKEN_ID, name:'b'}}],
+    ['a += b', {
+      token:TOKEN_ADD_ASSIGN,
+      location:{token:TOKEN_ID, name:'a'},
+      new_value:{token:TOKEN_ID, name:'b'}}],
+    ['a -= b', {
+      token:TOKEN_SUB_ASSIGN,
+      location:{token:TOKEN_ID, name:'a'},
+      new_value:{token:TOKEN_ID, name:'b'}}],
+    ['a *= b', {
+      token:TOKEN_MUL_ASSIGN,
+      location:{token:TOKEN_ID, name:'a'},
+      new_value:{token:TOKEN_ID, name:'b'}}],
+    ['a /= b', {
+      token:TOKEN_DIV_ASSIGN,
+      location:{token:TOKEN_ID, name:'a'},
+      new_value:{token:TOKEN_ID, name:'b'}}],
+    ['a %= b', {
+      token:TOKEN_MOD_ASSIGN,
+      location:{token:TOKEN_ID, name:'a'},
+      new_value:{token:TOKEN_ID, name:'b'}}],
+    ['a &= b', {
+      token:TOKEN_AND_ASSIGN,
+      location:{token:TOKEN_ID, name:'a'},
+      new_value:{token:TOKEN_ID, name:'b'}}],
+    ['a |= b', {
+      token:TOKEN_OR_ASSIGN,
+      location:{token:TOKEN_ID, name:'a'},
+      new_value:{token:TOKEN_ID, name:'b'}}],
+    ['a ^= b', {
+      token:TOKEN_XOR_ASSIGN,
+      location:{token:TOKEN_ID, name:'a'},
+      new_value:{token:TOKEN_ID, name:'b'}}],
+    ['a <<= b', {
+      token:TOKEN_SHL_ASSIGN,
+      location:{token:TOKEN_ID, name:'a'},
+      new_value:{token:TOKEN_ID, name:'b'}}],
+    ['a >>>= b', {
+      token:TOKEN_SHRX_ASSIGN,
+      location:{token:TOKEN_ID, name:'a'},
+      new_value:{token:TOKEN_ID, name:'b'}}],
+    ['a >>= b', {
+      token:TOKEN_SHR_ASSIGN,
+      location:{token:TOKEN_ID, name:'a'},
+      new_value:{token:TOKEN_ID, name:'b'}}],
     ['a = true || false;', {
       token:TOKEN_ASSIGN,
       location:{token:TOKEN_ID, name:'a'},
