@@ -1639,7 +1639,7 @@ var parse_statement = function(require_semicolon) {
     must_consume(TOKEN_LPAREN, 'Expected (.');
     cmd = {token:t.type, expression:parse_expression()};
     if (consume(TOKEN_COMMA)) {
-      if (peek().type != TOKEN_STRING) {
+      if (peek().type != LITERAL_STRING) {
         throw new Error('Expected string literal.');
       }
       cmd.message = read().content;
@@ -2017,25 +2017,24 @@ var parse_construct = function() {
     name = must_read_id('Identifier expected.');
   }
 
-  // TODO: handle generics
+  if (name[-1] != '>') args = parse_args(false);
 
   if (args == null) return {token:t.type, name:name};
 
-  // TODO: handle method call
+  return {token:t.type, name:name, args:args};
 };
 
 var parse_args = function(required) {
   var t = peek();
-  var args = null;
+  var args = {};
 
-  if (consume(TOKEN_LPAREN)) {
+  if (!consume(TOKEN_LPAREN)) {
     if (required) {
       throw new Error('Expected (.');
     }
     return null;
   }
 
-  args = {token:t.type};
   if (!consume(TOKEN_RPAREN)) {
     do {
       if (!args['arguments']) args['arguments'] = [];
@@ -2687,8 +2686,28 @@ var test_parse = function() {
           new_value:{token:TOKEN_NULL, value:'null'}
         }]
       }
-    }]
-
+    }],
+    ['break;', {token:TOKEN_BREAK}],
+    ['continue;', {token:TOKEN_CONTINUE}],
+    ['assert(true);', {
+      token:TOKEN_ASSERT,
+      expression:{token:LITERAL_BOOLEAN, value:true}}],
+    ['assert(a != null, "a is null");', {
+      token:TOKEN_ASSERT,
+      expression:{token:TOKEN_NE,
+                  lhs:{token:TOKEN_ID, name:'a'},
+                  rhs:{token:TOKEN_NULL, value:'null'}},
+      message:'a is null'}],
+    ['print();', {
+      token:TOKEN_ID,
+      name:'print',
+      args:{}}],
+    ['print("hello");', {
+      token:TOKEN_ID,
+      name:'print',
+      args:{'arguments':[
+        {token:LITERAL_STRING, value:'hello'}
+      ]}}]
 
   ];
 
