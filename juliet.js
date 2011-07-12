@@ -545,8 +545,19 @@ var tokenize = function() {
     }
   }
 
-  // The sequence begins with a character ranging from 0-9
-  if ((ch >= 48 && ch <= 57) || (ch == 46)) {
+  var begins_with_decimal = false;
+  var ch3;
+  if ((ch == 46) && (data_i < data.length - 1)) {
+    ch3 = data.charCodeAt(data_i + 1);
+    if (ch3 >= 48 && ch3 <= 57) {
+      begins_with_decimal = true;
+      ch = ch3;
+    }
+  }
+
+  // The sequence begins with a character ranging from 0-9,
+  // or begins with a decimal immediately followed by a digit.
+  if (ch >= 48 && ch <= 57) {
     var base = 10;
     var underscore_neighbor = function(c) {
       if (c == 95) return true;
@@ -574,6 +585,8 @@ var tokenize = function() {
     // Add valid characters (0-9, a-z, A-Z, _, ., -, +) to the buffer
     var valid_underscore = true;
     var i = 0;
+
+    if (begins_with_decimal) ch = 46;
 
     while ((ch >= 48 && ch <= 57) ||
            (ch >= 97 && ch <= 122) ||
@@ -853,6 +866,30 @@ var tokenize = function() {
 
     return true;
   };
+
+  // qualified name
+  if (ch == '46') {
+    // must be proceeded by an identifier
+    if (pending && pending.length > 1) {
+      if (pending[pending.length - 2].type == TOKEN_ID) {
+        next.type = TOKEN_PERIOD;
+        next.content = '.'
+        data_i++;
+        return true;
+      }
+    }
+    if (processed && processed.length > 0) {
+      if (processed[processed.length - 1].type == TOKEN_ID) {
+        next.type = TOKEN_PERIOD;
+        next.content = '.';
+        data_i++;
+        return true;
+      }
+    }
+    print('Illegal expression.');
+    next.type = TOKEN_ERROR;
+    return false;
+  }
 
   // Parse Operators
   for (var i = 4; i > 0; i--) {
@@ -1981,7 +2018,7 @@ var parse_postfix_unary = function(operand) {
   } else if (consume(TOKEN_DECREMENT)) {
     return parse_postfix_unary({token:t.type, operand:operand});
   } else if (consume(TOKEN_PERIOD)) {
-    cmd = parse_postfix_unary({token:t.type, operand:operand, term:parse_term});
+    cmd = parse_postfix_unary({token:t.type, operand:operand, term:parse_term()});
     return cmd;
   } else if (consume(TOKEN_LBRACKET)) {
     if (next_is(TOKEN_RBRACKET)) {
@@ -2032,6 +2069,7 @@ var parse_construct = function() {
 };
 
 var parse_args = function(required) {
+  if (trace) print('parse_args');
   var t = peek();
   var args = {};
 
@@ -2424,6 +2462,17 @@ var tests = [
                       TOKEN_PLUS, TOKEN_ID, TOKEN_SEMICOLON]],
   ['int a = 1 << 2;', [TOKEN_INT, TOKEN_ID, TOKEN_ASSIGN, LITERAL_INT,
                       TOKEN_SHL, LITERAL_INT, TOKEN_SEMICOLON]],
+  ['a.b', [TOKEN_ID, TOKEN_PERIOD, TOKEN_ID]],
+  ['a . b', [TOKEN_ID, TOKEN_PERIOD, TOKEN_ID]],
+  ['a. b', [TOKEN_ID, TOKEN_PERIOD, TOKEN_ID]],
+  ['a .b', [TOKEN_ID, TOKEN_PERIOD, TOKEN_ID]],
+  ['Foo.e10', [TOKEN_ID, TOKEN_PERIOD, TOKEN_ID]],
+  ['Foo .e10', [TOKEN_ID, TOKEN_PERIOD, TOKEN_ID]],
+  // ['Foo (.e10)', TOKEN_ERROR],
+  // ['(Foo).e10', TOKEN_ERROR],
+  // ['(Foo) .e10', TOKEN_ERROR],
+  ['. 1', TOKEN_ERROR],
+  ['.', TOKEN_ERROR]
 
 ];
 
@@ -2705,12 +2754,10 @@ var test_parse = function() {
     ['a--', {
       token:TOKEN_DECREMENT,
       operand:{token:TOKEN_ID, name:'a'}}],
-
-    // ['a.b', {
-    //   token:TOKEN_PERIOD,
-    //   operand:{token:TOKEN_ID, name:'a'},
-    //   term:{token:TOKEN_ID, name:'b'}}],
-
+    ['a.b', {
+      token:TOKEN_PERIOD,
+      operand:{token:TOKEN_ID, name:'a'},
+      term:{token:TOKEN_ID, name:'b'}}],
     ['var1 |= (true || false);', {
       token:TOKEN_OR_ASSIGN,
       location:{token:TOKEN_ID, name:'var1'},
