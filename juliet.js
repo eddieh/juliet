@@ -2090,18 +2090,20 @@ var parse_postfix_unary = function(operand) {
       if (op_type == null) {
         throw new Error('Expected datatype.');
       }
-      new_name = op_type.name;
+      new_name = (op_type.name) ? op_type.name : op_type.value;
       must_consume(TOKEN_RBRACKET, 'Expected ].');
-      new_name + '[]';
+      new_name = new_name + '[]';
       while (next_is(TOKEN_LBRACKET)) {
         must_consume(TOKEN_RBRACKET, 'Expected ].');
-        new_name + '[]';
+        new_name = new_name + '[]';
       }
-      return parse_local_var_decl(t, {token:t.type, name:new_name}, false);
+      return parse_local_var_decl(t, {token:op_type.token, name:new_name}, false);
     } else {
       index = parse_expression();
       must_consume(TOKEN_RBRACKET, 'Expected ].');
-      return parse_postfix_unary({token:t.type, context:operand, expression:index});
+      return parse_postfix_unary({token:t.type,
+                                  context:operand,
+                                  expression:index});
     }
   }
 
@@ -2855,6 +2857,31 @@ var test_parse = function() {
       token:TOKEN_PERIOD,
       operand:{token:TOKEN_ID, name:'a'},
       term:{token:TOKEN_ID, name:'b'}}],
+    ['int[] a', [{
+      token:TOKEN_ID,
+      type:{token:TOKEN_INT, name:'int[]'},
+      name:'a',
+      initial_value:null}]],
+    ['Object[] a', [{
+      token:TOKEN_ID,
+      type:{token:TOKEN_ID, name:'Object[]'},
+      name:'a',
+      initial_value:null}]],
+    ['a[0]', {
+      token:TOKEN_LBRACKET,
+      context:{token:TOKEN_ID, name:'a'},
+      expression:{token:LITERAL_INT, value:0}}],
+    ['a[b]', {
+      token:TOKEN_LBRACKET,
+      context:{token:TOKEN_ID, name:'a'},
+      expression:{token:TOKEN_ID, name:'b'}}],
+    ['a[0][0]', {
+      token:TOKEN_LBRACKET,
+      context:{
+        token:TOKEN_LBRACKET,
+        context:{token:TOKEN_ID, name:'a'},
+        expression:{token:LITERAL_INT, value:0}},
+      expression:{token:LITERAL_INT, value:0}}],
     ['var1 |= (true || false);', {
       token:TOKEN_OR_ASSIGN,
       location:{token:TOKEN_ID, name:'var1'},
