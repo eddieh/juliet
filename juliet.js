@@ -1043,13 +1043,17 @@ var read = function() {
   }
 
   processed.push(t);
-  if (marks.length > 0) marks[marks.length - 1]++;
+  if (marks.length > 0) {
+    for (var i = 0, len = marks.length; i < len; i++) {
+      marks[i]++;
+    }
+  }
 
   return t;
 };
 
 var set_mark = function() {
-  marks.push(1);
+  marks.push(0);
 };
 
 var clear_mark = function() {
@@ -1065,14 +1069,32 @@ var rewind_to_mark = function() {
 
 var next_is = function(token_type) {
   var t = peek();
+
+  if (isArray(token_type) && t) {
+    return token_type.some(function(tok) {
+      return this == tok;
+    },t.type);
+  }
+
   return (t) ? (t.type == token_type) : false;
 };
 
 var consume = function(token_type) {
-  var t = null;
   var p = peek();
+
+  if (isArray(token_type) && p) {
+    var match = token_type.some(function(tok) {
+      return this == tok;
+    },p.type);
+    if (match) {
+      read();
+      return true;
+    }
+    return false;
+  }
+
   if (p && ('type' in p) && (p.type == token_type)) {
-    t = read();
+    read();
     return true;
   }
   return false;
@@ -1091,6 +1113,7 @@ var must_consume_semicolon = function(t) {
 };
 
 var must_read_id = function(error_message) {
+  if (trace) print('must_read_id');
   var t = peek();
   var result = '';
 
@@ -1520,7 +1543,15 @@ var parse_params = function(m) {
 };
 
 var parse_data_type = function() {
+  if (trace) print('parse_data_type');
   var t = peek();
+
+  // primitive
+  if (consume([TOKEN_CHAR, TOKEN_BYTE, TOKEN_SHORT, TOKEN_INT, TOKEN_LONG, TOKEN_FLOAT, TOKEN_DOUBLE, TOKEN_STRING, TOKEN_BOOLEAN])) {
+    return {token:t.type, value:t.content};
+  }
+
+  // identifier
   var name = must_read_id('Expected type');
   name = name.substr(0);
 
@@ -1928,9 +1959,29 @@ var parse_scale = function(lhs) {
 // (cast), new, ++, --, +, -, !, ~
 var parse_prefix_unary = function() {
   if (trace) print('parse_prefix_unary');
-  // (cast) - TODO
-  // new - TODO
   var t = peek();
+  var to_type = null;
+  var result = null;
+  if (next_is(TOKEN_LPAREN)) {
+    // MIGHT have a cast
+    set_mark();
+    read();
+    if (next_is([TOKEN_ID, TOKEN_CHAR, TOKEN_BYTE, TOKEN_SHORT, TOKEN_INT, TOKEN_LONG, TOKEN_FLOAT, TOKEN_DOUBLE, TOKEN_STRING, TOKEN_BOOLEAN])) {
+      // Casts are ambiguous syntax - assume this is indeed a cast and
+      // just try it.
+      try {
+        to_type = parse_data_type();
+        must_consume(TOKEN_RPAREN, 'Expected ).');
+        result = {token:t.type, operand:parse_prefix_unary(), to_type:to_type};
+        clear_mark();
+        return result;
+      } catch (e) {
+        // Didn't work, not a cast - just proceed.
+      }
+    }
+    rewind_to_mark();
+  }
+  // new - TODO
   if (consume(TOKEN_INCREMENT))
     return {token:t.type, operand:parse_prefix_unary()};
   if (consume(TOKEN_DECREMENT))
@@ -2731,6 +2782,14 @@ var test_parse = function() {
       new_value:{token:TOKEN_SLASH,
                  lhs:{token:LITERAL_INT, value:1},
                  rhs:{token:LITERAL_INT, value:1}}}],
+    ['(int)a', {
+      token:TOKEN_LPAREN,
+      operand:{token:TOKEN_ID, name:'a'},
+      to_type:{token:TOKEN_INT, value:'int'}}],
+    ['(Object)a', {
+      token:TOKEN_LPAREN,
+      operand:{token:TOKEN_ID, name:'a'},
+      to_type:{token:TOKEN_ID, name:'Object'}}],
     ['++a', {
       token:TOKEN_INCREMENT,
       operand:{token:TOKEN_ID, name:'a'}}],
