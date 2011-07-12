@@ -1962,6 +1962,8 @@ var parse_prefix_unary = function() {
   var t = peek();
   var to_type = null;
   var result = null;
+  var of_type = null;
+  var args = null;
   if (next_is(TOKEN_LPAREN)) {
     // MIGHT have a cast
     set_mark();
@@ -1981,7 +1983,15 @@ var parse_prefix_unary = function() {
     }
     rewind_to_mark();
   }
-  // new - TODO
+  if (consume(TOKEN_NEW)) {
+    of_type = parse_data_type(false);
+    if (next_is(TOKEN_LBRACKET)) {
+      return parse_array_decl(t, of_type);
+    } else {
+      args = parse_args(true);
+      return {token:t.type, type:of_type, args:args};
+    }
+  }
   if (consume(TOKEN_INCREMENT))
     return {token:t.type, operand:parse_prefix_unary()};
   if (consume(TOKEN_DECREMENT))
@@ -2002,13 +2012,16 @@ var parse_array_decl = function(t, array_type) {
   var saw_empty = false;
   var dim_specified = false;
   var dim_expr = [];
-  var t = peek();
   var base_name = '';
   var new_array = null;
   var cur = null;
   var element_type = null;
   var element_expr = null;
 
+  // Requires at least one specified dim ("[5]") OR a {literal,list}
+  // following.
+
+  // Read the dimensions - [] or [expr]
   while (consume(TOKEN_LBRACKET)) {
     if (consume(TOKEN_RBRACKET)) {
       saw_empty = true;
@@ -2037,7 +2050,7 @@ var parse_array_decl = function(t, array_type) {
 
   new_array = {token:t.type,
                type:array_type,
-               length:dim_expr.length};
+               length:dim_expr[0]};
   if (dim_expr.length > 1) {
     cur = new_array;
     for (var i = 1; i < dim_expr.length; ++i) {
@@ -2790,6 +2803,31 @@ var test_parse = function() {
       token:TOKEN_LPAREN,
       operand:{token:TOKEN_ID, name:'a'},
       to_type:{token:TOKEN_ID, name:'Object'}}],
+    ['new Object()', {
+      token:TOKEN_NEW,
+      type:{token:TOKEN_ID, name:'Object'},
+      args:{}}],
+    ['new Object(a, b)', {
+      token:TOKEN_NEW,
+      type:{token:TOKEN_ID, name:'Object'},
+      args:{
+        'arguments':[
+          {token:TOKEN_ID, name:'a'},
+          {token:TOKEN_ID, name:'b'}
+        ]
+      }}],
+    ['new int[10]', {
+      token:TOKEN_NEW,
+      type:{token:TOKEN_INT, name:undefined, length:1},
+      length:{token:LITERAL_INT, value:10}}],
+    ['new int[10][3]', {
+      token:TOKEN_NEW,
+      type:{token:TOKEN_INT, name:undefined, length:2},
+      length:{token:LITERAL_INT, value:10},
+      element_expr:{
+        token:TOKEN_NEW,
+        type:{token:LITERAL_INT, name:undefined, length:1}, // <- seems wrong!
+        expression:{token:LITERAL_INT, value:3}}}],
     ['++a', {
       token:TOKEN_INCREMENT,
       operand:{token:TOKEN_ID, name:'a'}}],
