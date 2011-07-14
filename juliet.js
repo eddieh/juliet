@@ -1101,11 +1101,13 @@ var consume = function(token_type) {
 };
 
 var must_consume = function(token_type, error_message) {
+  print('must_consume ' + to_str(token_type));
   if (consume(token_type)) return;
   throw new Error(error_message);
 };
 
 var must_consume_semicolon = function(t) {
+  print('must_consume_semicolon');
   if (!consume(TOKEN_SEMICOLON)) {
     throw new Error('Syntax error: expected ;.');
     // TODO: complete semicolon handling
@@ -1125,6 +1127,28 @@ var must_read_id = function(error_message) {
   return result;
 };
 
+var is_class = function(a) {
+  return a.qualifiers & JOG_QUALIFIER_CLASS;
+};
+
+var is_interface = function(a) {
+  return a.qualifiers & JOG_QUALIFIER_INTERFACE;
+};
+
+var is_template = function(a) {
+  // TODO:
+  return false;
+};
+
+var is_static = function(a) {
+  return a.qualifiers & JOG_QUALIFIER_STATIC;
+};
+
+var is_abstract = function(a) {
+  return a.qualifiers & JOG_QUALIFIER_ABSTRACT;
+};
+
+
 var cmd = function(op, t, lhs, rhs) {
 };
 
@@ -1133,19 +1157,26 @@ var Parser = {
   parsed_types: [],
 };
 
+var init_parser = function() {
+  Parser = {
+    this_method: null,
+    parsed_types: [],
+  };
+};
+
 var parse = function() {
-  var type = parser.parse_type_def();
+  var type = parse_type_def();
   while (type) {
-    type = parser.parse_type_def();
+    type = parse_type_def();
   }
 
-  type = null;
-  for (var i = 0, len = paser.parsed_types.count; i < len; i++) {
-    type = parser.parsed_types[i];
-    if (type.is_template()) continue;
+  // type = null;
+  // for (var i = 0, len = Paser.parsed_types.count; i < len; i++) {
+  //   type = Parser.parsed_types[i];
+  //   if (type.is_template()) continue;
 
-    parsed_types.push(type);
-  }
+  //   Parser.parsed_types.push(type);
+  // }
 }
 
 var parse_type_def = function() {
@@ -1195,25 +1226,25 @@ var parse_type_def = function() {
     t = arguments[0];
     type = arguments[1];
 
-    if (consume(TOKEN_EXTENDS)) type.base_class = parse_data_type();
+    if (consume(TOKEN_EXTENDS)) type.base_class = parse_data_type(true);
 
     t2 = peek();
     if (consume(TOKEN_IMPLEMENTS)) {
       if (is_interface(type)) throw new Error('Interface cannot implement another.');
-      type.interfaces = [parse_data_type()];
+      type.interfaces = [parse_data_type(true)];
       while (consume(TOKEN_COMMA)) {
-        type.interfaces.push(parse_data_type());
+        type.interfaces.push(parse_data_type(true));
       }
     }
 
     // make one empty static initializer for setting up initial class
     // property values
-    if (is_class() && !is_template()) {
+    if (is_class(type) && !is_template(type)) {
       type.static_initializers = [{token:t.type,
                                    qualifiers:JOG_QUALIFIER_STATIC,
-                                   type:type,
-                                   notsure:null,
-                                   notsure2:'static'}];
+                                   //type_context:type, // TODO
+                                   return_type:null,
+                                   name:'static'}];
     }
 
     must_consume(TOKEN_LCURLY, 'Expected {.');
@@ -1237,7 +1268,7 @@ var parse_type_def = function() {
 }
 
 var parse_placeholder_type = function() {
-  var placeholder_type = parse_data_type();
+  var placeholder_type = parse_data_type(true);
   return placeholder_type;
 }
 
@@ -1332,7 +1363,7 @@ var parse_member_qualifiers = function() {
       continue;
     }
 
-    if (cosume(TOKEN_NATIVE)) {
+    if (consume(TOKEN_NATIVE)) {
       quals |= JOG_QUALIFIER_NATIVE;
       continue;
     }
@@ -1370,7 +1401,7 @@ var parse_member = function(type) {
 
     read();
     while (!next_is(TOKEN_RCURLY)) {
-      stm = parse_statement();
+      stm = parse_statement(true);
       if (stm) {
         if (!m.statements) m.statements = [];
         m.push(stm);
@@ -1380,7 +1411,7 @@ var parse_member = function(type) {
     return true;
   }
 
-  data_type = parse_data_type();
+  data_type = parse_data_type(true);
 
   // constructor
   if (next_is(TOKEN_LPAREN)) {
@@ -1395,7 +1426,7 @@ var parse_member = function(type) {
       quals |= JOG_QUALIFIER_CONSTRUCTOR;
       m = {token:t.type,
            qualifiers:quals,
-           type:type,
+           //type:type,
            return_type: null,
            name:'<init>'};
       Parser.this_method = m;
@@ -1405,7 +1436,7 @@ var parse_member = function(type) {
 
       must_consume(TOKEN_LCURLY, 'Expected {.');
       while (!next_is(TOKEN_RCURLY)) {
-        stm = parse_statement();
+        stm = parse_statement(true);
         if (stm) {
           if (!m.statements) m.statements = [];
           m.statements.push(stm);
@@ -1468,7 +1499,7 @@ var parse_member = function(type) {
 
       must_consume(TOKEN_LCURLY, 'Expected {.');
       while (next_is(TOKEN_RCURLY)) {
-        stm = parse_statement();
+        stm = parse_statement(true);
         if (stm) {
           if (!m.statements) m.statements = [];
           m.statements.push(stm);
@@ -1529,7 +1560,7 @@ var parse_params = function(m) {
   if (!consume(TOKEN_RPAREN)) {
     do {
       t = peek();
-      type = parse_data_type();
+      type = parse_data_type(true);
       if (!type) {
         throw new Error('void cannot be parameter type');
       }
@@ -1542,13 +1573,13 @@ var parse_params = function(m) {
   }
 };
 
-var parse_data_type = function() {
+var parse_data_type = function(parse_brackets) {
   if (trace) print('parse_data_type');
   var t = peek();
 
   // primitive
   if (consume([TOKEN_CHAR, TOKEN_BYTE, TOKEN_SHORT, TOKEN_INT, TOKEN_LONG, TOKEN_FLOAT, TOKEN_DOUBLE, TOKEN_STRING, TOKEN_BOOLEAN])) {
-    return {token:t.type, value:t.content};
+    return {token:t.type, name:t.content};
   }
 
   // identifier
@@ -1557,7 +1588,13 @@ var parse_data_type = function() {
 
   // TODO: generics
 
-  // TODO: subscript
+  // subscript
+  if (parse_data_type) {
+    while (consume(TOKEN_LBRACKET)) {
+      name = name + '[]';
+      must_consume(TOKEN_RBRACKET, 'Expected ] (Error#).');
+    }
+  }
 
   // TODO: add type to type table
   return {token:t.type, name:name};
@@ -1629,12 +1666,12 @@ var parse_statement = function(require_semicolon) {
       throw new Error('Unexpected ;.');
     }
 
-    conditional.body = parse_statement();
+    conditional.body = parse_statement(true);
     if (consume(TOKEN_ELSE)) {
       if (next_is(TOKEN_SEMICOLON)) {
         throw new Error('Unexpected ;.');
       }
-      conditional.else_body = parse_statement();
+      conditional.else_body = parse_statement(true);
     }
     return conditional;
   }
@@ -1646,7 +1683,7 @@ var parse_statement = function(require_semicolon) {
     if (next_is(TOKEN_SEMICOLON)) {
       throw new Error('Unexpected ;.');
     }
-    loop.body = parse_statement();
+    loop.body = parse_statement(true);
     return loop;
   }
 
@@ -1657,7 +1694,7 @@ var parse_statement = function(require_semicolon) {
     init_expr = parse_statement(false);
     if (next_is(TOKEN_COLON)) {
       rewind_to_mark();
-      local_type = parse_data_type();
+      local_type = parse_data_type(true);
       local_name = must_read_id('Expected identifier.');
 
       must_consume(TOKEN_COLON, 'Expected :.');
@@ -1671,7 +1708,7 @@ var parse_statement = function(require_semicolon) {
       if (next_is(TOKEN_SEMICOLON)) {
         throw new Error('Unexpected ;.');
       }
-      loop.body = parse_statement();
+      loop.body = parse_statement(true);
       return loop;
     } else {
       clear_mark();
@@ -1693,7 +1730,7 @@ var parse_statement = function(require_semicolon) {
     if (next_is(TOKEN_SEMICOLON)) {
       throw new Error('Unexpected ;.');
     }
-    loop.body = parse_statement();
+    loop.body = parse_statement(true);
     return loop;
   }
 
@@ -1908,7 +1945,7 @@ var parse_relational = function(lhs) {
   if (consume(TOKEN_GE))
     return parse_relational({token:t.type, lhs:lhs, rhs:parse_shift()});
   if (consume(TOKEN_INSTANCEOF))
-    return parse_relational({token:t.type, lhs:lhs, rhs:parse_data_type()});
+    return parse_relational({token:t.type, lhs:lhs, rhs:parse_data_type(true)});
   return lhs;
 };
 
@@ -1971,7 +2008,7 @@ var parse_prefix_unary = function() {
       // Casts are ambiguous syntax - assume this is indeed a cast and
       // just try it.
       try {
-        to_type = parse_data_type();
+        to_type = parse_data_type(true);
         must_consume(TOKEN_RPAREN, 'Expected ).');
         result = {token:t.type, operand:parse_prefix_unary(), to_type:to_type};
         clear_mark();
@@ -2190,12 +2227,14 @@ var parse_literal_array = function(of_type) {
 
 var parse_term = function() {
   if (trace) print('parse_term');
+  var p = null;
   var t = null;
   var expr = null;
   var args = null;
   var name = '';
 
-  switch (peek().type) {
+  p = peek().type;
+  switch (p) {
   case LITERAL_DOUBLE:
     t = read();
     return {token:t.type, value:t.content};
@@ -2226,18 +2265,23 @@ var parse_term = function() {
     must_consume(TOKEN_RPAREN, 'Expected ).');
     return expr;
   case TOKEN_SUPER:
-    // TODO
+    // TODO:
     print('super');
+  case TOKEN_CHAR:
+  case TOKEN_BYTE:
+  case TOKEN_SHORT:
+  case TOKEN_INT:
+  case TOKEN_LONG:
+  case TOKEN_FLOAT:
+  case TOKEN_DOUBLE:
+  case TOKEN_STRING:
+  case TOKEN_BOOLEAN:
   case TOKEN_ID:
     return parse_construct();
   case TOKEN_NULL:
     t = read();
     return {token:t.type, value:t.content};
   }
-
-  // TODO: ???
-  t = read();
-  return {token:t.type, value:t.content};
 
   throw new Error('Something really bad!');
 };
@@ -2801,7 +2845,7 @@ var test_parse = function() {
     ['(int)a', {
       token:TOKEN_LPAREN,
       operand:{token:TOKEN_ID, name:'a'},
-      to_type:{token:TOKEN_INT, value:'int'}}],
+      to_type:{token:TOKEN_INT, name:'int'}}],
     ['(Object)a', {
       token:TOKEN_LPAREN,
       operand:{token:TOKEN_ID, name:'a'},
@@ -2821,15 +2865,15 @@ var test_parse = function() {
       }}],
     ['new int[10]', {
       token:TOKEN_NEW,
-      type:{token:TOKEN_INT, name:undefined, length:1},
+      type:{token:TOKEN_INT, name:'int', length:1},
       length:{token:LITERAL_INT, value:10}}],
     ['new int[10][3]', {
       token:TOKEN_NEW,
-      type:{token:TOKEN_INT, name:undefined, length:2},
+      type:{token:TOKEN_INT, name:'int', length:2},
       length:{token:LITERAL_INT, value:10},
       element_expr:{
         token:TOKEN_NEW,
-        type:{token:LITERAL_INT, name:undefined, length:1}, // <- seems wrong!
+        type:{token:LITERAL_INT, name:'int', length:1},// TODO: <- seems wrong!
         expression:{token:LITERAL_INT, value:3}}}],
     ['++a', {
       token:TOKEN_INCREMENT,
@@ -2899,16 +2943,16 @@ var test_parse = function() {
                  rhs:{token:TOKEN_ID, name:'c'}}}],
     ['int num = 1;', [{
       token:TOKEN_ID,
-      type:{token:TOKEN_INT, value:'int'},
+      type:{token:TOKEN_INT, name:'int'},
       name:'num',
       initial_value:{token:LITERAL_INT, value:1}}]],
     ['float num = 1.0, num2 = 6.28;', [{
       token:TOKEN_ID,
-      type:{token:TOKEN_FLOAT, value:'float'},
+      type:{token:TOKEN_FLOAT, name:'float'},
       name:'num',
       initial_value:{token:LITERAL_DOUBLE, value:1.0}},
       {token:TOKEN_ID,
-       type:{token:TOKEN_FLOAT, value:'float'},
+       type:{token:TOKEN_FLOAT, name:'float'},
        name:'num2',
        initial_value:{token:LITERAL_DOUBLE, value:6.28}}]],
     ['return;', {
@@ -3019,7 +3063,7 @@ var test_parse = function() {
       token:TOKEN_FOR,
       initialization:[{
         token:TOKEN_ID,
-        type:{token:TOKEN_INT, value:'int'},
+        type:{token:TOKEN_INT, name:'int'},
         name:'i',
         initial_value:{token:LITERAL_INT, value:0}
       }],
@@ -3118,7 +3162,6 @@ var test_parse = function() {
             ]
           }
         ]}}]]
-
   ];
 
   var pass_count = 0;
@@ -3129,7 +3172,7 @@ var test_parse = function() {
     init();
     data = t[0];
 
-    var stm = parse_statement();
+    var stm = parse_statement(false);
     //print(to_str(stm));
     //print(to_str(t[1]));
     if (equal(stm, t[1])) {
@@ -3149,7 +3192,100 @@ var test_parse = function() {
   print('Failed ' + fail_count + ' tests.');
   print('END TESTS');
 }
-test_parse();
+//test_parse();
+
+var test_parse_types = function () {
+  var tests = [
+    ['class Empty {}', {
+      parsed_types: [{
+        token:TOKEN_CLASS,
+        qualifiers:JOG_QUALIFIER_CLASS | JOG_QUALIFIER_PROTECTED,
+        name:'Empty',
+        static_initializers:[{
+          token: TOKEN_CLASS,
+          qualifiers:JOG_QUALIFIER_STATIC,
+          //type_context:, // TODO
+          return_type:null,
+          name:'static'
+        }]
+      }]
+    }],
+    ['class Test {' +
+     '  Test () {' +
+     '    Object obj = "Works";' +
+     '    String str = (String)obj;' +
+     '    println(str);' +
+     '  }' +
+     '}', {
+       parsed_types: [{
+         token:TOKEN_CLASS,
+         qualifiers:JOG_QUALIFIER_CLASS | JOG_QUALIFIER_PROTECTED,
+         name:'Test',
+         static_initializers:[{
+           token: TOKEN_CLASS,
+           qualifiers:JOG_QUALIFIER_STATIC,
+           //type_context:, // TODO
+           return_type:null,
+           name:'static'
+         }],
+         methods:[{
+           token:TOKEN_ID,
+           qualifiers:JOG_QUALIFIER_CONSTRUCTOR,
+           return_type: null,
+           name:'<init>',
+           statements:[[{
+             token:TOKEN_ID,
+             type:{token:TOKEN_ID, name:'Object'},
+             name:'obj',
+             initial_value:{token:LITERAL_STRING, value:'Works'}
+           }],[{
+             token:TOKEN_ID,
+             type:{token:TOKEN_STRING, name:'String'},
+             name:'str',
+             initial_value:{
+               token:TOKEN_LPAREN,
+               operand:{token:TOKEN_ID, name:'obj'},
+               to_type:{token:TOKEN_STRING, name:'String'}}
+           }],{
+             token:TOKEN_ID,
+             name:'println',
+             args:{'arguments':[
+               {token:TOKEN_ID, name:'str'}
+             ]}
+           }]}],
+       }]
+     }]
+  ];
+
+  var pass_count = 0;
+  var fail_count = 0;
+  for (i in tests) {
+    var t = tests[i];
+    print('Testing the parsing of ' + t[0]);
+    init();
+    init_parser();
+    data = t[0];
+
+    parse();
+    delete Parser.this_method;
+    if (equal(Parser, t[1])) {
+      print('Passed.');
+      pass_count++;
+    } else {
+      print('FAILED.');
+      fail_count++;
+    }
+
+    print('');
+  }
+
+  print('SUMMARY');
+  print('=======');
+  print('Passed ' + pass_count + ' tests.');
+  print('Failed ' + fail_count + ' tests.');
+  print('END TESTS');
+}
+test_parse_types();
 
 // TODO:
 // Negative Numbers
