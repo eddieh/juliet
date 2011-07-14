@@ -1567,8 +1567,7 @@ var parse_initial_value = function(of_type) {
   if (trace) print('parse_initial_value');
   if (consume(TOKEN_ASSIGN)) {
     if (next_is(TOKEN_LCURLY)) {
-      // TODO: parse literal array
-      throw new Error('literal array not implemented');
+      return parse_literal_array(of_type);
     } else {
       return parse_expression();
     }
@@ -2091,16 +2090,18 @@ var parse_postfix_unary = function(operand) {
         throw new Error('Expected datatype.');
       }
       new_name = (op_type.name) ? op_type.name : op_type.value;
-      must_consume(TOKEN_RBRACKET, 'Expected ].');
+      must_consume(TOKEN_RBRACKET, 'Expected ] (Error2).');
       new_name = new_name + '[]';
-      while (next_is(TOKEN_LBRACKET)) {
-        must_consume(TOKEN_RBRACKET, 'Expected ].');
+      while (consume(TOKEN_LBRACKET)) {
+        print('DIM');
+        must_consume(TOKEN_RBRACKET, 'Expected ] (Error3).');
         new_name = new_name + '[]';
       }
+      print(new_name);
       return parse_local_var_decl(t, {token:op_type.token, name:new_name}, false);
     } else {
       index = parse_expression();
-      must_consume(TOKEN_RBRACKET, 'Expected ].');
+      must_consume(TOKEN_RBRACKET, 'Expected ] (Error4).');
       return parse_postfix_unary({token:t.type,
                                   context:operand,
                                   expression:index});
@@ -2158,8 +2159,8 @@ var parse_args = function(required) {
 }
 
 var parse_literal_array = function(of_type) {
+  if (trace) print('parse_literal_array');
   var t = read();
-  var t2 = null;
   var first = true;
   var terms = [];
   var element_type_name = '';
@@ -2170,12 +2171,12 @@ var parse_literal_array = function(of_type) {
     while (first || consume(TOKEN_COMMA)) {
       first = false;
       if (next_is(TOKEN_LCURLY)) {
-        element_type_name = of_type.name;
-        t2 = peek();
-        if (element_type_name.charAt(-3) != ']') {
+        // nexted literal array
+        element_type_name = of_type.name.slice(0, -2);
+        if (element_type_name.charAt(element_type_name.length - 1) != ']') {
           throw new Error('Array type does not support this many dimensions.');
         }
-        element_type = {token:t.type2, name:element_type_name};
+        element_type = {token:of_type.token, name:element_type_name};
         terms.push(parse_literal_array(element_type));
       } else {
         terms.push(parse_expression());
@@ -2365,7 +2366,7 @@ var var_decl_str = function(var_decl) {
       + ']';
 };
 var is_var_decls = function (a) {
-  return (isArray(a) && is_var_decl(a[0]));
+  return (isArray(a) && (a.length > 0) && is_var_decl(a[0]));
 }
 var var_decls_str = function(a) {
   var str = '[';
@@ -3070,7 +3071,53 @@ var test_parse = function() {
       name:'print',
       args:{'arguments':[
         {token:LITERAL_STRING, value:'hello'}
-      ]}}]
+      ]}}],
+    ['int[] a = {};', [{
+      token:TOKEN_ID,
+      type:{token:TOKEN_INT, name:'int[]'},
+      name:'a',
+      initial_value:{
+        token:TOKEN_LCURLY,
+        type:{token:TOKEN_INT, name:'int[]'},
+        terms:[]
+      }}]],
+    ['int[] a = {0, 1};', [{
+      token:TOKEN_ID,
+      type:{token:TOKEN_INT, name:'int[]'},
+      name:'a',
+      initial_value:{
+        token:TOKEN_LCURLY,
+        type:{token:TOKEN_INT, name:'int[]'},
+        terms:[
+          {token:LITERAL_INT, value:0},
+          {token:LITERAL_INT, value:1}
+        ]
+      }}]],
+    ['int[][] a = {{0, 1}, {0, 1}};', [{
+      token:TOKEN_ID,
+      type:{token:TOKEN_INT, name:'int[][]'},
+      name:'a',
+      initial_value:{
+        token:TOKEN_LCURLY,
+        type:{token:TOKEN_INT, name:'int[][]'},
+        terms:[
+          {
+            token:TOKEN_LCURLY,
+            type:{token:TOKEN_INT, name:'int[]'},
+            terms:[
+              {token:LITERAL_INT, value:0},
+              {token:LITERAL_INT, value:1}
+            ]
+          },
+          {
+            token:TOKEN_LCURLY,
+            type:{token:TOKEN_INT, name:'int[]'},
+            terms:[
+              {token:LITERAL_INT, value:0},
+              {token:LITERAL_INT, value:1}
+            ]
+          }
+        ]}}]]
 
   ];
 
