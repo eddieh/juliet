@@ -1136,7 +1136,7 @@ var is_interface = function(a) {
 };
 
 var is_template = function(a) {
-  // TODO:
+  // TODO: templates for generics
   return false;
 };
 
@@ -1172,11 +1172,11 @@ var parse = function() {
     type = parse_type_def();
   }
 
+  // TODO: templates for generics
   // type = null;
   // for (var i = 0, len = Paser.parsed_types.count; i < len; i++) {
   //   type = Parser.parsed_types[i];
   //   if (type.is_template()) continue;
-
   //   Parser.parsed_types.push(type);
   // }
 }
@@ -1435,7 +1435,7 @@ var parse_member = function(type) {
       quals |= JOG_QUALIFIER_CONSTRUCTOR;
       m = {token:t.type,
            qualifiers:quals,
-           //type:type,
+           //type:type, // TODO:
            return_type: null,
            name:'<init>'};
       Parser.this_method = m;
@@ -1599,7 +1599,7 @@ var parse_data_type = function(parse_brackets) {
   var name = must_read_id('Expected type.');
   name = name.substr(0);
 
-  // TODO: generics
+  // TODO: templates for generics
 
   // subscript
   if (parse_data_type) {
@@ -1773,10 +1773,9 @@ var parse_statement = function(require_semicolon) {
   }
 
   expr = parse_expression();
-  print(to_str(expr));
   if (next_is(TOKEN_ID)) {
     var var_type = reinterpret_as_type(expr);
-    return parse_local_var_decl( expr.token, var_type, require_semicolon);
+    return parse_local_var_decl(expr.token, var_type, require_semicolon);
   }
 
   if (require_semicolon) must_consume_semicolon(t);
@@ -2384,30 +2383,10 @@ var print_term = function(term) {
   print(term_str(term));
 };
 
-/*
-  static initializer, constructor, method
-  m = {token:t.type,
-    qualifiers:quals,
-    type:type,
-    return_type:null,
-    name:'static'};
-*/
 var is_method = function(a) {};
 
-/*
-   {token:name_t,
-     qualifiers:quals,
-     type_context:type,
-     type:data_type,
-     name:name,
-     initial_value:parse_initial_value(data_type)};
-*/
 var is_property = function(a) {};
 
-// {token:t2.type,
-//  type:var_type,
-//  name:name,
-//  initial_value:parse_initial_value(var_type)};
 var is_var_decl = function(a) {
   return (('token' in a)
       && ('type' in a)
@@ -2612,8 +2591,8 @@ var isArray = function(obj) {
 
 
 var equal = function(a, b) {
-  print('a ' + to_str(a));
-  print('b ' + to_str(b));
+  //print('a ' + to_str(a));
+  //print('b ' + to_str(b));
   for (var prop in a) {
     print(prop);
     //print('a[' + prop + '] ' + a[prop]);
@@ -2685,7 +2664,6 @@ print('END TESTS');
 
 var test_parse = function() {
   var tests = [
-
     ['3.14', {token:LITERAL_DOUBLE, value:3.14}],
     ['42', {token:LITERAL_INT, value:42}],
     ['\'a\'', {token:LITERAL_CHAR, value:'a'}],
@@ -3186,8 +3164,6 @@ var test_parse = function() {
     data = t[0];
 
     var stm = parse_statement(false);
-    //print(to_str(stm));
-    //print(to_str(t[1]));
     if (equal(stm, t[1])) {
       print('Passed.');
       pass_count++;
@@ -3303,7 +3279,6 @@ var test_parse_types = function () {
              statements:null
            }]
          }]}]
-
   ];
 
   var pass_count = 0;
