@@ -1165,6 +1165,8 @@ var init_parser = function() {
 };
 
 var parse = function() {
+  if (trace) print('parse');
+
   var type = parse_type_def();
   while (type) {
     type = parse_type_def();
@@ -1180,6 +1182,7 @@ var parse = function() {
 }
 
 var parse_type_def = function() {
+  if (trace) print('parse_type_def');
   var quals = null;
   var t = null;
   var mesg = '';
@@ -1259,7 +1262,7 @@ var parse_type_def = function() {
         rewind_to_mark();
         try {
           if (!parse_type_def()) throw e;
-        } finally { throw e; }
+        } catch (e) { throw e; }
       }
     }
 
@@ -1268,11 +1271,13 @@ var parse_type_def = function() {
 }
 
 var parse_placeholder_type = function() {
+  if (trace) print('parse_placeholder_type');
   var placeholder_type = parse_data_type(true);
   return placeholder_type;
 }
 
 var parse_type_qualifiers = function() {
+  if (trace) print('parse_type_qualifiers');
   var quals = 0;
   var t = null;
 
@@ -1323,6 +1328,7 @@ var parse_type_qualifiers = function() {
 }
 
 var parse_member_qualifiers = function() {
+  if (trace) print('parse_member_qualifiers');
   var quals = 0;
   var t = null;
 
@@ -1373,6 +1379,7 @@ var parse_member_qualifiers = function() {
 }
 
 var parse_member = function(type) {
+  if (trace) print('parse_member');
   if (next_is(TOKEN_RCURLY)) return false;
 
   var t = peek();
@@ -1386,6 +1393,7 @@ var parse_member = function(type) {
 
   // static initiaizer
   if (quals == JOG_QUALIFIER_STATIC && next_is(TOKEN_LCURLY)) {
+    if (trace) print('static initiaizer');
     if (is_interface(type)) {
       throw new Error('Static initialization block not allowed here.');
     }
@@ -1415,6 +1423,7 @@ var parse_member = function(type) {
 
   // constructor
   if (next_is(TOKEN_LPAREN)) {
+    if (trace) print('constructor');
     if (data_type.name == type.name) {
       if (quals & JOG_QUALIFIER_STATIC) {
         throw new Error('Constructor cannot be static.');
@@ -1443,6 +1452,7 @@ var parse_member = function(type) {
         }
       }
       must_consume(TOKEN_RCURLY, 'Expected }.');
+
       return true;
     } else {
       throw new Error('Method missing return type.');
@@ -1454,6 +1464,7 @@ var parse_member = function(type) {
 
   // Method
   if (next_is(TOKEN_LPAREN)) {
+    if (trace) print('method');
     if (name == type.name) {
       throw new Error('Constructors cannot specify a return type.');
     }
@@ -1519,6 +1530,7 @@ var parse_member = function(type) {
     }
 
     // property
+    if (trace) print('property');
     first = true;
     do {
       if (first) first = false;
@@ -1527,7 +1539,7 @@ var parse_member = function(type) {
         name = must_read_id('Expected identifier.');
       }
 
-      p = {token:name_t,
+      p = {token:name_t.type,
            qualifiers:quals,
            type_context:type,
            type:data_type,
@@ -1551,6 +1563,7 @@ var parse_member = function(type) {
 };
 
 var parse_params = function(m) {
+  if (trace) print('parse_params');
   var t = null;
   var type = null;
   var name = '';
@@ -1583,7 +1596,7 @@ var parse_data_type = function(parse_brackets) {
   }
 
   // identifier
-  var name = must_read_id('Expected type');
+  var name = must_read_id('Expected type.');
   name = name.substr(0);
 
   // TODO: generics
@@ -3254,7 +3267,43 @@ var test_parse_types = function () {
              ]}
            }]}],
        }]
-     }]
+     }],
+    ['class Test {' +
+     '  public class A {' +
+     '    public A () {;}' +
+     '  }' +
+     '}', {
+       parsed_types:[{
+         token:TOKEN_CLASS,
+         qualifiers:JOG_QUALIFIER_CLASS | JOG_QUALIFIER_PROTECTED,
+         name:'Test',
+         static_initializers:[{
+           token:TOKEN_CLASS,
+           qualifiers:JOG_QUALIFIER_STATIC,
+           //type_context:, // TODO
+           return_type:null,
+           name:'static'
+         }]},{
+           token:TOKEN_CLASS,
+           qualifiers:JOG_QUALIFIER_CLASS | JOG_QUALIFIER_PUBLIC,
+           //type_context:, // TODO
+           name:'A',
+           static_initializers:[{
+             token:TOKEN_CLASS,
+             qualifiers:JOG_QUALIFIER_STATIC,
+             //type_context:, // TODO
+             return_type:null,
+             name:'static'
+           }],
+           methods:[{
+             token:TOKEN_PUBLIC,
+             qualifiers:JOG_QUALIFIER_CONSTRUCTOR | JOG_QUALIFIER_PUBLIC,
+             return_type: null,
+             name:'<init>',
+             statements:null
+           }]
+         }]}]
+
   ];
 
   var pass_count = 0;
