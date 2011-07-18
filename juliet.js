@@ -1632,7 +1632,7 @@ var parse_statement = function(require_semicolon) {
   else if (next_is(TOKEN_RPAREN)) return null;
 
   var t = peek();
-  var block = {};
+  var block = [];
   var stm = null;
   var cmd = null;
   var conditional = null;
@@ -1650,8 +1650,7 @@ var parse_statement = function(require_semicolon) {
     while (!consume(TOKEN_RCURLY)) {
       stm = parse_statement(true);
       if (stm) {
-        if (!block.statements) block.statements = [];
-        block.statements.push(stm);
+        block.push(stm);
       }
     }
     return block;
@@ -2185,7 +2184,7 @@ var parse_construct = function() {
 var parse_args = function(required) {
   if (trace) print('parse_args');
   var t = peek();
-  var args = {};
+  var args = [];
 
   if (!consume(TOKEN_LPAREN)) {
     if (required) {
@@ -2196,8 +2195,7 @@ var parse_args = function(required) {
 
   if (!consume(TOKEN_RPAREN)) {
     do {
-      if (!args['arguments']) args['arguments'] = [];
-      args['arguments'].push(parse_expression());
+      args.push(parse_expression());
     } while(consume(TOKEN_COMMA));
     must_consume(TOKEN_RPAREN, 'Expected ).');
   }
@@ -2760,16 +2758,15 @@ var test_parse = function() {
     ['new Object()', {
       token:TOKEN_NEW,
       type:{token:TOKEN_ID, name:'Object'},
-      args:{}}],
+      args:[]}],
     ['new Object(a, b)', {
       token:TOKEN_NEW,
       type:{token:TOKEN_ID, name:'Object'},
-      args:{
-        'arguments':[
-          {token:TOKEN_ID, name:'a'},
-          {token:TOKEN_ID, name:'b'}
-        ]
-      }}],
+      args:[
+        {token:TOKEN_ID, name:'a'},
+        {token:TOKEN_ID, name:'b'}
+      ]
+    }],
     ['new int[10]', {
       token:TOKEN_NEW,
       type:{token:TOKEN_INT, name:'int', length:1},
@@ -2868,23 +2865,22 @@ var test_parse = function() {
     ['return 1;', {
       token:TOKEN_RETURN,
       expression:{token:LITERAL_INT, value:'1'}}],
-    ['{ return; }', {
-      statements:[{
-        token:TOKEN_RETURN,
-        value:'void'}]}],
-    ['{ a = 1; b = 2; }', {
-      statements:[
-        {
-          token:TOKEN_ASSIGN,
-          location:{token:TOKEN_ID, name:'a'},
-          new_value:{token:LITERAL_INT, value:1}
-        },
-        {
-          token:TOKEN_ASSIGN,
-          location:{token:TOKEN_ID, name:'b'},
-          new_value:{token:LITERAL_INT, value:2}
-        }
-      ]}],
+    ['{ return; }', [{
+      token:TOKEN_RETURN,
+      value:'void'
+    }]],
+    ['{ a = 1; b = 2; }', [
+      {
+        token:TOKEN_ASSIGN,
+        location:{token:TOKEN_ID, name:'a'},
+        new_value:{token:LITERAL_INT, value:1}
+      },
+      {
+        token:TOKEN_ASSIGN,
+        location:{token:TOKEN_ID, name:'b'},
+        new_value:{token:LITERAL_INT, value:2}
+      }
+    ]],
     ['if (true) {}', {
       token:TOKEN_IF,
       expression:{token:LITERAL_BOOLEAN, value:true},
@@ -2912,23 +2908,19 @@ var test_parse = function() {
         lhs:{token:TOKEN_ID, name:'a'},
         rhs:{token:TOKEN_NULL, value:'null'}
       },
-      body: {
-        statements: [{
-          token:TOKEN_ASSIGN,
-          location:{token:TOKEN_ID, name:'a'},
-          new_value:{token:TOKEN_NULL, value:'null'}
-        }],
-      },
+      body: [{
+        token:TOKEN_ASSIGN,
+        location:{token:TOKEN_ID, name:'a'},
+        new_value:{token:TOKEN_NULL, value:'null'}
+      }],
       else_body: {
         token:TOKEN_IF,
         expression:{token:TOKEN_ID, name:'b'},
-        body: {
-          statements: [{
+        body: [{
             token:TOKEN_ASSIGN,
             location:{token:TOKEN_ID, name:'a'},
             new_value:{token:TOKEN_ID, name:'b'}
-          }]
-        }
+        }]
       }
     }],
     ['while (a) a = b;', {
@@ -2946,25 +2938,23 @@ var test_parse = function() {
         token:TOKEN_BANG,
         operand:{token:TOKEN_ID, name:'a'}
       },
-      body: {
-        statements: [
-          {
-            token:TOKEN_ASSIGN,
-            location:{token:TOKEN_ID, name:'c'},
-            new_value:{token:TOKEN_ID, name:'a'}
-          },
-          {
-            token:TOKEN_ASSIGN,
-            location:{token:TOKEN_ID, name:'a'},
-            new_value:{token:TOKEN_ID, name:'b'}
-          },
-          {
-            token:TOKEN_ASSIGN,
-            location:{token:TOKEN_ID, name:'b'},
-            new_value:{token:TOKEN_ID, name:'a'}
-          }
-        ]
-      }
+      body: [
+        {
+          token:TOKEN_ASSIGN,
+          location:{token:TOKEN_ID, name:'c'},
+          new_value:{token:TOKEN_ID, name:'a'}
+        },
+        {
+          token:TOKEN_ASSIGN,
+          location:{token:TOKEN_ID, name:'a'},
+          new_value:{token:TOKEN_ID, name:'b'}
+        },
+        {
+          token:TOKEN_ASSIGN,
+          location:{token:TOKEN_ID, name:'b'},
+          new_value:{token:TOKEN_ID, name:'a'}
+        }
+      ]
     }],
     ['for (int i = 0; i < len; i++) a *= i;', {
       token:TOKEN_FOR,
@@ -2994,13 +2984,11 @@ var test_parse = function() {
       type:{token:TOKEN_ID, name:'Object'},
       name:'obj',
       iterable: {token:TOKEN_ID, name:'collection'},
-      body:{
-        statements: [{
+      body:[{
           token:TOKEN_ASSIGN,
           location:{token:TOKEN_ID, name:'obj'},
           new_value:{token:TOKEN_NULL, value:'null'}
-        }]
-      }
+      }]
     }],
     ['break;', {token:TOKEN_BREAK}],
     ['continue;', {token:TOKEN_CONTINUE}],
@@ -3016,13 +3004,13 @@ var test_parse = function() {
     ['print();', {
       token:TOKEN_ID,
       name:'print',
-      args:{}}],
+      args:[]}],
     ['print("hello");', {
       token:TOKEN_ID,
       name:'print',
-      args:{'arguments':[
+      args:[
         {token:LITERAL_STRING, value:'hello'}
-      ]}}],
+      ]}],
     ['int[] a = {};', [{
       token:TOKEN_ID,
       type:{token:TOKEN_INT, name:'int[]'},
@@ -3158,9 +3146,9 @@ var test_parse_types = function () {
            }],{
              token:TOKEN_ID,
              name:'println',
-             args:{'arguments':[
+             args:[
                {token:TOKEN_ID, name:'str'}
-             ]}
+             ]
            }]}],
        }]
      }],
