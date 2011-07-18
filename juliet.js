@@ -453,7 +453,7 @@ var JOG_QUALIFIER_ABSTRACT    = 512;
 
 var JOG_QUALIFIER_REFERENCE = (JOG_QUALIFIER_CLASS | JOG_QUALIFIER_INTERFACE);
 
-var trace = true;
+var trace = !true;
 
 var data = '';
 var data_i = 0;
@@ -1101,13 +1101,13 @@ var consume = function(token_type) {
 };
 
 var must_consume = function(token_type, error_message) {
-  print('must_consume ' + to_str(token_type));
+  if (trace) print('must_consume ' + token_str(token_type));
   if (consume(token_type)) return;
   throw new Error(error_message);
 };
 
 var must_consume_semicolon = function(t) {
-  print('must_consume_semicolon');
+  if (trace) print('must_consume_semicolon');
   if (!consume(TOKEN_SEMICOLON)) {
     throw new Error('Syntax error: expected ;.');
     // TODO: complete semicolon handling
@@ -2142,11 +2142,9 @@ var parse_postfix_unary = function(operand) {
       must_consume(TOKEN_RBRACKET, 'Expected ] (Error2).');
       new_name = new_name + '[]';
       while (consume(TOKEN_LBRACKET)) {
-        print('DIM');
         must_consume(TOKEN_RBRACKET, 'Expected ] (Error3).');
         new_name = new_name + '[]';
       }
-      print(new_name);
       return parse_local_var_decl(t, {token:op_type.token, name:new_name}, false);
     } else {
       index = parse_expression();
@@ -2313,136 +2311,43 @@ var print_token = function(token) {
 };
 var print_pending = function() {
   for (var i in pending) {
-    print_term(pending[i]);
+    print_token(pending[i]);
+  }
+}
+var print_processed = function() {
+  for (var i in processed) {
+    print_token(processed[i]);
   }
 }
 
-var is_data_type = function(a) { return ('token' in a) && ('name' in a); };
-var data_type_str = function(data_type) {
-  return '[' + token_str(data_type.token) + ' ' + data_type.name + ']';
-};
-var print_data_type = function(data_type) {
-  print(data_type_str(data_type));
-};
 
-var is_statement = function(a) {
-  return ('token' in a) && ('expression' in a);
-};
-var statement_str = function(stm) {
-  return '[' + token_str(stm.token) + ' ' + to_str(stm.expression) + ']';
-};
-var print_statement = function(stm) {
-  print(statement_str(stm));
-};
-
-var is_assignment = function(a) {
-  return ('token' in a) && ('location' in a) && ('new_value' in a);
-};
-var assignment_str = function(assign) {
-  return '['
-      + token_str(assign.token)
-      + ' ' + to_str(assign.location)
-      + ' ' + to_str(assign.new_value)
-      + ']';
-};
-var print_assignment = function(assign) {
-  print(assignment_str(assign));
-};
-
-var is_expression = function(a) {
-  return ('token' in a) && ('lhs' in a) && ('rhs' in a);
-};
-var expression_str = function(expr) {
-  return '['
-      + token_str(expr.token)
-      + ' ' + to_str(expr.lhs)
-      + ' ' + to_str(expr.rhs)
-      + ']';
-};
-var print_expr = function(expr) {
-  print(expression_str(expr));
-};
-
-var is_unary = function(a) {
-  return ('token' in a) && ('operand' in a);
-};
-var unary_str = function(unary) {
-  return '[' + token_str(unary.token) + ' ' + to_str(unary.operand) + ']';
-};
-var print_unary = function(unary) {
-  print(unary_str(unary));
-};
-
-var is_term = function(a) {
-  return ('token' in a) && ('value' in a);
-};
-var term_str = function(term) {
-  return '[' + token_str(term.token) + ' ' + term.value + ']';
-};
-var print_term = function(term) {
-  print(term_str(term));
-};
-
-var is_method = function(a) {};
-
-var is_property = function(a) {};
-
-var is_var_decl = function(a) {
-  return (('token' in a)
-      && ('type' in a)
-      && ('name' in a)
-      && ('initial_value' in a));
-};
-var var_decl_str = function(var_decl) {
-  return '['
-      + token_str(var_decl.token)
-      + ' ' + to_str(var_decl.type)
-      + ' ' + var_decl.name
-      + ' ' + to_str(var_decl.initial_value)
-      + ']';
-};
-var is_var_decls = function (a) {
-  return (isArray(a) && (a.length > 0) && is_var_decl(a[0]));
-}
-var var_decls_str = function(a) {
-  var str = '[';
-  for (var i = 0, len = a.length; i < len; i++) {
-    str = str + var_decl_str(a[i]) + ' ';
-  }
-  return str + ']';
-}
-
-var is_block = function(a) {
-  return ('statements' in a);
-};
-var block_str = function(block) {
-  var str = '{\n';
-  for (var i = 0, len = block.statements.length; i < len; i++) {
-    str = str + '  ' + to_str(block.statements[i]) + '\n';
-  }
-  return str + '}';
-}
-
-var to_str = function(a) {
-  if (a == null) return '';
-  if (is_token(a)) return token_str(a);
-  if (is_data_type(a)) return data_type_str(a);
-  if (is_statement(a)) return statement_str(a);
-  if (is_assignment(a)) return assignment_str(a);
-  if (is_expression(a)) return expression_str(a);
-  if (is_unary(a)) return unary_str(a);
-  if (is_term(a)) return term_str(a);
-  if (is_var_decl(a)) return var_decl_str(a);
-  if (is_var_decls(a)) return var_decls_str(a);
-  if (is_block(a)) return block_str(a);
-  if (isArray(a)) {
-    var str = '[';
-    for (var i = 0, len = a.length; i < len; i++) {
-      str = str + to_str(a[i]) + ' ';
+var ast_str = function(a) {
+  var ret = '';
+  if (a === null) ret = ret + 'null';
+  else if (isArray(a)) {
+    ret = ret + '[';
+    for (i in a) {
+      ret = ret + ast_str(a[i]);
+      ret = ret + ' ';
     }
-    return str + ']';
+    ret = ret + ']';
+  } else if (typeof(a) === 'object') {
+    ret = ret + '{';
+    for (p in a) {
+      ret = ret + p + ':';
+      if (p == 'token') ret = ret + token_str(a[p]);
+      else ret = ret + ast_str(a[p]);
+      ret = ret + ' ';
+    }
+    ret = ret + '}';
+  } else {
+    ret = ret + a;
   }
-  return a;
+  return ret;
+}
+
+var print_ast = function(a) {
+  print(ast_str(a));
 }
 
 var reinterpret_as_type = function(a) {
@@ -2461,12 +2366,7 @@ var isArray = function(obj) {
 
 
 var equal = function(a, b) {
-  //print('a ' + to_str(a));
-  //print('b ' + to_str(b));
   for (var prop in a) {
-    print(prop);
-    //print('a[' + prop + '] ' + a[prop]);
-    //print('b[' + prop + '] ' + b[prop]);
     if (a.hasOwnProperty(prop) && b.hasOwnProperty(prop)) {
       if (typeof(a[prop]) !== 'object') {
         if (a[prop] != b[prop]) return false;
@@ -2475,7 +2375,6 @@ var equal = function(a, b) {
         if (!r) return false;
       }
     } else {
-      //print('doesn\'t share ' + prop + '!');
       return false;
     }
   }
@@ -3169,6 +3068,7 @@ var test_parse = function() {
     data = t[0];
 
     var stm = parse_statement(false);
+    print_ast(stm);
     if (equal(stm, t[1])) {
       print('Passed.');
       pass_count++;
@@ -3319,8 +3219,8 @@ var test_parse_types = function () {
 }
 
 //test_tokenize();
-//test_parse();
-test_parse_types();
+test_parse();
+//test_parse_types();
 
 // TODO:
 // Negative Numbers
