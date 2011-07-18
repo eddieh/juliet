@@ -2321,25 +2321,40 @@ var print_processed = function() {
 }
 
 
-var ast_str = function(a) {
+var ast_str = function(a, depth) {
+  if (depth === undefined) depth = 1;
+  var indent = function(d) {
+    var ret = '';
+    for (var i = 0; i < d; i++) ret = ret + '  ';
+    return ret;
+  };
   var ret = '';
   if (a === null) ret = ret + 'null';
   else if (isArray(a)) {
-    ret = ret + '[';
-    for (i in a) {
-      ret = ret + ast_str(a[i]);
-      ret = ret + ' ';
+    ret = ret + '[\n';
+    for (var i = 0, len = a.length; i < len; i++) {
+      ret = ret + indent(depth) + ast_str(a[i], depth + 1);
+      if (i < (len - 1)) ret = ret + ', ';
+      ret = ret + '\n';
     }
-    ret = ret + ']';
+    ret = ret + indent(depth - 1) + ']';
   } else if (typeof(a) === 'object') {
-    ret = ret + '{';
-    for (p in a) {
-      ret = ret + p + ':';
-      if (p == 'token') ret = ret + token_str(a[p]);
-      else ret = ret + ast_str(a[p]);
-      ret = ret + ' ';
+    ret = ret + '{\n';
+    var props = [];
+    for (p in a) props.push(p);
+    for (var i = 0, len = props.length; i < len; i++) {
+      ret = ret + indent(depth) + props[i] + ':';
+      if (props[i] == 'token') {
+        ret = ret + token_str(a[props[i]]);
+      } else {
+        ret = ret + ast_str(a[props[i]], depth + 1);
+      }
+      if (i < (len - 1)) ret = ret + ', ';
+      ret = ret + '\n';
     }
-    ret = ret + '}';
+    ret = ret + indent(depth - 1) + '}';
+  } else if (typeof(a) === 'string') {
+    ret = ret + '\'' + a + '\'';
   } else {
     ret = ret + a;
   }
