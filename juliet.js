@@ -459,6 +459,7 @@ var data = '';
 var data_i = 0;
 var pending = [];
 var processed = [];
+var marks = [];
 
 var init = function() {
   data = '';
@@ -869,9 +870,13 @@ var tokenize = function() {
 
   // qualified name
   if (ch == '46') {
-    // must be proceeded by an identifier
+    var proceeding_token = TOKEN_ERROR;
+    // must be proceeded by an identifier or
+    // procedded by a GT in the case of
+    // parameterized types (templates, generics)
     if (pending && pending.length > 1) {
-      if (pending[pending.length - 2].type == TOKEN_ID) {
+      proceeding_token = pending[pending.length - 2].type;
+      if (proceeding_token == TOKEN_ID || proceeding_token == TOKEN_GT) {
         next.type = TOKEN_PERIOD;
         next.content = '.'
         data_i++;
@@ -879,7 +884,8 @@ var tokenize = function() {
       }
     }
     if (processed && processed.length > 0) {
-      if (processed[processed.length - 1].type == TOKEN_ID) {
+      proceeding_token = processed[processed.length - 1].type;
+      if (proceeding_token == TOKEN_ID || proceeding_token == TOKEN_GT) {
         next.type = TOKEN_PERIOD;
         next.content = '.';
         data_i++;
@@ -1136,8 +1142,7 @@ var is_interface = function(a) {
 };
 
 var is_template = function(a) {
-  // TODO: templates for generics
-  return false;
+  return a.placeholder_types;
 };
 
 var is_static = function(a) {
@@ -1171,14 +1176,6 @@ var parse = function() {
   while (type) {
     type = parse_type_def();
   }
-
-  // TODO: templates for generics
-  // type = null;
-  // for (var i = 0, len = Paser.parsed_types.count; i < len; i++) {
-  //   type = Parser.parsed_types[i];
-  //   if (type.is_template()) continue;
-  //   Parser.parsed_types.push(type);
-  // }
 }
 
 var parse_type_def = function() {
@@ -1219,7 +1216,30 @@ var parse_type_def = function() {
 
     // TODO: Template type (Jog implements templates instead of generics).
     if (consume(TOKEN_LT)) {
-      throw new Error('Java generics are not implemented');
+      type.placeholder_types = [parse_placeholder_type()];
+      while(consume(TOKEN_COMMA)) {
+        type.placeholder_types.push(parse_placeholder_type());
+      }
+      must_consume(TOKEN_GT, 'Expected >.');
+
+      // Set a mark to ensure that all the tokens are buffered, parse
+      // in the class, and collect the buffered tokens to use for
+      // implementing the template later on.
+      set_mark();
+
+      parse_type_def(t, type);
+
+      var start = processed.length - marks[marks.length - 1];
+      for (var i = start, len = processed.length; i < len; i++) {
+        if (!type.template_tokens) type.template_tokens = [];
+        type.template_tokens.push(processed[i]);
+      }
+      clear_mark();
+
+      delete type.base_class;
+      delete type.interfaces;
+
+      return type;
     }
 
     parse_type_def(t, type);
@@ -1586,9 +1606,11 @@ var parse_params = function(m) {
   }
 };
 
-var parse_data_type = function(parse_brackets) {
+var generic_depth = [];
+var parse_data_type = function(parse_brackets, parse_wildcards) {
   if (trace) print('parse_data_type');
   var t = peek();
+  var name = '';
 
   // primitive
   if (consume([TOKEN_CHAR, TOKEN_BYTE, TOKEN_SHORT, TOKEN_INT, TOKEN_LONG, TOKEN_FLOAT, TOKEN_DOUBLE, TOKEN_STRING, TOKEN_BOOLEAN])) {
@@ -1596,13 +1618,67 @@ var parse_data_type = function(parse_brackets) {
   }
 
   // identifier
-  var name = must_read_id('Expected type.');
-  name = name.substr(0);
+  try {
+    name = must_read_id('Expected type.');
+  } catch (e) {
+    if (!parse_wildcards) throw e;
+    must_consume(TOKEN_QUESTIONMARK, 'Expected ?.');
+    name = name + '?';
+    if (consume(TOKEN_EXTENDS)) {
+      name = name + ' extends ';
+      name = name + must_read_id('Expected type.');
+    } else if (consume(TOKEN_SUPER)) {
+      name = name + ' super ';
+      name = name + must_read_id('Expected type.');
+    }
+  }
 
-  // TODO: templates for generics
+  // templates for generics
+  if (consume(TOKEN_LT)) {
+    generic_depth.push(TOKEN_LT);
+
+    name = name + '<';
+    var subst_type = parse_data_type(true, true);
+    name = name + subst_type.name;
+
+    while (consume(TOKEN_COMMA)) {
+      name = name + ',';
+      subst_type = parse_data_type(true, true);
+      name = name + subst_type.name;
+    }
+
+    if (generic_depth.length > 0) {
+      try {
+        must_consume(TOKEN_GT, 'Expected >.');
+        if (generic_depth.pop() != TOKEN_LT)
+          throw new Error('Syntax error.');
+        name = name + '>';
+      } catch (e) {
+        try {
+          must_consume(TOKEN_SHR, 'Expected >>.');
+          if (generic_depth.pop() != TOKEN_LT)
+            throw new Error('Syntax error.');
+          if (generic_depth.pop() != TOKEN_LT)
+            throw new Error('Syntax error.');
+          name = name + '>>';
+        } catch (e) {
+          try {
+            must_consume(TOKEN_SHRX, 'Expected >>>.');
+            if (generic_depth.pop() != TOKEN_LT)
+              throw new Error('Syntax error.');
+            if (generic_depth.pop() != TOKEN_LT)
+              throw new Error('Syntax error.');
+            if (generic_depth.pop() != TOKEN_LT)
+              throw new Error('Syntax error.');
+            name = name + '>>>';
+          } catch (e) { throw e; }
+        }
+      }
+    }
+  }
 
   // subscript
-  if (parse_data_type) {
+  if (parse_brackets) {
     while (consume(TOKEN_LBRACKET)) {
       name = name + '[]';
       must_consume(TOKEN_RBRACKET, 'Expected ] (Error#).');
@@ -2174,7 +2250,7 @@ var parse_construct = function() {
     name = must_read_id('Identifier expected.');
   }
 
-  if (name[-1] != '>') args = parse_args(false);
+  if (name[name.length - 1] != '>') args = parse_args(false);
 
   if (args == null) return {token:t.type, name:name};
 
@@ -2309,12 +2385,18 @@ var print_token = function(token) {
 };
 var print_pending = function() {
   for (var i in pending) {
-    print_token(pending[i]);
+    print(i + ' ' +
+          token_str(pending[i].type) + ' ' +
+          pending[i].type + ' ' +
+          pending[i].content);
   }
 }
 var print_processed = function() {
   for (var i in processed) {
-    print_token(processed[i]);
+    print(i + ' ' +
+          token_str(processed[i].type) + ' ' +
+          processed[i].type + ' ' +
+          processed[i].content);
   }
 }
 
@@ -2859,6 +2941,74 @@ var test_parse = function() {
        type:{token:TOKEN_FLOAT, name:'float'},
        name:'num2',
        initial_value:{token:LITERAL_DOUBLE, value:6.28}}]],
+    ['Vector<String>', {
+      token:TOKEN_ID,
+      name:'Vector<String>'}],
+    ['Seq<Seq<A>>', {
+      token:TOKEN_ID,
+      name:'Seq<Seq<A>>'}],
+    ['Seq<Seq<Seq<A>>>', {
+      token:TOKEN_ID,
+      name:'Seq<Seq<Seq<A>>>'}],
+    ['Seq<Seq<Seq<Seq<A>>>>', {
+      token:TOKEN_ID,
+      name:'Seq<Seq<Seq<Seq<A>>>>'}],
+    ['Seq<String>.Zipper<Integer>', {
+      token:TOKEN_PERIOD,
+      operand:{
+        token:TOKEN_ID,
+        name:'Seq<String>'
+      },
+      term:{
+        token:TOKEN_ID,
+        name:'Zipper<Integer>'
+      }
+    }],
+    ['Collection<Integer>', {
+      token:TOKEN_ID,
+      name:'Collection<Integer>'
+    }],
+    ['Pair<String,String>', {
+      token:TOKEN_ID,
+      name:'Pair<String,String>'
+    }],
+    ['Collection<?>', {
+      token:TOKEN_ID,
+      name:'Collection<?>'
+    }],
+    ['Class<?>[]', {
+      token:TOKEN_ID,
+      name:'Class<?>[]'
+    }],
+    ['Collection<? extends E>', {
+      token:TOKEN_ID,
+      name:'Collection<? extends E>'
+    }],
+    ['Collection<? super E>', {
+      token:TOKEN_ID,
+      name:'Collection<? super E>'
+    }],
+    ['Cell x = new Cell<String>("abc");', [{
+      token:TOKEN_ID,
+      type:{
+        token:TOKEN_ID,
+        name:'Cell'
+      },
+      name:'x',
+      initial_value:{
+        token:TOKEN_NEW,
+        type:{
+          token:TOKEN_ID,
+          name:'Cell<String>'
+        },
+        args:[
+          {
+            token:LITERAL_STRING,
+            value:'abc'
+          }
+        ]
+      }
+    }]],
     ['return;', {
       token:TOKEN_RETURN,
       value:'void'}],
