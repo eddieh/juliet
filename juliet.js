@@ -473,21 +473,32 @@ var tokenize = function() {
   var buffer = '';
   var next = {};
   if (data_i == data.length) return false;
-  while (data[data_i] == ' ') {
+  while (data[data_i] == ' ' || data[data_i] == '\n') {
     data_i++;
     if (data_i == data.length) return false;
     // TODO, track columns and lines
   }
 
   var ch = data.charCodeAt(data_i);
-  // TODO EOF
 
+  //
   // Parse Identifiers
+  //
 
   // Default to an error unless we prove otherwise
   var TYPE_DEFAULT = TOKEN_ERROR;
   next.type = TYPE_DEFAULT;
   pending.push(next);
+
+  // handle end of data and eof
+  // TODO: correct?
+  if (data_i >= data.length) {
+    return false;
+  }
+  if (!ch) {
+    next.type = TOKEN_EOF;
+    return true;
+  }
 
   // a-z, A-Z, _, $
   if ((ch >= 97 && ch <= 122) ||
@@ -1190,7 +1201,6 @@ var parse_type_def = function() {
   if (arguments.length == 0) {
     quals = parse_type_qualifiers();
     t = peek();
-
     if (consume(TOKEN_CLASS)) {
       return parse_type_def(t, quals | JOG_QUALIFIER_CLASS , "Class name expected.");
     } else if (consume(TOKEN_INTERFACE)) {
@@ -1265,7 +1275,7 @@ var parse_type_def = function() {
     if (is_class(type) && !is_template(type)) {
       type.static_initializers = [{token:t.type,
                                    qualifiers:JOG_QUALIFIER_STATIC,
-                                   //type_context:type, // TODO
+                                   // TODO: type_context:type,
                                    return_type:null,
                                    name:'static'}];
     }
@@ -1330,16 +1340,6 @@ var parse_type_qualifiers = function() {
       if (quals & (JOG_QUALIFIER_PUBLIC | JOG_QUALIFIER_PROTECTED)) {
         throw new Error('Cannot be private if public or protected.');
       }
-      continue;
-    }
-
-    if (consume(TOKEN_STATIC)) {
-      quals |= JOG_QUALIFIER_STATIC;
-      continue;
-    }
-
-    if (consume(TOKEN_NATIVE)) {
-      quals |= JOG_QUALIFIER_NATIVE;
       continue;
     }
 
@@ -1493,7 +1493,7 @@ var parse_member = function(type) {
 
     m = {token:t.type,
          qualifiers:quals,
-         type:type,
+         // TODO: type:type,
          return_type:data_type,
          name:name};
 
@@ -1529,7 +1529,7 @@ var parse_member = function(type) {
       }
 
       must_consume(TOKEN_LCURLY, 'Expected {.');
-      while (next_is(TOKEN_RCURLY)) {
+      while (!next_is(TOKEN_RCURLY)) {
         stm = parse_statement(true);
         if (stm) {
           if (!m.statements) m.statements = [];
@@ -1561,7 +1561,7 @@ var parse_member = function(type) {
 
       p = {token:name_t.type,
            qualifiers:quals,
-           type_context:type,
+           // TODO: type_context:type,
            type:data_type,
            name:name,
            initial_value:parse_initial_value(data_type)};
@@ -3243,6 +3243,7 @@ var test_parse = function() {
 
 var test_parse_types = function () {
   var tests = [
+/*
     ['class Empty {}', {
       parsed_types: [{
         token:TOKEN_CLASS,
@@ -3251,7 +3252,7 @@ var test_parse_types = function () {
         static_initializers:[{
           token: TOKEN_CLASS,
           qualifiers:JOG_QUALIFIER_STATIC,
-          //type_context:, // TODO
+          // TODO: type_context:,
           return_type:null,
           name:'static'
         }]
@@ -3271,7 +3272,7 @@ var test_parse_types = function () {
          static_initializers:[{
            token: TOKEN_CLASS,
            qualifiers:JOG_QUALIFIER_STATIC,
-           //type_context:, // TODO
+           // TODO: type_context:,
            return_type:null,
            name:'static'
          }],
@@ -3314,18 +3315,18 @@ var test_parse_types = function () {
          static_initializers:[{
            token:TOKEN_CLASS,
            qualifiers:JOG_QUALIFIER_STATIC,
-           //type_context:, // TODO
+           // TODO: type_context:,
            return_type:null,
            name:'static'
          }]},{
            token:TOKEN_CLASS,
            qualifiers:JOG_QUALIFIER_CLASS | JOG_QUALIFIER_PUBLIC,
-           //type_context:, // TODO
+           // TODO: type_context:,
            name:'A',
            static_initializers:[{
              token:TOKEN_CLASS,
              qualifiers:JOG_QUALIFIER_STATIC,
-             //type_context:, // TODO
+             // TODO: type_context:,
              return_type:null,
              name:'static'
            }],
@@ -3336,7 +3337,187 @@ var test_parse_types = function () {
              name:'<init>',
              statements:null
            }]
-         }]}]
+         }]}],
+*/
+    ['class Test {\n' +
+     '  Test ()\n' +
+     '  {\n' +
+     '    Object obj = "Works";\n' +
+     '    String st = (String) obj;\n' +
+     '    println( st );\n' +
+     '  }\n' +
+     '\n' +
+     '  public class A {\n' +
+     '    public A () {;}\n' +
+     '  }\n' +
+     '\n' +
+     '  public class B {\n' +
+     '    public B () {;}\n' +
+     '    public A something () {\n' +
+     '      if (true) {return null;}\n' +
+     '      return (A) new A ();\n' +
+     '    }\n' +
+     '  }\n' +
+     '}', {
+       parsed_types:[
+         {
+           token:TOKEN_CLASS,
+           qualifiers:34,
+           name:'Test',
+           static_initializers:[
+             {
+               token:TOKEN_CLASS,
+               qualifiers:8,
+               return_type:null,
+               name:'static'
+             }
+           ],
+           methods:[
+             {
+               token:TOKEN_ID,
+               qualifiers:256,
+               return_type:null,
+               name:'<init>',
+               statements:[
+                 [
+                   {
+                     token:TOKEN_ID,
+                     type:{
+                       token:TOKEN_ID,
+                       name:'Object'
+                     },
+                     name:'obj',
+                     initial_value:{
+                       token:LITERAL_STRING,
+                       value:'Works'
+                     }
+                   }
+                 ],
+                 [
+                   {
+                     token:TOKEN_ID,
+                     type:{
+                       token:TOKEN_STRING,
+                       name:'String'
+                     },
+                     name:'st',
+                     initial_value:{
+                       token:TOKEN_LPAREN,
+                       operand:{
+                         token:TOKEN_ID,
+                         name:'obj'
+                       },
+                       to_type:{
+                         token:TOKEN_STRING,
+                         name:'String'
+                       }
+                     }
+                   }
+                 ],
+                 {
+                   token:TOKEN_ID,
+                   name:'println',
+                   args:[
+                     {
+                       token:TOKEN_ID,
+                       name:'st'
+                     }
+                   ]
+                 }
+               ]
+             }
+           ]
+         },
+         {
+           token:TOKEN_CLASS,
+           qualifiers:33,
+           name:'A',
+           static_initializers:[
+             {
+               token:TOKEN_CLASS,
+               qualifiers:8,
+               return_type:null,
+               name:'static'
+             }
+           ],
+           methods:[
+             {
+               token:TOKEN_PUBLIC,
+               qualifiers:257,
+               return_type:null,
+               name:'<init>'
+             }
+           ]
+         },
+         {
+           token:TOKEN_CLASS,
+           qualifiers:33,
+           name:'B',
+           static_initializers:[
+             {
+               token:TOKEN_CLASS,
+               qualifiers:8,
+               return_type:null,
+               name:'static'
+             }
+           ],
+           methods:[
+             {
+               token:TOKEN_PUBLIC,
+               qualifiers:257,
+               return_type:null,
+               name:'<init>'
+             },
+             {
+               token:TOKEN_PUBLIC,
+               qualifiers:1,
+               return_type:{
+                 token:TOKEN_ID,
+                 name:'A'
+               },
+               name:'something',
+               statements:[
+                 {
+                   token:TOKEN_IF,
+                   expression:{
+                     token:LITERAL_BOOLEAN,
+                     value:true
+                   },
+                   body:[
+                     {
+                       token:TOKEN_RETURN,
+                       expression:{
+                         token:TOKEN_NULL,
+                         value:'null'
+                       }
+                     }
+                   ]
+                 },
+                 {
+                   token:TOKEN_RETURN,
+                   expression:{
+                     token:TOKEN_LPAREN,
+                     operand:{
+                       token:TOKEN_NEW,
+                       type:{
+                         token:TOKEN_ID,
+                         name:'A'
+                       },
+                       args:[
+                       ]
+                     },
+                     to_type:{
+                       token:TOKEN_ID,
+                       name:'A'
+                     }
+                   }
+                 }
+               ]
+             }
+           ]
+         }
+       ]
+     }]
   ];
 
   print('BEGIN TESTS');
@@ -3353,6 +3534,8 @@ var test_parse_types = function () {
 
     parse();
     delete Parser.this_method;
+
+    print_ast(Parser);
     if (equal(Parser, t[1])) {
       print('Passed.');
       pass_count++;
@@ -3372,8 +3555,8 @@ var test_parse_types = function () {
 }
 
 //test_tokenize();
-test_parse();
-//test_parse_types();
+//test_parse();
+test_parse_types();
 
 // TODO:
 // Negative Numbers
