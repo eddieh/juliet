@@ -1224,7 +1224,8 @@ var parse_type_def = function() {
     type = {token:t.type, qualifiers:quals, name:name};
     Parser.parsed_types.push(type);
 
-    // TODO: Template type (Jog implements templates instead of generics).
+    // parametrized types
+    // template type (Jog implements templates instead of generics).
     if (consume(TOKEN_LT)) {
       type.placeholder_types = [parse_placeholder_type()];
       while(consume(TOKEN_COMMA)) {
@@ -1926,9 +1927,16 @@ var parse_conditional = function() {
   if (trace) print('parse_conditional');
   var expr = parse_logical_or();
   var t = peek();
+  var true_value = null;
+  var false_value = null;
   if (consume(TOKEN_QUESTIONMARK)) {
-    // TODO: ternary conditional
-    throw new Error('Ternary not implemented.');
+    true_value = parse_conditional();
+    must_consume(TOKEN_COLON, 'Expected :.');
+    false_value = parse_conditional();
+    return {token:t.type,
+            expression:expr,
+            true_value:true_value,
+            false_value:false_value};
   }
   return expr;
 }
@@ -2715,6 +2723,21 @@ var test_parse = function() {
       token:TOKEN_SHR_ASSIGN,
       location:{token:TOKEN_ID, name:'a'},
       new_value:{token:TOKEN_ID, name:'b'}}],
+    ['true ? "true" : "false"', {
+      token:TOKEN_QUESTIONMARK,
+      expression:{
+        token:LITERAL_BOOLEAN,
+        value:true
+      },
+      true_value:{
+        token:LITERAL_STRING,
+        value:'true'
+      },
+      false_value:{
+        token:LITERAL_STRING,
+        value:'false'
+      }
+    }],
     ['a = true || false;', {
       token:TOKEN_ASSIGN,
       location:{token:TOKEN_ID, name:'a'},
@@ -3725,8 +3748,8 @@ var test_parse_types = function () {
 }
 
 //test_tokenize();
-//test_parse();
-test_parse_types();
+test_parse();
+//test_parse_types();
 
 // TODO:
 // Negative Numbers
