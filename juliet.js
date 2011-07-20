@@ -881,31 +881,10 @@ var tokenize = function() {
 
   // qualified name
   if (ch == '46') {
-    var proceeding_token = TOKEN_ERROR;
-    // must be proceeded by an identifier or
-    // procedded by a GT in the case of
-    // parameterized types (templates, generics)
-    if (pending && pending.length > 1) {
-      proceeding_token = pending[pending.length - 2].type;
-      if (proceeding_token == TOKEN_ID || proceeding_token == TOKEN_GT) {
-        next.type = TOKEN_PERIOD;
-        next.content = '.'
-        data_i++;
-        return true;
-      }
-    }
-    if (processed && processed.length > 0) {
-      proceeding_token = processed[processed.length - 1].type;
-      if (proceeding_token == TOKEN_ID || proceeding_token == TOKEN_GT) {
-        next.type = TOKEN_PERIOD;
-        next.content = '.';
-        data_i++;
-        return true;
-      }
-    }
-    print('Illegal expression.');
-    next.type = TOKEN_ERROR;
-    return false;
+    next.type = TOKEN_PERIOD;
+    next.content = '.'
+    data_i++;
+    return true;
   }
 
   // Parse Operators
@@ -1164,6 +1143,9 @@ var is_abstract = function(a) {
   return a.qualifiers & JOG_QUALIFIER_ABSTRACT;
 };
 
+var is_constructor = function(a) {
+  return a.qualifiers & JOG_QUALIFIER_CONSTRUCTOR;
+};
 
 var cmd = function(op, t, lhs, rhs) {
 };
@@ -2357,8 +2339,25 @@ var parse_term = function() {
     must_consume(TOKEN_RPAREN, 'Expected ).');
     return expr;
   case TOKEN_SUPER:
-    // TODO:
-    print('super');
+    if (peek(2).type == TOKEN_LPAREN) {
+      t = read();
+      if (Parser.this_method && !is_constructor(Parser.this_method)) {
+        throw new Error('Use "super.methodname" to call superclass method.');
+      }
+      if (Parser.this_method && Parser.this_method.statements.length) {
+        throw new Error('Call to superclass constructor must be the first statement.');
+      }
+      args = parse_args(true);
+      if (Parser.this_method)
+        Parser.this_method.calls_super_constructor = true;
+      return {token:t.type, args:args};
+    } else {
+      t = read();
+      must_consume(TOKEN_PERIOD, 'Expected ".".');
+      name = must_read_id('Expected method or property name.');
+      args = parse_args(false);
+      return {token:t.type, name:name, args:args};
+    }
   case TOKEN_CHAR:
   case TOKEN_BYTE:
   case TOKEN_SHORT:
@@ -2525,7 +2524,7 @@ var test_tokenize = function () {
     ['.3e10', LITERAL_DOUBLE, 0.3e10],
     ['0.e10', LITERAL_DOUBLE, 0.0e10],
     ['.0e10', LITERAL_DOUBLE, 0.0e10],
-    ['.e10', TOKEN_ERROR],
+    ['.e10', [TOKEN_PERIOD, TOKEN_ID]],
     ['2e5000', TOKEN_ERROR],
     ['00.03', LITERAL_DOUBLE, 0.03],
     ['03e2', LITERAL_DOUBLE, 3e2],
@@ -2606,11 +2605,6 @@ var test_tokenize = function () {
     ['a .b', [TOKEN_ID, TOKEN_PERIOD, TOKEN_ID]],
     ['Foo.e10', [TOKEN_ID, TOKEN_PERIOD, TOKEN_ID]],
     ['Foo .e10', [TOKEN_ID, TOKEN_PERIOD, TOKEN_ID]],
-    // ['Foo (.e10)', TOKEN_ERROR],
-    // ['(Foo).e10', TOKEN_ERROR],
-    // ['(Foo) .e10', TOKEN_ERROR],
-    ['. 1', TOKEN_ERROR],
-    ['.', TOKEN_ERROR]
   ];
 
   print('BEGIN TESTS');
@@ -3229,7 +3223,23 @@ var test_parse = function() {
               {token:LITERAL_INT, value:1}
             ]
           }
-        ]}}]]
+        ]}}]],
+    ['super();', {
+      token:TOKEN_SUPER,
+      args:[
+      ]
+    }],
+    ['super.x', {
+      token:TOKEN_SUPER,
+      name:'x',
+      args:null
+    }],
+    ['super.isAwesome();', {
+      token:TOKEN_SUPER,
+      name:'isAwesome',
+      args:[
+      ]
+    }]
   ];
 
   print('BEGIN TESTS');
