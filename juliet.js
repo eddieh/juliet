@@ -3243,7 +3243,6 @@ var test_parse = function() {
 
 var test_parse_types = function () {
   var tests = [
-/*
     ['class Empty {}', {
       parsed_types: [{
         token:TOKEN_CLASS,
@@ -3338,7 +3337,6 @@ var test_parse_types = function () {
              statements:null
            }]
          }]}],
-*/
     ['class Test {\n' +
      '  Test ()\n' +
      '  {\n' +
@@ -3517,6 +3515,179 @@ var test_parse_types = function () {
            ]
          }
        ]
+     }],
+    ['class Outer<T> {\n' +
+     '  T t;\n' +
+     '  class Inner {\n' +
+     '    T setOuterT(T t1) {t = t1;return t;}\n' +
+     '  }\n' +
+     '}', {
+       parsed_types:[
+         {
+           token:TOKEN_CLASS,
+           qualifiers:34,
+           name:'Outer',
+           placeholder_types:[
+             {
+               token:TOKEN_ID,
+               name:'T'
+             }
+           ],
+           properties:[
+             {
+               token:TOKEN_ID,
+               qualifiers:0,
+               type:{
+                 token:TOKEN_ID,
+                 name:'T'
+               },
+               name:'t',
+               initial_value:null
+             }
+           ],
+           template_tokens:[
+             {
+               type:28
+             },
+             {
+               type:1,
+               content:'T'
+             },
+             {
+               type:1,
+               content:'t'
+             },
+             {
+               type:19
+             },
+             {
+               type:59,
+               content:'class'
+             },
+             {
+               type:1,
+               content:'Inner'
+             },
+             {
+               type:28
+             },
+             {
+               type:1,
+               content:'T'
+             },
+             {
+               type:1,
+               content:'setOuterT'
+             },
+             {
+               type:10
+             },
+             {
+               type:1,
+               content:'T'
+             },
+             {
+               type:1,
+               content:'t1'
+             },
+             {
+               type:11
+             },
+             {
+               type:28
+             },
+             {
+               type:1,
+               content:'t'
+             },
+             {
+               type:21,
+               content:'='
+             },
+             {
+               type:1,
+               content:'t1'
+             },
+             {
+               type:19
+             },
+             {
+               type:84,
+               content:'return'
+             },
+             {
+               type:1,
+               content:'t'
+             },
+             {
+               type:19
+             },
+             {
+               type:30
+             },
+             {
+               type:30
+             },
+             {
+               type:30
+             }
+           ]
+         },
+         {
+           token:TOKEN_CLASS,
+           qualifiers:34,
+           name:'Inner',
+           static_initializers:[
+             {
+               token:TOKEN_CLASS,
+               qualifiers:8,
+               return_type:null,
+               name:'static'
+             }
+           ],
+           methods:[
+             {
+               token:TOKEN_ID,
+               qualifiers:0,
+               return_type:{
+                 token:TOKEN_ID,
+                 name:'T'
+               },
+               name:'setOuterT',
+               parameters:[
+                 {
+                   token:TOKEN_ID,
+                   type:{
+                     token:TOKEN_ID,
+                     name:'T'
+                   },
+                   name:'t1'
+                 }
+               ],
+               statements:[
+                 {
+                   token:TOKEN_ASSIGN,
+                   location:{
+                     token:TOKEN_ID,
+                     name:'t'
+                   },
+                   new_value:{
+                     token:TOKEN_ID,
+                     name:'t1'
+                   }
+                 },
+                 {
+                   token:TOKEN_RETURN,
+                   expression:{
+                     token:TOKEN_ID,
+                     name:'t'
+                   }
+                 }
+               ]
+             }
+           ]
+         }
+       ]
      }]
   ];
 
@@ -3535,7 +3706,6 @@ var test_parse_types = function () {
     parse();
     delete Parser.this_method;
 
-    print_ast(Parser);
     if (equal(Parser, t[1])) {
       print('Passed.');
       pass_count++;
