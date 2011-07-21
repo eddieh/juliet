@@ -472,14 +472,47 @@ var init = function() {
 var tokenize = function() {
   var buffer = '';
   var next = {};
-  if (data_i == data.length) return false;
-  while (data[data_i] == ' ' || data[data_i] == '\n') {
-    data_i++;
-    if (data_i == data.length) return false;
-    // TODO, track columns and lines
+  var ch = data.charCodeAt(data_i);
+
+  //
+  // Comments
+  //
+  if (ch == 47) {
+    if (data[data_i + 1] == '/') {
+      // Discard single-line comment
+      data_i = data_i + 2;
+      ch = data.charCodeAt(data_i);
+      while (ch && ch != 10) {
+        data_i++;
+        ch = data.charCodeAt(data_i);
+      }
+      data_i++;
+      ch = data.charCodeAt(data_i);
+    } else if (data[data_i + 1] == '*') {
+      // Discard multi-line comment
+      data_i = data_i + 2;
+      ch = data.charCodeAt(data_i);
+      while (ch) {
+        if (ch == 42 && data[data_i + 1] == '/') {
+          data_i = data_i + 2;
+          ch = data.charCodeAt(data_i);
+          break;
+        }
+        data_i++;
+        ch = data.charCodeAt(data_i);
+      }
+    }
   }
 
-  var ch = data.charCodeAt(data_i);
+  //
+  // White space
+  //
+  while (ch == 32 || ch == 10) {
+    data_i++;
+    ch = data.charCodeAt(data_i);
+    // TODO, track columns and lines
+  }
+  if (!ch) return false; // EOF
 
   //
   // Parse Identifiers
@@ -489,16 +522,6 @@ var tokenize = function() {
   var TYPE_DEFAULT = TOKEN_ERROR;
   next.type = TYPE_DEFAULT;
   pending.push(next);
-
-  // handle end of data and eof
-  // TODO: correct?
-  if (data_i >= data.length) {
-    return false;
-  }
-  if (!ch) {
-    next.type = TOKEN_EOF;
-    return true;
-  }
 
   // a-z, A-Z, _, $
   if ((ch >= 97 && ch <= 122) ||
@@ -3239,7 +3262,17 @@ var test_parse = function() {
       name:'isAwesome',
       args:[
       ]
-    }]
+    }],
+    ['return; // i\'m not here', {
+      token:TOKEN_RETURN,
+      value:'void'
+    }],
+    ['/* this is\n' +
+     '   ignored */\n' +
+     'return;', {
+       token:TOKEN_RETURN,
+       value:'void'
+     }]
   ];
 
   print('BEGIN TESTS');
@@ -3721,7 +3754,28 @@ var test_parse_types = function () {
            ]
          }
        ]
-     }]
+     }],
+    ['/* Test class with comments */\n' +
+     '/* 1\n' +
+     '   2\n' +
+     '*/\n' +
+      'class Empty {\n' +
+      '  // single-line comment\n' +
+      '  /* multi-line comment */\n' +
+     '}', {
+       parsed_types: [{
+         token:TOKEN_CLASS,
+         qualifiers:JOG_QUALIFIER_CLASS | JOG_QUALIFIER_PROTECTED,
+         name:'Empty',
+         static_initializers:[{
+           token: TOKEN_CLASS,
+           qualifiers:JOG_QUALIFIER_STATIC,
+           // TODO: type_context:,
+           return_type:null,
+           name:'static'
+         }]
+       }]
+     }],
   ];
 
   print('BEGIN TESTS');
