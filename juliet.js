@@ -1188,11 +1188,55 @@ var init_parser = function() {
 var parse = function() {
   if (trace) print('parse');
 
-  var type = parse_type_def();
-  while (type) {
-    type = parse_type_def();
+  var unit = parse_compilation_unit();
+  while (unit) {
+    unit = parse_compilation_unit();
   }
 }
+
+var parse_compilation_unit = function(unit) {
+  if (trace) print('parse_compilation_unit');
+  if (unit === undefined) {
+    return parse_compilation_unit(parse_type_def());
+  } else {
+    if (next_is(TOKEN_PACKAGE)) {
+      Parser['package'] = parse_package_decls();
+    }
+    while (next_is(TOKEN_IMPORT)) {
+      if (!Parser.imports) Parser.imports = [];
+      Parser.imports.push(parse_import_decls());
+    }
+    return unit;
+  }
+};
+
+var parse_package_decls = function(){
+  var t = read();
+  var name = must_read_id('Expected package name.');
+  while (consume(TOKEN_PERIOD)) {
+    name = name + '.' + must_read_id('Expected identifier.');
+  }
+  must_consume_semicolon(t);
+  return {token:t.type, name:name};
+};
+
+var parse_import_decls = function() {
+  var t = read();
+  var name = '';
+  if (consume(TOKEN_STATIC)) name = 'static ';
+  name = must_read_id('Expected package or type name.');
+  while (consume(TOKEN_PERIOD)) {
+    name = name + '.';
+    if (next_is(TOKEN_STAR)) {
+      read();
+      name = name + '*';
+      break;
+    }
+    name = name + must_read_id('Expected identifier.');
+  }
+  must_consume_semicolon(t);
+  return {token:t.type, name:name};
+};
 
 var parse_type_def = function() {
   if (trace) print('parse_type_def');
@@ -2331,6 +2375,8 @@ var parse_term = function() {
   var name = '';
 
   p = peek().type;
+  //print_token(p);
+
   switch (p) {
   case LITERAL_DOUBLE:
     t = read();
@@ -3776,6 +3822,55 @@ var test_parse_types = function () {
          }]
        }]
      }],
+    ['package java.lang;', {
+      parsed_types:[
+      ],
+      'package':{
+        token:TOKEN_PACKAGE,
+        name:'java.lang'
+      }
+    }],
+    ['package java.lang;\n' +
+     'import java.io;\n' +
+     'import java.error.*;', {
+       parsed_types:[
+       ],
+       'package':{
+         token:TOKEN_PACKAGE,
+         name:'java.lang'
+       },
+       imports:[
+         {
+           token:TOKEN_IMPORT,
+           name:'java.io'
+         },
+         {
+           token:TOKEN_IMPORT,
+           name:'java.error.*'
+         }
+       ]
+     }],
+    ['import java.io;\n' +
+     'class Empty {}', {
+      parsed_types:[{
+        token:TOKEN_CLASS,
+        qualifiers:JOG_QUALIFIER_CLASS | JOG_QUALIFIER_PROTECTED,
+        name:'Empty',
+        static_initializers:[{
+          token: TOKEN_CLASS,
+          qualifiers:JOG_QUALIFIER_STATIC,
+          // TODO: type_context:,
+          return_type:null,
+          name:'static'
+        }]
+      }],
+      imports:[
+        {
+          token:TOKEN_IMPORT,
+          name:'java.io'
+        }
+      ]
+    }]
   ];
 
   print('BEGIN TESTS');
@@ -3793,6 +3888,7 @@ var test_parse_types = function () {
     parse();
     delete Parser.this_method;
 
+    //print_ast(Parser);
     if (equal(Parser, t[1])) {
       print('Passed.');
       pass_count++;
@@ -3812,12 +3908,8 @@ var test_parse_types = function () {
 }
 
 //test_tokenize();
-test_parse();
-//test_parse_types();
-
-// TODO:
-// Negative Numbers
-// Numbers that begin with .
+//test_parse();
+test_parse_types();
 
 // Notes:
 // 03e2 is an ugly number.  Is it a malformed octal number or a
