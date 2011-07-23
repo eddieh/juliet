@@ -1667,6 +1667,8 @@ var parse_member = function(type) {
       must_consume(TOKEN_RCURLY, 'Expected }.');
     }
   } else {
+    // property
+    if (trace) print('property');
     if (data_type == null) {
       throw new Error('void cannot be use as property type.');
     }
@@ -1677,8 +1679,6 @@ var parse_member = function(type) {
       throw new Error('Interface cannot have properties.');
     }
 
-    // property
-    if (trace) print('property');
     first = true;
     do {
       if (first) first = false;
@@ -1694,15 +1694,13 @@ var parse_member = function(type) {
            name:name,
            initial_value:parse_initial_value(data_type)};
       if (is_static(p)) {
-        if (!type.class_propertis) type.class_properties = [];
-        type.class_propertis.push(p);
+        if (!type.class_properties) type.class_properties = [];
+        type.class_properties.push(p);
       } else {
         if (!type.properties) type.properties = [];
         type.properties.push(p);
       }
-    }
-
-    while (consume(TOKEN_COMMA));
+    } while (consume(TOKEN_COMMA));
 
     must_consume_semicolon(t);
   }
