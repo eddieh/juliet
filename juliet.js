@@ -2451,7 +2451,7 @@ var parse_term = function() {
   var name = '';
 
   p = peek().type;
-  //print_token(p);
+  if (trace) print_token(p);
 
   switch (p) {
   case LITERAL_DOUBLE:
@@ -2492,8 +2492,10 @@ var parse_term = function() {
       if (Parser.this_method && !is_constructor(Parser.this_method)) {
         throw new Error('Use "super.methodname" to call superclass method.');
       }
-      if (Parser.this_method && Parser.this_method.statements.length) {
-        throw new Error('Call to superclass constructor must be the first statement.');
+      if (Parser.this_method && Parser.this_method.statements) {
+        if(Parser.this_method.statements.length) {
+          throw new Error('Call to superclass constructor must be the first statement.');
+        }
       }
       args = parse_args(true);
       if (Parser.this_method)
