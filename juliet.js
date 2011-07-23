@@ -863,16 +863,30 @@ var tokenize = function() {
       } else {
         if (next.type == TYPE_DEFAULT) next.type = LITERAL_INT;
         if (is_negative) buffer = '-' + buffer;
+        // TODO: properly handle longs
         var z = parseInt(buffer, base);
-        if (z > 2147483647) {
-          print('Integer value too large.');
-          next.type = TOKEN_ERROR;
-          return false;
-        }
-        if (z < -2147483648) {
-          print('Integer value too small.');
-          next.type = TOKEN_ERROR;
-          return false;
+        if(next.type == LITERAL_INT) {
+          if (z > 2147483647) {
+            print('Integer value too large.');
+            next.type = TOKEN_ERROR;
+            return false;
+          }
+          if (z < -2147483648) {
+            print('Integer value too small.');
+            next.type = TOKEN_ERROR;
+            return false;
+          }
+        } else if (next.type == LITERAL_LONG) {
+          if (z > 9223372036854775807) {
+            print('Long value too large.');
+            next.type = TOKEN_ERROR;
+            return false;
+          }
+          if (z < -9223372036854775808) {
+            print('Long value to small.');
+            next.type = TOKEN_ERROR;
+            return false;
+          }
         }
         next.content = z;
       }
@@ -2449,6 +2463,9 @@ var parse_term = function() {
     t = read();
     return {token:t.type, value:t.content};
   case LITERAL_INT:
+    t = read();
+    return {token:t.type, value:t.content};
+  case LITERAL_LONG:
     t = read();
     return {token:t.type, value:t.content};
   case LITERAL_CHAR:
