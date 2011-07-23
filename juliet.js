@@ -1643,7 +1643,7 @@ var parse_member = function(type) {
       if (is_interface(m)) {
         throw new Error('Interface method cannot be native.');
       }
-      must_consume(TOKEN_SEMICOLON, 'Expexted ;.');
+      must_consume(TOKEN_SEMICOLON, 'Expected ;.');
     } else if (consume(TOKEN_SEMICOLON)) {
       if (!is_abstract(m)) {
         throw new Error('Method missing body.');
