@@ -458,6 +458,11 @@ var JOG_QUALIFIER_INTERFACE   =  64;
 var JOG_QUALIFIER_PRIMITIVE   = 128;
 var JOG_QUALIFIER_CONSTRUCTOR = 256;
 var JOG_QUALIFIER_ABSTRACT    = 512;
+var JOG_QUALIFIER_FINAL       = 1024;
+var JOG_QUALIFIER_STRICTFP    = 2048;
+var JOG_QUALIFIER_TRANSIENT   = 4096;
+var JOG_QUALIFIER_VOLATILE    = 8192;
+var JOG_QUALIFIER_SYNCRONIZED = 16384;
 
 var JOG_QUALIFIER_REFERENCE = (JOG_QUALIFIER_CLASS | JOG_QUALIFIER_INTERFACE);
 
@@ -1384,6 +1389,9 @@ var parse_type_qualifiers = function() {
 
     if (consume(TOKEN_ABSTRACT)) {
       quals |= JOG_QUALIFIER_ABSTRACT;
+      if (quals & (JOG_QUALIFIER_FINAL)) {
+        throw new Error('Cannot be abstract if final.');
+      }
       continue;
     }
 
@@ -1408,6 +1416,19 @@ var parse_type_qualifiers = function() {
       if (quals & (JOG_QUALIFIER_PUBLIC | JOG_QUALIFIER_PROTECTED)) {
         throw new Error('Cannot be private if public or protected.');
       }
+      continue;
+    }
+
+    if (consume(TOKEN_FINAL)) {
+      quals |= JOG_QUALIFIER_FINAL;
+      if (quals & (JOG_QUALIFIER_ABSTRACT)) {
+        throw new Error('Cannot be final if abstract.');
+      }
+      continue;
+    }
+
+    if (consume(TOKEN_STRICTFP)) {
+      quals |= JOG_QUALIFIER_STRICTFP;
       continue;
     }
 
@@ -1457,8 +1478,33 @@ var parse_member_qualifiers = function() {
       continue;
     }
 
+    if (consume(TOKEN_FINAL)) {
+      quals |= JOG_QUALIFIER_FINAL;
+      continue;
+    }
+
+    if (consume(TOKEN_TRANSIENT)) {
+      quals |= JOG_QUALIFIER_TRANSIENT;
+      continue;
+    }
+
+    if (consume(TOKEN_VOLATILE)) {
+      quals |= JOG_QUALIFIER_VOLATILE;
+      continue;
+    }
+
+    if (consume(TOKEN_SYNCHRONIZED)) {
+      quals |= JOG_QUALIFIER_SYNCRONIZED;
+      continue;
+    }
+
     if (consume(TOKEN_NATIVE)) {
       quals |= JOG_QUALIFIER_NATIVE;
+      continue;
+    }
+
+    if (consume(TOKEN_STRICTFP)) {
+      quals |= JOG_QUALIFIER_STRICTFP;
       continue;
     }
 
