@@ -4000,8 +4000,13 @@ var test_parse_types = function () {
 // byte = int = long
 
 var filepath = '';
-if (arguments[0]) {
-  filepath = arguments[0];
+var argc = arguments.length;
+if (argc) {
+  for (var i = 0; i < argc; i++) {
+    if (arguments[i] == '--trace') trace = true;
+    else filepath = arguments[i];
+  }
+
   print('Compiling :' + filepath);
 
   init();
