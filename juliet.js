@@ -14,6 +14,14 @@
   limitations under the License.
 */
 
+// save arguments in spidermonkey
+if (typeof(arguments) === 'undefined') {
+  var arguments = scriptArgs || arguments;
+}
+
+// save native read function.
+var readFile = read || readFile;
+
 var next_token = 1;
 
 var TOKEN_ID = next_token++;
@@ -3919,7 +3927,7 @@ var test_parse_types = function () {
 
 //test_tokenize();
 //test_parse();
-test_parse_types();
+//test_parse_types();
 
 // Notes:
 // 03e2 is an ugly number.  Is it a malformed octal number or a
@@ -3927,6 +3935,17 @@ test_parse_types();
 // I don't like it.
 // float = double
 // byte = int = long
-// One <Two> z
-// One <Two<Three>> z - this remains ambiguous until you know if
-// One Two or Three are classes.
+
+var filepath = '';
+if (arguments[0]) {
+  filepath = arguments[0];
+  print('Compiling :' + filepath);
+
+  init();
+  init_parser();
+  data = readFile(filepath);
+  print(data);
+  parse();
+  delete Parser.this_method;
+  print_ast(Parser);
+}
