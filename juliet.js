@@ -473,6 +473,8 @@ var data_i = 0;
 var pending = [];
 var processed = [];
 var marks = [];
+var line_i = 1;
+var col_i = 1;
 
 var init = function() {
   data = '';
@@ -480,11 +482,23 @@ var init = function() {
   pending = [];
   processed = [];
   marks = [];
+  line_i = 1;
+  col_i = 1;
 };
 
 var tokenize = function() {
   var buffer = '';
   var next = {};
+  next.error = function(error_message) {
+    var token = null;
+    var loc = '';
+    if (this.line) loc = loc + ':' + this.line;
+    if (this.col) loc = loc + ':' + this.col;
+    if (this.length) loc = loc + ':' + this.length;
+    if (this.type) token = this.type;
+    print(token_str(token) + loc);
+    return new Error(error_message);
+  };
 
   while(true) {
     var ch = data.charCodeAt(data_i);
@@ -495,12 +509,14 @@ var tokenize = function() {
     while (ch == 32) {
       data_i++;
       ch = data.charCodeAt(data_i);
-      // TODO, track columns and lines
+      col_i++;
     }
 
     if (ch == 10) {
       print('newline');
       data_i++
+      col_i = 1;
+      line_i++
       continue;
     }
 
@@ -527,6 +543,7 @@ var tokenize = function() {
         data_i = data_i + 2;
         ch = data.charCodeAt(data_i);
         while (ch) {
+          if (ch == 10) line_i++;
           if (ch == 42 && data[data_i + 1] == '/') {
             data_i = data_i + 2;
             break;
@@ -545,6 +562,11 @@ var tokenize = function() {
     // Default to an error unless we prove otherwise
     var TYPE_DEFAULT = TOKEN_ERROR;
     next.type = TYPE_DEFAULT;
+
+    next.line = line_i;
+    next.col = col_i;
+    next.length = 0;
+
     pending.push(next);
 
     // a-z, A-Z, _, $
@@ -564,9 +586,11 @@ var tokenize = function() {
       if (buffer in keywords) {
         next.type = keywords[buffer];
         next.content = buffer;
+        next.length = buffer.length;
       } else {
         next.type = TOKEN_ID;
         next.content = buffer;
+        next.length = buffer.length;
       }
       if (data_i != data.length) {
         if (token_seperator[data[data_i]] == null) {
@@ -580,12 +604,17 @@ var tokenize = function() {
         if (next.type == TOKEN_TRUE) {
           next.type = LITERAL_BOOLEAN;
           next.content = true;
+          next.length = 4;
         }
         else if (next.type == TOKEN_FALSE) {
           next.type = LITERAL_BOOLEAN;
           next.content = false;
+          next.length = 4;
         }
       }
+      next.line = line_i;
+      next.col = col_i;
+      col_i = col_i + next.lenght;
       return true;
     }
 
@@ -898,6 +927,9 @@ var tokenize = function() {
           return false;
         }
       }
+      next.line = line_i;
+      next.col = col_i;
+      col_i = col_i + buffer.length;
       return true;
     }
 
@@ -937,6 +969,10 @@ var tokenize = function() {
         return false;
       }
 
+      next.line = line_i;
+      next.col = col_i;
+      next.length = buffer.length;
+      col_i = col_i + buffer.lenght;
       return true;
     };
 
@@ -945,6 +981,10 @@ var tokenize = function() {
       next.type = TOKEN_PERIOD;
       next.content = '.'
       data_i++;
+      next.line = line_i;
+      next.col = col_i;
+      next.length = 1;
+      col_i++;
       return true;
     }
 
@@ -961,6 +1001,10 @@ var tokenize = function() {
         next.type = operators[buffer];
         next.content = buffer;
         data_i += buffer.length;
+        next.line = line_i;
+        next.col = col_i;
+        next.length = buffer.length;
+        col_i = col_i + buffer.length;
         return true;
       }
     }
@@ -968,6 +1012,10 @@ var tokenize = function() {
     if (structure[data[data_i]] != undefined) {
       next.type = structure[data[data_i]];
       data_i++;
+      next.line = line_i;
+      next.col = col_i;
+      next.length = 1;
+      col_i++;
       return true;
     }
 
@@ -1013,6 +1061,10 @@ var tokenize = function() {
           return false;
         }
       }
+      next.line = line_i;
+      next.col = col_i;
+      next.length = 1;
+      col_i++;
       return true;
     }
 
@@ -1055,6 +1107,10 @@ var tokenize = function() {
           return false;
         }
       }
+      next.line = line_i;
+      next.col = col_i;
+      next.length = buffer.length;
+      col_i = col_i + buffer.length;
       return true;
     }
 
@@ -1167,7 +1223,7 @@ var must_consume = function(token_type, error_message) {
 var must_consume_semicolon = function(t) {
   if (trace) print('must_consume_semicolon');
   if (!consume(TOKEN_SEMICOLON)) {
-    throw new Error('Syntax error: expected ;.');
+    throw t.error('Syntax error: expected ;.');
     // TODO: complete semicolon handling
   }
 };
@@ -1178,7 +1234,7 @@ var must_read_id = function(error_message) {
   var result = '';
 
   if (t.type != TOKEN_ID) {
-    throw new Error(error_message);
+    throw t.error(error_message);
   }
 
   result = read().content;
@@ -1288,12 +1344,14 @@ var parse_type_def = function() {
     quals = parse_type_qualifiers();
     t = peek();
     if (consume(TOKEN_CLASS)) {
-      return parse_type_def(t, quals | JOG_QUALIFIER_CLASS , "Class name expected.");
+      return parse_type_def(t, quals | JOG_QUALIFIER_CLASS , 'Class name expected.');
     } else if (consume(TOKEN_INTERFACE)) {
-      return parse_type_def(t, quals | JOG_QUALIFIER_INTERFACE | JOG_QUALIFIER_ABSTRACT, "Interface name expected.");
+      return parse_type_def(t, quals | JOG_QUALIFIER_INTERFACE | JOG_QUALIFIER_ABSTRACT, 'Interface name expected.');
     } else {
-      if (quals) throw new Error("Expected class or interface.");
+      if (quals) throw t.error('Expected class or interface.');
     }
+
+    // TODO: enums
 
     return null;
   } else if (arguments.length == 3) {
@@ -1350,7 +1408,7 @@ var parse_type_def = function() {
 
     t2 = peek();
     if (consume(TOKEN_IMPLEMENTS)) {
-      if (is_interface(type)) throw new Error('Interface cannot implement another.');
+      if (is_interface(type)) throw t.error('Interface cannot implement another.');
       type.interfaces = [parse_data_type(true)];
       while (consume(TOKEN_COMMA)) {
         type.interfaces.push(parse_data_type(true));
@@ -1404,7 +1462,7 @@ var parse_type_qualifiers = function() {
     if (consume(TOKEN_ABSTRACT)) {
       quals |= JOG_QUALIFIER_ABSTRACT;
       if (quals & (JOG_QUALIFIER_FINAL)) {
-        throw new Error('Cannot be abstract if final.');
+        throw t.error('Cannot be abstract if final.');
       }
       continue;
     }
@@ -1412,7 +1470,7 @@ var parse_type_qualifiers = function() {
     if (consume(TOKEN_PUBLIC)) {
       quals |= JOG_QUALIFIER_PUBLIC;
       if (quals & (JOG_QUALIFIER_PROTECTED | JOG_QUALIFIER_PRIVATE)) {
-        throw new Error('Cannot be public if protected or private.');
+        throw t.error('Cannot be public if protected or private.');
       }
       continue;
     }
@@ -1420,7 +1478,7 @@ var parse_type_qualifiers = function() {
     if (consume(TOKEN_PROTECTED)) {
       quals |= JOG_QUALIFIER_PROTECTED;
       if (quals & (JOG_QUALIFIER_PUBLIC | JOG_QUALIFIER_PRIVATE)) {
-        throw new Error('Cannot be protected if public or private.');
+        throw t.error('Cannot be protected if public or private.');
       }
       continue;
     }
@@ -1428,7 +1486,7 @@ var parse_type_qualifiers = function() {
     if (consume(TOKEN_PRIVATE)) {
       quals |= JOG_QUALIFIER_PRIVATE;
       if (quals & (JOG_QUALIFIER_PUBLIC | JOG_QUALIFIER_PROTECTED)) {
-        throw new Error('Cannot be private if public or protected.');
+        throw t.error('Cannot be private if public or protected.');
       }
       continue;
     }
@@ -1436,7 +1494,7 @@ var parse_type_qualifiers = function() {
     if (consume(TOKEN_FINAL)) {
       quals |= JOG_QUALIFIER_FINAL;
       if (quals & (JOG_QUALIFIER_ABSTRACT)) {
-        throw new Error('Cannot be final if abstract.');
+        throw t.error('Cannot be final if abstract.');
       }
       continue;
     }
@@ -1466,7 +1524,7 @@ var parse_member_qualifiers = function() {
     if (consume(TOKEN_PUBLIC)) {
       quals |= JOG_QUALIFIER_PUBLIC;
       if (quals & (JOG_QUALIFIER_PROTECTED | JOG_QUALIFIER_PRIVATE)) {
-        throw new Error('Cannot be public if protected or private.');
+        throw t.error('Cannot be public if protected or private.');
       }
       continue;
     }
@@ -1474,7 +1532,7 @@ var parse_member_qualifiers = function() {
     if (consume(TOKEN_PROTECTED)) {
       quals |= JOG_QUALIFIER_PROTECTED;
       if (quals & (JOG_QUALIFIER_PUBLIC | JOG_QUALIFIER_PRIVATE)) {
-        throw new Error('Cannot be protected if public or private.');
+        throw t.error('Cannot be protected if public or private.');
       }
       continue;
     }
@@ -1482,7 +1540,7 @@ var parse_member_qualifiers = function() {
     if (consume(TOKEN_PRIVATE)) {
       quals |= JOG_QUALIFIER_PRIVATE;
       if (quals & (JOG_QUALIFIER_PUBLIC | JOG_QUALIFIER_PROTECTED)) {
-        throw new Error('Cannot be private if public or protected.');
+        throw t.error('Cannot be private if public or protected.');
       }
       continue;
     }
@@ -1543,7 +1601,7 @@ var parse_member = function(type) {
   if (quals == JOG_QUALIFIER_STATIC && next_is(TOKEN_LCURLY)) {
     if (trace) print('static initiaizer');
     if (is_interface(type)) {
-      throw new Error('Static initialization block not allowed here.');
+      throw t.error('Static initialization block not allowed here.');
     }
 
     m = {token:t.type,
@@ -1574,10 +1632,10 @@ var parse_member = function(type) {
     if (trace) print('constructor');
     if (data_type.name == type.name) {
       if (quals & JOG_QUALIFIER_STATIC) {
-        throw new Error('Constructor cannot be static.');
+        throw t.error('Constructor cannot be static.');
       }
       if (is_interface(type)) {
-        throw new Error('Constructor not allowed here.');
+        throw t.error('Constructor not allowed here.');
       }
 
       quals |= JOG_QUALIFIER_CONSTRUCTOR;
@@ -1603,7 +1661,7 @@ var parse_member = function(type) {
 
       return true;
     } else {
-      throw new Error('Method missing return type.');
+      throw t.error('Method missing return type.');
     }
   }
 
@@ -1614,7 +1672,7 @@ var parse_member = function(type) {
   if (next_is(TOKEN_LPAREN)) {
     if (trace) print('method');
     if (name == type.name) {
-      throw new Error('Constructors cannot specify a return type.');
+      throw t.error('Constructors cannot specify a return type.');
     }
 
     if (is_interface(type)) quals |= JOG_QUALIFIER_ABSTRACT;
@@ -1626,7 +1684,7 @@ var parse_member = function(type) {
          name:name};
 
     if (is_interface(type) && is_static(m)) {
-      throw new Error('Interface method cannot be static.');
+      throw t.error('Interface method cannot be static.');
     }
 
     Parser.this_method = m;
@@ -1641,19 +1699,19 @@ var parse_member = function(type) {
 
     if (quals & JOG_QUALIFIER_NATIVE) {
       if (is_interface(m)) {
-        throw new Error('Interface method cannot be native.');
+        throw t.error('Interface method cannot be native.');
       }
       must_consume(TOKEN_SEMICOLON, 'Expected ;.');
     } else if (consume(TOKEN_SEMICOLON)) {
       if (!is_abstract(m)) {
-        throw new Error('Method missing body.');
+        throw t.error('Method missing body.');
       }
       if (!is_abstract(m)) {
-        throw new Error('Abstract method not allowed in non-abstract class.');
+        throw t.error('Abstract method not allowed in non-abstract class.');
       }
     } else {
       if (is_abstract(m)) {
-        throw new Error('Abstract method cannot have body.');
+        throw t.error('Abstract method cannot have body.');
       }
 
       must_consume(TOKEN_LCURLY, 'Expected {.');
@@ -1670,13 +1728,13 @@ var parse_member = function(type) {
     // property
     if (trace) print('property');
     if (data_type == null) {
-      throw new Error('void cannot be use as property type.');
+      throw t.error('void cannot be use as property type.');
     }
     if (quals & JOG_QUALIFIER_NATIVE) {
-      throw new Error('native qualifier cannot be used for properties.');
+      throw t.error('native qualifier cannot be used for properties.');
     }
     if (is_interface(type)) {
-      throw new Error('Interface cannot have properties.');
+      throw t.error('Interface cannot have properties.');
     }
 
     first = true;
@@ -1721,7 +1779,7 @@ var parse_params = function(m) {
       t = peek();
       type = parse_data_type(true);
       if (!type) {
-        throw new Error('void cannot be parameter type');
+        throw t.error('void cannot be parameter type');
       }
 
       name = must_read_id('Expected identifier.');
@@ -1740,22 +1798,24 @@ var parse_data_type = function(parse_brackets, parse_wildcards) {
 
   // primitive
   if (consume([TOKEN_CHAR, TOKEN_BYTE, TOKEN_SHORT, TOKEN_INT, TOKEN_LONG, TOKEN_FLOAT, TOKEN_DOUBLE, TOKEN_STRING, TOKEN_BOOLEAN])) {
-    return {token:t.type, name:t.content};
+    name = t.content;
   }
 
   // identifier
-  try {
-    name = must_read_id('Expected type.');
-  } catch (e) {
-    if (!parse_wildcards) throw e;
-    must_consume(TOKEN_QUESTIONMARK, 'Expected ?.');
-    name = name + '?';
-    if (consume(TOKEN_EXTENDS)) {
-      name = name + ' extends ';
-      name = name + must_read_id('Expected type.');
-    } else if (consume(TOKEN_SUPER)) {
-      name = name + ' super ';
-      name = name + must_read_id('Expected type.');
+  if (!name) {
+    try {
+      name = must_read_id('Expected type.');
+    } catch (e) {
+      if (!parse_wildcards) throw e;
+      must_consume(TOKEN_QUESTIONMARK, 'Expected ?.');
+      name = name + '?';
+      if (consume(TOKEN_EXTENDS)) {
+        name = name + ' extends ';
+        name = name + must_read_id('Expected type.');
+      } else if (consume(TOKEN_SUPER)) {
+        name = name + ' super ';
+        name = name + must_read_id('Expected type.');
+      }
     }
   }
 
@@ -1777,25 +1837,25 @@ var parse_data_type = function(parse_brackets, parse_wildcards) {
       try {
         must_consume(TOKEN_GT, 'Expected >.');
         if (generic_depth.pop() != TOKEN_LT)
-          throw new Error('Syntax error.');
+          throw t.error('Syntax error.');
         name = name + '>';
       } catch (e) {
         try {
           must_consume(TOKEN_SHR, 'Expected >>.');
           if (generic_depth.pop() != TOKEN_LT)
-            throw new Error('Syntax error.');
+            throw t.error('Syntax error.');
           if (generic_depth.pop() != TOKEN_LT)
-            throw new Error('Syntax error.');
+            throw t.error('Syntax error.');
           name = name + '>>';
         } catch (e) {
           try {
             must_consume(TOKEN_SHRX, 'Expected >>>.');
             if (generic_depth.pop() != TOKEN_LT)
-              throw new Error('Syntax error.');
+              throw t.error('Syntax error.');
             if (generic_depth.pop() != TOKEN_LT)
-              throw new Error('Syntax error.');
+              throw t.error('Syntax error.');
             if (generic_depth.pop() != TOKEN_LT)
-              throw new Error('Syntax error.');
+              throw t.error('Syntax error.');
             name = name + '>>>';
           } catch (e) { throw e; }
         }
@@ -1861,7 +1921,7 @@ var parse_statement = function(require_semicolon) {
   if (consume(TOKEN_RETURN)) {
     if (consume(TOKEN_SEMICOLON)) {
       if (Parser.this_method && Parser.this_method.return_type) {
-        throw new Error('Missing return value.');
+        throw t.error('Missing return value.');
       }
       return {token:t.type, value:'void'};
     }
@@ -1877,13 +1937,13 @@ var parse_statement = function(require_semicolon) {
     must_consume(TOKEN_RPAREN, 'Expected ).');
 
     if (next_is(TOKEN_SEMICOLON)) {
-      throw new Error('Unexpected ;.');
+      throw t.error('Unexpected ;.');
     }
 
     conditional.body = parse_statement(true);
     if (consume(TOKEN_ELSE)) {
       if (next_is(TOKEN_SEMICOLON)) {
-        throw new Error('Unexpected ;.');
+        throw t.error('Unexpected ;.');
       }
       conditional.else_body = parse_statement(true);
     }
@@ -1895,7 +1955,7 @@ var parse_statement = function(require_semicolon) {
     loop = {token:t.type, expression:parse_expression()};
     must_consume(TOKEN_RPAREN, 'Expected ).');
     if (next_is(TOKEN_SEMICOLON)) {
-      throw new Error('Unexpected ;.');
+      throw t.error('Unexpected ;.');
     }
     loop.body = parse_statement(true);
     return loop;
@@ -1920,7 +1980,7 @@ var parse_statement = function(require_semicolon) {
               name:local_name,
               iterable:iterable_expr};
       if (next_is(TOKEN_SEMICOLON)) {
-        throw new Error('Unexpected ;.');
+        throw t.error('Unexpected ;.');
       }
       loop.body = parse_statement(true);
       return loop;
@@ -1942,7 +2002,7 @@ var parse_statement = function(require_semicolon) {
             condition:condition,
             var_mod:var_mod};
     if (next_is(TOKEN_SEMICOLON)) {
-      throw new Error('Unexpected ;.');
+      throw t.error('Unexpected ;.');
     }
     loop.body = parse_statement(true);
     return loop;
@@ -1950,12 +2010,14 @@ var parse_statement = function(require_semicolon) {
 
   if (consume(TOKEN_BREAK)) {
     cmd = {token:t.type};
+    // TODO: [Identifier]
     if (require_semicolon) must_consume_semicolon(t);
     return cmd;
   }
 
   if (consume(TOKEN_CONTINUE)) {
     cmd = {token:t.type};
+    // TODO: [Identifier]
     if (require_semicolon) must_consume_semicolon(t);
     return cmd;
   }
@@ -1965,13 +2027,19 @@ var parse_statement = function(require_semicolon) {
     cmd = {token:t.type, expression:parse_expression()};
     if (consume(TOKEN_COMMA)) {
       if (peek().type != LITERAL_STRING) {
-        throw new Error('Expected string literal.');
+        throw t.error('Expected string literal.');
       }
       cmd.message = read().content;
     }
     must_consume(TOKEN_RPAREN, 'Expected ).');
     return cmd;
   }
+
+  // TODO: try
+  // TODO: switch
+  // TODO: synchronized
+  // TODO: empty statement ';'
+  // TODO: labled statements
 
   expr = parse_expression();
   if (next_is(TOKEN_ID)) {
@@ -1992,7 +2060,7 @@ var parse_local_var_decl = function(t, var_type, req_semi) {
   var decl = null;
 
   if (!var_type) {
-    throw new Error('Expected datatype.');
+    throw t.error('Expected datatype.');
   }
 
   do {
@@ -2284,7 +2352,7 @@ var parse_array_decl = function(t, array_type) {
       dim_expr.add(null);
     } else {
       if (saw_empty) {
-        throw new Error('Must provide proceeding dimension.');
+        throw t.error('Must provide proceeding dimension.');
       }
       dim_specified = true;
       dim_expr.push(parse_expression());
@@ -2299,7 +2367,7 @@ var parse_array_decl = function(t, array_type) {
 
   if (!dim_specified) {
     if (next_is(TOKEN_LCURLY)) {
-      throw new Error('Expected literal array.');
+      throw t.error('Expected literal array.');
     }
     return parse_literal_array(array_type);
   }
@@ -2344,7 +2412,7 @@ var parse_postfix_unary = function(operand) {
     if (next_is(TOKEN_RBRACKET)) {
       op_type = reinterpret_as_type(operand);
       if (op_type == null) {
-        throw new Error('Expected datatype.');
+        throw t.error('Expected datatype.');
       }
       new_name = (op_type.name) ? op_type.name : op_type.value;
       must_consume(TOKEN_RBRACKET, 'Expected ] (Error2).');
@@ -2397,7 +2465,7 @@ var parse_args = function(required) {
 
   if (!consume(TOKEN_LPAREN)) {
     if (required) {
-      throw new Error('Expected (.');
+      throw t.error('Expected (.');
     }
     return null;
   }
@@ -2428,7 +2496,7 @@ var parse_literal_array = function(of_type) {
         // nexted literal array
         element_type_name = of_type.name.slice(0, -2);
         if (element_type_name.charAt(element_type_name.length - 1) != ']') {
-          throw new Error('Array type does not support this many dimensions.');
+          throw t.error('Array type does not support this many dimensions.');
         }
         element_type = {token:of_type.token, name:element_type_name};
         terms.push(parse_literal_array(element_type));
@@ -2450,10 +2518,10 @@ var parse_term = function() {
   var args = null;
   var name = '';
 
-  p = peek().type;
-  if (trace) print_token(p);
+  p = peek();
+  if (trace) print_token(p.type);
 
-  switch (p) {
+  switch (p.type) {
   case LITERAL_DOUBLE:
     t = read();
     return {token:t.type, value:t.content};
@@ -2490,11 +2558,11 @@ var parse_term = function() {
     if (peek(2).type == TOKEN_LPAREN) {
       t = read();
       if (Parser.this_method && !is_constructor(Parser.this_method)) {
-        throw new Error('Use "super.methodname" to call superclass method.');
+        throw t.error('Use "super.methodname" to call superclass method.');
       }
       if (Parser.this_method && Parser.this_method.statements) {
         if(Parser.this_method.statements.length) {
-          throw new Error('Call to superclass constructor must be the first statement.');
+          throw t.error('Call to superclass constructor must be the first statement.');
         }
       }
       args = parse_args(true);
@@ -2518,13 +2586,14 @@ var parse_term = function() {
   case TOKEN_STRING:
   case TOKEN_BOOLEAN:
   case TOKEN_ID:
+    print(p.content);
     return parse_construct();
   case TOKEN_NULL:
     t = read();
     return {token:t.type, value:t.content};
   }
 
-  throw new Error('Something really bad!');
+  throw p.error('Something really bad!');
 };
 
 
