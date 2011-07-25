@@ -1931,6 +1931,17 @@ var parse_statement = function(require_semicolon) {
     return cmd;
   }
 
+  if (consume(TOKEN_THROW)) {
+    if (consume(TOKEN_SEMICOLON)) {
+      throw t.error('Missing expression.');
+    }
+    expr = parse_expression();
+    if (!expr) throw t.error('Missing expression.');
+    cmd = {token:t.type, expression:expr};
+    if (require_semicolon) must_consume_semicolon(t);
+    return cmd;
+  }
+
   if (consume(TOKEN_IF)) {
     must_consume(TOKEN_LPAREN, 'Expected (.');
     conditional = {token:t.type, expression:parse_expression()};
