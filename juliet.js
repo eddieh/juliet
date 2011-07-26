@@ -4079,12 +4079,244 @@ var test_parse_types = function () {
 // float = double
 // byte = int = long
 
+var Result = {};
+var System = {
+  out: {
+    println: function(args) {
+      print(args);
+    }
+  }
+};
+var qualifiers_str = function(quals) {
+  var ret = '';
+  if (quals & JOG_QUALIFIER_PUBLIC) ret = ret + 'public_';
+  if (quals & JOG_QUALIFIER_PROTECTED) ret = ret + 'protected_';
+  if (quals & JOG_QUALIFIER_PRIVATE) ret = ret + 'private_';
+  if (quals & JOG_QUALIFIER_STATIC) ret = ret + 'static_';
+  if (quals & JOG_QUALIFIER_NATIVE) ret = ret + 'native_';
+  //if (quals & JOG_QUALIFIER_CLASS) ret = ret + 'class_';
+  if (quals & JOG_QUALIFIER_INTERFACE) ret = ret + 'interface_';
+  if (quals & JOG_QUALIFIER_PRIMITIVE) ret = ret + 'primitive_';
+  if (quals & JOG_QUALIFIER_CONSTRUCTOR) ret = ret + 'constructor_';
+  if (quals & JOG_QUALIFIER_ABSTRACT) ret = ret + 'abstract_';
+  if (quals & JOG_QUALIFIER_FINAL) ret = ret + 'final_';
+  if (quals & JOG_QUALIFIER_STRICTFP) ret = ret + 'strictfp_';
+  if (quals & JOG_QUALIFIER_TRANSIENT) ret = ret + 'transient_';
+  if (quals & JOG_QUALIFIER_VOLATILE) ret = ret + 'volatile_';
+  if (quals & JOG_QUALIFIER_SYNCRONIZED) ret = ret + 'syncronized_';
+  return ret;
+};
+
+var typeName = function(type) {
+  var ret = '';
+  var ch = 0;
+  for (var i = 0; i < type.length; i++) {
+    ch = type.charCodeAt(i);
+    ret = ret + (((ch >= 97 && ch <= 122) ||
+                  (ch >= 65 && ch <= 90) ||
+                  (ch == 95) || (ch == 36) ||
+                  (ch >= 48 && ch <= 57)) ? type.charAt(i) : ch);
+  }
+  return ret;
+};
+
+var escapeQuotes = function(str) {
+  var ret = '';
+  var ch = 0;
+  for (var i = 0; i < str.length; i++) {
+    ch = str.charCodeAt(i);
+    ret = ret + ((ch == 39) ? '\\\'' : str.charAt(i));
+  }
+  return ret;
+}
+
+var parameterList = function(params) {
+  if (trace) print('parameterList');
+  if (!params) return [];
+  var lst = [];
+  for (var i = 0; i < params.length; i++) {
+    var type = typeName(params[i].type.name);
+    print(type);
+    lst.push(type + '_' + params[i].name);
+  }
+  return lst;
+};
+
+var typedNameInScope = function(id) {
+  return id.name;
+};
+
+var operatorStr = function(a) {
+  for (op in operators) {
+    if (a == operators[op]) return op;
+  }
+  print(token_str(a) + ' not an operator or assignment.');
+  quit();
+};
+
+var statements = function(stm, sep) {
+  if (trace) print('statements');
+  if (!statements) return '';
+  var ret = '';
+  if (sep === undefined) sep = ';\n';
+  if (isArray(stm)) {
+    for (var i = 0; i < stm.length; i++) {
+      ret = ret + statements(stm[i]);
+      if (stm[i].token != TOKEN_LCURLY)
+        if (stm[i].token != TOKEN_IF)
+          if (stm[i].token != TOKEN_WHILE)
+            if (stm[i].token != TOKEN_FOR) {
+              if ((sep == ',') && (i == stm.length - 1)) {
+                sep = '';
+              }
+              ret = ret + sep;
+            }
+    }
+  } else {
+    var token = stm.token;
+    switch (token) {
+    case TOKEN_ASSIGN:
+    case TOKEN_ADD_ASSIGN:
+    case TOKEN_SUB_ASSIGN:
+    case TOKEN_MUL_ASSIGN:
+    case TOKEN_DIV_ASSIGN:
+    case TOKEN_MOD_ASSIGN:
+    case TOKEN_AND_ASSIGN:
+    case TOKEN_OR_ASSIGN:
+    case TOKEN_XOR_ASSIGN:
+    case TOKEN_SHL_ASSIGN:
+    case TOKEN_SHRX_ASSIGN:
+    case TOKEN_SHR_ASSIGN:
+      var loc = typedNameInScope(stm.location);
+      ret = ret + loc;
+      ret = ret + operatorStr(token);
+      ret = ret + statements(stm.new_value);
+      break;
+    case TOKEN_PERIOD:
+      ret = ret + statements(stm.operand);
+      ret = ret + '.'
+      ret = ret + statements(stm.term);
+      break;
+    case TOKEN_ID:
+      ret = ret + stm.name;
+      if (stm.args) {
+        ret = ret + '(';
+        ret = ret + statements(stm.args, ',');
+        ret = ret + ')';
+      }
+      break;
+    case LITERAL_CHAR:
+    case LITERAL_STRING:
+      ret = ret + '\'';
+      ret = ret + escapeQuotes(stm.value);
+      ret = ret + '\'';
+      break;
+    case LITERAL_DOUBLE:
+    case LITERAL_INT:
+    case LITERAL_BOOLEAN:
+    case TOKEN_NULL:
+      ret = ret + stm.value;
+      break;
+    }
+  }
+  return ret;
+};
+
+
+var addStaticInitializer = function(type, si) {
+  type[si.name] = function() {};
+};
+
+var addClassProperty = function(type, cp) {
+  type[qualifiers_str(cp.qualifiers) + cp.name] = 0;
+};
+
+var addPropery = function(type, p) {
+  type[qualifiers_str(cp.qualifiers) + p.name] = 0;
+};
+
+var addClassMethod = function(type, cm) {
+  if (trace) print('addClassMethod: ' + cm.name);
+  var name = qualifiers_str(cm.qualifiers);
+  name = name + typeName(cm.return_type.name) + '_';
+  name = name + cm.name;
+  var params = parameterList(cm.parameters);
+  var body = statements(cm.statements);
+  type[name] = new Function(params, body);
+};
+
+var addMethod = function(type, m) {
+  if (trace) print('addMehtod: ' + m.name);
+  var name = qualifiers_str(m.qualifiers);
+  name = name + typeName(m.return_type.name) + '_';
+  name = name + m.name;
+  type.prototype[m] = function() {};
+};
+
+var compile = function(ast) {
+  if (!ast) { print('Nothing to compile.'); return; }
+  if (ast['package']) Result['package'] = ast['package'];
+  if (ast.imports) {
+    // TODO: recursively add imports
+  }
+  var type = null;
+  for (var i = 0; i < ast.parsed_types.length; i++) {
+    type = ast.parsed_types[i];
+    var ctype = Result[type.name] = {};
+    if (type.static_initializers) {
+      if (trace) print('have static_initializers');
+      for (var j = 0; j < type.static_initializers.length; j++) {
+        var si = type.static_initializers[j];
+        addStaticInitializer(ctype, si);
+      }
+    }
+    if (type.class_properties) {
+      if (trace) print('have class_properties');
+      for (var j = 0; j < type.class_properties.length; j++) {
+        var cp = type.class_properties[j];
+        addClassProperty(ctype, cp);
+      }
+    }
+    if (type.properties) {
+      if (trace) print('have properties');
+      for (var j = 0; j < type.properties.length; j++) {
+        var p = type.properties[j];
+        addProperty(ctype, p);
+      }
+    }
+    if (type.class_methods) {
+      if (trace) print('have class_methods');
+      for (var j = 0; j < type.class_methods.length; j++) {
+        var cm = type.class_methods[j];
+        addClassMethod(ctype, cm);
+      }
+    }
+    if (type.methods) {
+      if (trace) print('have mehtods');
+      for (var j = 0; j < type.methods.length; j++) {
+        var m = type.methods[j];
+        addMethods(ctype, m);
+      }
+    }
+  }
+};
+
 var filepath = '';
+var run = false;
+var className = '';
 var argc = arguments.length;
 if (argc) {
   for (var i = 0; i < argc; i++) {
     if (arguments[i] == '--trace') trace = true;
-    else filepath = arguments[i];
+    else if (arguments[i] == '--run') {
+      run = true;
+      i++;
+      className = arguments[i];
+      if (!className) {
+        print('Expected class name after --run.');
+        quit();
+      }
+    } else filepath = arguments[i];
   }
 
   print('Compiling :' + filepath);
@@ -4092,8 +4324,25 @@ if (argc) {
   init();
   init_parser();
   data = readFile(filepath);
-  print(data);
+  if (trace) print(data);
   parse();
   delete Parser.this_method;
-  print_ast(Parser);
+  if (trace) print_ast(Parser);
+
+  compile(Parser);
+  print_ast(Result);
+
+  if (run) {
+    if (Result[className]) {
+      var main = Result[className].public_static_void_main;
+      if (!main) {
+        print(className + 'does not have a main mehtod.');
+        quit();
+      }
+      main.call();
+    } else {
+      print(className + ' not found.');
+      quit();
+    }
+  }
 }
