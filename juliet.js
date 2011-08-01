@@ -506,7 +506,7 @@ var tokenize = function() {
     //
     // White space
     //
-    while (ch == 32) {
+    while (ch == 32 || ch == 9) {
       data_i++;
       ch = data.charCodeAt(data_i);
       col_i++;
@@ -1932,7 +1932,7 @@ var parse_statement = function(require_semicolon) {
         block.push(stm);
       }
     }
-    return block;
+    return {kind:'block', statements:block};
   }
 
   if (consume(TOKEN_RETURN)) {
@@ -4348,8 +4348,27 @@ var operatorStr = function(a) {
   quit();
 };
 
+var typedNameInContext = function(context, id) {
+  var name = (typeof(id) === 'object') ? id.name : id;
+  if (trace) print('typedNameInContext: ' + context);
+  if (trace) print('  name: ' + name);
+
+  var curScope = scope.length - 1;
+  for (var i = curScope; i >= 0; i--) {
+    if ((context in scope[i])) {
+      if (name in scope[i]) return scope[i][name];
+      else break;
+    } else {
+      continue;
+    }
+  }
+  print(name + ' is not a member of ' + context);
+  quit();
+};
+
 var typedNameInScope = function(id) {
-  var name = id.name;
+  var name = (typeof(id) === 'object') ? id.name : id;
+  if (trace) print('typedNameInScope: ' + name);
   var curScope = scope.length - 1;
   for (var i = curScope; i >= 0; i--) {
     if (name in scope[i]) return scope[i][name];
@@ -4373,14 +4392,32 @@ var popScope = function() {
   scope.pop();
 };
 
-var statements = function(stm, sep) {
-  if (trace) print('statements');
-  if (!statements) return '';
+var flatten = function(stm, sep, context) {
+  if (trace) print('flatten');
+  if (!stm) return '';
   var ret = '';
-  if (sep === undefined) sep = ';\n';
+  var flatten_for_body = function(body) {
+    if (trace) print('flatten_for_body');
+    if (body.kind == 'block') {
+      // since a for loop introduces a scope
+      // we don't introduce a new scope here
+      ret = ret + '{';
+      ret = ret + flatten(body.statements);
+      ret = ret + '}';
+    } else {
+      ret = ret + flatten(body);
+    }
+    return ret;
+  };
+  var flatten_in_context = function(cntx, stm, sep) {
+    if (trace) print('flatten_in_context: ' + cntx);
+    return flatten(stm, sep, cntx);
+  };
   if (isArray(stm)) {
+    if (sep === undefined) sep = ';';
+
     for (var i = 0; i < stm.length; i++) {
-      ret = ret + statements(stm[i]);
+      ret = ret + flatten(stm[i]);
 
       // insert semicolon or other separators
       if ((stm[i].token != TOKEN_LCURLY) &&
@@ -4397,40 +4434,149 @@ var statements = function(stm, sep) {
   } else {
     var token = stm.token;
     var kind = stm.kind;
-    print_token(token);
-    print(kind);
+    //print_token(token);
+    //print(kind);
     switch (kind) {
+    case 'block':
+      sep = '';
+      pushScope();
+      ret = ret + '{';
+      ret = ret + flatten(stm.statements);
+      ret = ret + '}';
+      pushScope();
+      break;
     case 'local':
       var name = stm.name;
       var type = typeName(stm.type.name);
       var typedName = type + '_' + name;
+      addIdentifier(name, typedName);
       ret = ret + 'var ';
       ret = ret + typedName;
-      ret = ret + '=' + statements(stm.initial_value);
-      addIdentifier(name, typedName);
+      // TODO: doesn't necessarily have an initial value?
+      ret = ret + '=' + flatten(stm.initial_value);
       break;
     case 'assignment':
       var loc = typedNameInScope(stm.location);
       ret = ret + loc;
       ret = ret + operatorStr(token);
-      ret = ret + statements(stm.new_value);
+      ret = ret + flatten(stm.new_value);
+      break;
+    case 'ternary':
+      ret = ret + flatten(stm.expression);
+      ret = ret + '?';
+      ret = ret + flatten(stm.true_value);
+      ret = ret + ':';
+      ret = ret + flatten(stm.false_value);
+      break;
+    case 'binary':
+      ret = ret + '(';
+      ret = ret + flatten(stm.lhs);
+      ret = ret + operatorStr(token);
+      ret = ret + flatten(stm.rhs);
+      ret = ret + ')';
+      break;
+    case 'cast':
+      throw new Error('casting is not implemented');
+      quit();
+      break;
+    case 'new':
+      throw new Error('new not implemented');
+      quit();
+      break;
+    case 'prefix':
+      ret = ret + operatorStr(token);
+      ret = ret + flatten(stm.operand);
       break;
     case 'postfix':
-      ret = ret + statements(stm.operand);
-      ret = ret + '.'
-      ret = ret + statements(stm.term);
+      ret = ret + flatten(stm.operand);
+      if (stm.term) {
+        var cntx = stm.operand.name;
+        ret = ret + '.'
+        ret = ret + flatten_in_context(cntx, stm.term);
+      } else {
+        ret = ret + operatorStr(token);
+      }
+      break;
+    case 'return':
+      ret = ret + 'return';
+      if (stm.expression)
+        ret = ret + ' ' + flatten(stm.expression);
+      break;
+    case 'abrupt':
+      if (token == TOKEN_BREAK)
+        ret = ret + 'break';
+      if (token == TOKEN_CONTINUE)
+        ret = ret + 'continue';
+      if (stm.identifier)
+        ret = ret + ' ' + flatten(stm.identifier);
+      break;
+    case 'assert':
+      throw new Errot('assert not implemented');
+      quit();
+      break;
+    case 'if':
+      ret = ret + 'if (' + flatten(stm.expression) + ')';
+      ret = ret + flatten(stm.body, ';');
+      if (stm.else_body) {
+        ret = ret + ' else ';
+        ret = ret + flatten(stm.else_body);
+      }
+      break;
+    case 'while':
+      ret = ret + 'while (' + flatten(stm.expression) + ')';
+      ret = ret + flatten(stm.body);
+      break;
+    case 'for':
+      pushScope();
+      ret = ret + 'for (' + flatten(stm.initialization, ',') + ';';
+      ret = ret + flatten(stm.condition) + ';';
+      ret = ret + flatten(stm.var_mod) + ')';
+      ret = ret + flatten_for_body(stm.body);
+      popScope();
+      break;
+    case 'for-each':
+      pushScope();
+      var name = stm.name;
+      var type = typeName(stm.type.name);
+      var typedName = type + '_' + name;
+      //addIdentifier(name, typedName);
+      // the variable introduced in the for-each statement is
+      // semantically equivalent to iterable[current] when referred to
+      // in the loop body
+      ret = ret + 'var ' + typedName + '_iter=' + flatten(stm.iterable, ';');
+      addIdentifier('iter', typedName + '_iter');
+      addIdentifier(name, typedNameInScope('iter') + '[' + typedName + ']');
+      ret = ret + 'for (var ' + typedName;
+      ret = ret + ' in ' + typedNameInScope('iter');
+      ret = ret + ')';
+      ret = ret + flatten_for_body(stm.body);
+      popScope();
+      break;
+    case 'array':
+      ret = ret + '[';
+      ret = ret + flatten(stm.terms, ',');
+      ret = ret + ']';
+      break;
+    case 'super':
+      throw new Error('super is not implemented');
+      quit();
       break;
     case 'construct':
       var name = '';
       // TODO: remove this kludge
       if (stm.name == 'System' || stm.name == 'out' || stm.name == 'println')
         name = stm.name;
-      else
-        name = typedNameInScope(stm);
+      else {
+        if (context) {
+          name = typedNameInContext(context, stm);
+        } else {
+          name = typedNameInScope(stm);
+        }
+      }
       ret = ret + name;
       if (stm.args) {
         ret = ret + '(';
-        ret = ret + statements(stm.args, ',');
+        ret = ret + flatten(stm.args, ',');
         ret = ret + ')';
       }
       break;
@@ -4449,21 +4595,34 @@ var statements = function(stm, sep) {
         ret = ret + stm.value;
         break;
       }
+    default:
+      // TODO: empty statements, etc
     }
+    if (sep) ret = ret + sep;
   }
   return ret;
 };
 
 
 var addStaticInitializer = function(type, si) {
+  if (trace) print('addStaticInitializer');
   type[si.name] = function() {};
 };
 
 var addClassProperty = function(type, cp) {
-  type[qualifiers_str(cp.qualifiers) + cp.name] = 0;
+  if (trace) print('addClassProperty');
+  var name = qualifiers_str(cp.qualifiers) + cp.name
+  addIdentifier(cp.name, name);
+  var value = cp.initial_value;
+  if (value && value.kind == 'literal')
+    value = value.value;
+  else
+    value = flatten(value);
+  type[name] = value;
 };
 
 var addPropery = function(type, p) {
+  if (trace) print('addPropery');
   type[qualifiers_str(cp.qualifiers) + p.name] = 0;
 };
 
@@ -4474,7 +4633,7 @@ var addClassMethod = function(type, cm) {
   name = name + typeName(cm.return_type.name) + '_';
   name = name + cm.name;
   var params = parameterList(cm.parameters);
-  var body = statements(cm.statements);
+  var body = flatten(cm.statements);
   type[name] = new Function(params, body);
   popScope();
 };
@@ -4487,6 +4646,51 @@ var addMethod = function(type, m) {
   type.prototype[m] = function() {};
 };
 
+var addClass = function(type) {
+  if (trace) print('Class: ' + type.name);
+  var ctype = Result[type.name] = {};
+
+  pushScope();
+  addIdentifier(type.name, 'Result.' + type.name);
+
+  if (type.static_initializers) {
+    if (trace) print('have static_initializers');
+    for (var j = 0; j < type.static_initializers.length; j++) {
+      var si = type.static_initializers[j];
+      addStaticInitializer(ctype, si);
+    }
+  }
+  if (type.class_properties) {
+    if (trace) print('have class_properties');
+    for (var j = 0; j < type.class_properties.length; j++) {
+      var cp = type.class_properties[j];
+      addClassProperty(ctype, cp);
+    }
+  }
+  if (type.properties) {
+    if (trace) print('have properties');
+    for (var j = 0; j < type.properties.length; j++) {
+      var p = type.properties[j];
+      addProperty(ctype, p);
+    }
+  }
+  if (type.class_methods) {
+    if (trace) print('have class_methods');
+    for (var j = 0; j < type.class_methods.length; j++) {
+      var cm = type.class_methods[j];
+      addClassMethod(ctype, cm);
+    }
+  }
+  if (type.methods) {
+    if (trace) print('have mehtods');
+    for (var j = 0; j < type.methods.length; j++) {
+      var m = type.methods[j];
+      addMethods(ctype, m);
+    }
+  }
+  popScope();
+}
+
 var compile = function(ast) {
   if (trace) print('compile');
   if (!ast) { print('Nothing to compile.'); return; }
@@ -4497,42 +4701,8 @@ var compile = function(ast) {
   var type = null;
   for (var i = 0; i < ast.parsed_types.length; i++) {
     type = ast.parsed_types[i];
-    var ctype = Result[type.name] = {};
-    if (type.static_initializers) {
-      if (trace) print('have static_initializers');
-      for (var j = 0; j < type.static_initializers.length; j++) {
-        var si = type.static_initializers[j];
-        addStaticInitializer(ctype, si);
-      }
-    }
-    if (type.class_properties) {
-      if (trace) print('have class_properties');
-      for (var j = 0; j < type.class_properties.length; j++) {
-        var cp = type.class_properties[j];
-        addClassProperty(ctype, cp);
-      }
-    }
-    if (type.properties) {
-      if (trace) print('have properties');
-      for (var j = 0; j < type.properties.length; j++) {
-        var p = type.properties[j];
-        addProperty(ctype, p);
-      }
-    }
-    if (type.class_methods) {
-      if (trace) print('have class_methods');
-      for (var j = 0; j < type.class_methods.length; j++) {
-        var cm = type.class_methods[j];
-        addClassMethod(ctype, cm);
-      }
-    }
-    if (type.methods) {
-      if (trace) print('have mehtods');
-      for (var j = 0; j < type.methods.length; j++) {
-        var m = type.methods[j];
-        addMethods(ctype, m);
-      }
-    }
+
+    addClass(type);
   }
 };
 
