@@ -4334,8 +4334,8 @@ var parameterList = function(params) {
     var name = params[i].name;
     var type = typeName(params[i].type.name);
     var typedName = type + '_' + name;
-    lst.push(typedName);
-    addIdentifier(name, typedName);
+    lst.push(name);
+    addIdentifier(name, name, params[i].type, false);
   }
   return lst;
 };
@@ -4348,16 +4348,18 @@ var operatorStr = function(a) {
   quit();
 };
 
-var typedNameInContext = function(context, id) {
+var nameInContext = function(context, id) {
   var name = (typeof(id) === 'object') ? id.name : id;
-  if (trace) print('typedNameInContext: ' + context);
+  if (trace) print('nameInContext: ' + context);
   if (trace) print('  name: ' + name);
-
+  var cononicalName = nameInScope(context) + '.';
   var curScope = scope.length - 1;
   for (var i = curScope; i >= 0; i--) {
     if ((context in scope[i])) {
-      if (name in scope[i]) return scope[i][name];
-      else break;
+      if (name in scope[i]) {
+        var n = scope[i][name].name;
+        return n.replace(cononicalName, '');
+      } else break;
     } else {
       continue;
     }
@@ -4366,20 +4368,37 @@ var typedNameInContext = function(context, id) {
   quit();
 };
 
-var typedNameInScope = function(id) {
+var nameInScope = function(id) {
   var name = (typeof(id) === 'object') ? id.name : id;
-  if (trace) print('typedNameInScope: ' + name);
+  if (trace) print('nameInScope: ' + name);
   var curScope = scope.length - 1;
   for (var i = curScope; i >= 0; i--) {
-    if (name in scope[i]) return scope[i][name];
+    if (name in scope[i]) {
+      var n = scope[i][name];
+      return n.name;
+    }
   }
   print(name + ' is not defined');
   quit();
 };
 
-var addIdentifier = function(name, typedName) {
+var addIdentifier = function(name, cononicalName, type, shadowable) {
   if (trace) print('addIdentifier');
-  scope[scope.length - 1][name] = typedName;
+
+  var curScope = scope.length - 1;
+  for (var i = curScope; i >= 0; i--) {
+    if (name in scope[i]) {
+      print_ast(scope[i]);
+      if (!scope[i][name].shadowable) {
+        print(name + ' is already defined');
+        quit();
+      }
+    }
+  }
+
+  scope[scope.length - 1][name] = {name:cononicalName,
+                                   type:type,
+                                   shadowable:shadowable};
 };
 
 var pushScope = function() {
@@ -4443,20 +4462,20 @@ var flatten = function(stm, sep, context) {
       ret = ret + '{';
       ret = ret + flatten(stm.statements);
       ret = ret + '}';
-      pushScope();
+      popScope();
       break;
     case 'local':
       var name = stm.name;
       var type = typeName(stm.type.name);
       var typedName = type + '_' + name;
-      addIdentifier(name, typedName);
+      addIdentifier(name, name, stm.type, false);
       ret = ret + 'var ';
-      ret = ret + typedName;
+      ret = ret + name;
       // TODO: doesn't necessarily have an initial value?
       ret = ret + '=' + flatten(stm.initial_value);
       break;
     case 'assignment':
-      var loc = typedNameInScope(stm.location);
+      var loc = nameInScope(stm.location);
       ret = ret + loc;
       ret = ret + operatorStr(token);
       ret = ret + flatten(stm.new_value);
@@ -4539,15 +4558,19 @@ var flatten = function(stm, sep, context) {
       var name = stm.name;
       var type = typeName(stm.type.name);
       var typedName = type + '_' + name;
-      //addIdentifier(name, typedName);
+      //addIdentifier(name, name);
       // the variable introduced in the for-each statement is
       // semantically equivalent to iterable[current] when referred to
       // in the loop body
-      ret = ret + 'var ' + typedName + '_iter=' + flatten(stm.iterable, ';');
-      addIdentifier('iter', typedName + '_iter');
-      addIdentifier(name, typedNameInScope('iter') + '[' + typedName + ']');
-      ret = ret + 'for (var ' + typedName;
-      ret = ret + ' in ' + typedNameInScope('iter');
+      ret = ret + 'var ' + name + '_iter=' + flatten(stm.iterable, ';');
+      var inferedType = {};
+      addIdentifier('iter', name + '_iter', inferedType, false);
+      addIdentifier(name,
+                    nameInScope('iter') + '[' + name + ']',
+                    stm.type,
+                    false);
+      ret = ret + 'for (var ' + name;
+      ret = ret + ' in ' + nameInScope('iter');
       ret = ret + ')';
       ret = ret + flatten_for_body(stm.body);
       popScope();
@@ -4568,9 +4591,9 @@ var flatten = function(stm, sep, context) {
         name = stm.name;
       else {
         if (context) {
-          name = typedNameInContext(context, stm);
+          name = nameInContext(context, stm);
         } else {
-          name = typedNameInScope(stm);
+          name = nameInScope(stm);
         }
       }
       ret = ret + name;
@@ -4612,7 +4635,10 @@ var addStaticInitializer = function(type, si) {
 var addClassProperty = function(type, cp) {
   if (trace) print('addClassProperty');
   var name = qualifiers_str(cp.qualifiers) + cp.name
-  addIdentifier(cp.name, name);
+  addIdentifier(cp.name,
+                'Result.' + type.name + '.' + name,
+                cp.type,
+                true);
   var value = cp.initial_value;
   if (value && value.kind == 'literal')
     value = value.value;
@@ -4648,10 +4674,13 @@ var addMethod = function(type, m) {
 
 var addClass = function(type) {
   if (trace) print('Class: ' + type.name);
-  var ctype = Result[type.name] = {};
+  var ctype = Result[type.name] = {name:type.name};
 
   pushScope();
-  addIdentifier(type.name, 'Result.' + type.name);
+  addIdentifier(type.name,
+                'Result.' + type.name,
+                {token:TOKEN_CLASS, name:type.name},
+                true);
 
   if (type.static_initializers) {
     if (trace) print('have static_initializers');
