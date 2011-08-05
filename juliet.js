@@ -496,7 +496,7 @@ var tokenize = function() {
     if (this.col) loc = loc + ':' + this.col;
     if (this.length) loc = loc + ':' + this.length;
     if (this.type) token = this.type;
-    print(token_str(token) + loc);
+    //print(token_str(token) + loc);
     return new Error(error_message);
   };
 
@@ -513,7 +513,7 @@ var tokenize = function() {
     }
 
     if (ch == 10) {
-      print('newline');
+      if (trace) print('newline');
       data_i++
       col_i = 1;
       line_i++
@@ -527,7 +527,7 @@ var tokenize = function() {
     //
     if (ch == 47) {
       if (data[data_i + 1] == '/') {
-        print('single-line comment');
+        if (trace) print('single-line comment');
         // Discard single-line comment
         data_i = data_i + 2;
         ch = data.charCodeAt(data_i);
@@ -538,7 +538,7 @@ var tokenize = function() {
         data_i++;
         continue;
       } else if (data[data_i + 1] == '*') {
-        print('multi-line comment');
+        if (trace) print('multi-line comment');
         // Discard multi-line comment
         data_i = data_i + 2;
         ch = data.charCodeAt(data_i);
@@ -954,7 +954,7 @@ var tokenize = function() {
           }
         }
         next.content = eval('\'\\u' + buffer + '\'');
-        print(next.content);
+        if (trace) print(next.content);
       } else if (data[data_i] == 'n') next.content = '\n';
       else if (data[data_i] == 't') next.content = '\t';
       else if (data[data_i] == 'b') next.content = '\b';
@@ -2790,7 +2790,7 @@ var parse_term = function() {
   case TOKEN_STRING:
   case TOKEN_BOOLEAN:
   case TOKEN_ID:
-    print(p.content);
+    if (trace) print(p.content);
     return parse_construct();
   case TOKEN_NULL:
     t = read();
@@ -4276,6 +4276,27 @@ var test_parse_types = function () {
 
 var scope = [];
 var Result = {};
+Java = {
+  'new': function (klass, constructor) {
+    var inst = Object.create(klass);
+    var args = [];
+    if (arguments.length > 2) {
+      // collect arguments
+      for (var i = 2; i < arguments.length; i++) {
+        args.push(arguments[i]);
+      }
+    }
+    // find appropriate constructor
+    if (!constructor) {
+      constructor = '<init>';
+    }
+    if (typeof(inst['<class>']) === 'function')
+      inst['<class>'].call(inst);
+    if (typeof(inst[constructor]) === 'function')
+        inst[constructor].apply(inst, args);
+    return inst;
+  }
+};
 var System = {
   out: {
     println: function(args) {
@@ -4283,6 +4304,7 @@ var System = {
     }
   }
 };
+
 var qualifiers_str = function(quals) {
   var ret = '';
   if (quals & JOG_QUALIFIER_PUBLIC) ret = ret + 'public_';
@@ -4352,6 +4374,28 @@ var nameInContext = function(context, id) {
   var name = (typeof(id) === 'object') ? id.name : id;
   if (trace) print('nameInContext: ' + context);
   if (trace) print('  name: ' + name);
+
+  // TODO: if context is a variable we need to check if id is a
+  // field
+  var typeDescriptorForName = function(id) {
+    var name = (typeof(id) === 'object') ? id.name : id;
+    if (trace) print('typeDescriptorForName: ' + name);
+    var curScope = scope.length - 1;
+    for (var i = curScope; i >= 0; i--) {
+      if (name in scope[i]) {
+        var n = scope[i][name];
+        return n;
+      }
+    }
+  };
+
+  var typeDescriptor = typeDescriptorForName(context);
+  if (typeDescriptor) {
+    if (typeDescriptor.type)
+      if (name in Result[typeDescriptor.type.name])
+        return name;
+  }
+
   var cononicalName = nameInScope(context) + '.';
   var curScope = scope.length - 1;
   for (var i = curScope; i >= 0; i--) {
@@ -4388,7 +4432,6 @@ var addIdentifier = function(name, cononicalName, type, shadowable) {
   var curScope = scope.length - 1;
   for (var i = curScope; i >= 0; i--) {
     if (name in scope[i]) {
-      print_ast(scope[i]);
       if (!scope[i][name].shadowable) {
         print(name + ' is already defined');
         quit();
@@ -4399,6 +4442,11 @@ var addIdentifier = function(name, cononicalName, type, shadowable) {
   scope[scope.length - 1][name] = {name:cononicalName,
                                    type:type,
                                    shadowable:shadowable};
+};
+
+var constructorForArguments = function(args) {
+  // TODO:
+  return '\'<init>\'';
 };
 
 var pushScope = function() {
@@ -4453,8 +4501,6 @@ var flatten = function(stm, sep, context) {
   } else {
     var token = stm.token;
     var kind = stm.kind;
-    //print_token(token);
-    //print(kind);
     switch (kind) {
     case 'block':
       sep = '';
@@ -4499,8 +4545,10 @@ var flatten = function(stm, sep, context) {
       quit();
       break;
     case 'new':
-      throw new Error('new not implemented');
-      quit();
+      ret = ret + 'Java.new(' + flatten(stm.type) + ',';
+      ret = ret + constructorForArguments(stm.args);
+      ret = ret + flatten(stm.args, ',');
+      ret = ret + ');'
       break;
     case 'prefix':
       ret = ret + operatorStr(token);
@@ -4584,6 +4632,7 @@ var flatten = function(stm, sep, context) {
       throw new Error('super is not implemented');
       quit();
       break;
+    case 'type':
     case 'construct':
       var name = '';
       // TODO: remove this kludge
@@ -4626,6 +4675,15 @@ var flatten = function(stm, sep, context) {
   return ret;
 };
 
+var methodSigniture = function () {
+  var arity;
+};
+
+var methodDescriptor = function () {
+};
+
+var mostApplicableMethod = function () {
+};
 
 var addStaticInitializer = function(type, si) {
   if (trace) print('addStaticInitializer');
@@ -4647,9 +4705,22 @@ var addClassProperty = function(type, cp) {
   type[name] = value;
 };
 
-var addPropery = function(type, p) {
+var addProperty = function(type, p) {
   if (trace) print('addPropery');
-  type[qualifiers_str(cp.qualifiers) + p.name] = 0;
+  // var name = qualifiers_str(cp.qualifiers);
+  // name = name + '_' + p.name;
+  if (p.qualifiers & JOG_QUALIFIER_PRIVATE) {
+    if (!type.private_properies) type.private_properties = [];
+    type.private_properties.push(p);
+  } else {
+    addIdentifier(p.name, p.name, p.type, true);
+    if (p.initial_value && p.initial_value.kind == 'literal') {
+      type[p.name] = p.initial_value.value;
+    } else {
+      // TODO: non-static initializer block
+      type[p.name] = flatten(p.initial_value);
+    }
+  }
 };
 
 var addClassMethod = function(type, cm) {
@@ -4676,7 +4747,7 @@ var addClass = function(type) {
   if (trace) print('Class: ' + type.name);
   var ctype = Result[type.name] = {name:type.name};
 
-  pushScope();
+  //pushScope();
   addIdentifier(type.name,
                 'Result.' + type.name,
                 {token:TOKEN_CLASS, name:type.name},
@@ -4717,7 +4788,10 @@ var addClass = function(type) {
       addMethods(ctype, m);
     }
   }
-  popScope();
+
+  // TODO: write privates
+
+  //popScope();
 }
 
 var compile = function(ast) {
@@ -4728,20 +4802,23 @@ var compile = function(ast) {
     // TODO: recursively add imports
   }
   var type = null;
+  pushScope();
   for (var i = 0; i < ast.parsed_types.length; i++) {
     type = ast.parsed_types[i];
-
     addClass(type);
   }
+  popScope();
 };
 
 var filepath = '';
+var verbose = false;
 var run = false;
 var className = '';
 var argc = arguments.length;
 if (argc) {
   for (var i = 0; i < argc; i++) {
     if (arguments[i] == '--trace') trace = true;
+    else if (arguments[i] == '--verbose') verbose = true;
     else if (arguments[i] == '--run') {
       run = true;
       i++;
@@ -4753,7 +4830,7 @@ if (argc) {
     } else filepath = arguments[i];
   }
 
-  print('Compiling :' + filepath);
+  if (verbose) print('Compiling :' + filepath);
 
   init();
   init_parser();
@@ -4764,13 +4841,13 @@ if (argc) {
   if (trace) print_ast(Parser);
 
   compile(Parser);
-  print_ast(Result);
+  if (verbose) print_ast(Result);
 
   if (run) {
     if (Result[className]) {
       var main = Result[className].public_static_void_main;
       if (!main) {
-        print(className + 'does not have a main mehtod.');
+        print(className + ' does not have a main mehtod.');
         quit();
       }
       main.call();
