@@ -4390,10 +4390,19 @@ var nameInContext = function(context, id) {
   };
 
   var typeDescriptor = typeDescriptorForName(context);
+  print_ast(typeDescriptor)
   if (typeDescriptor) {
-    if (typeDescriptor.type)
+    if (typeDescriptor.type) {
       if (name in Result[typeDescriptor.type.name])
         return name;
+
+      // if (Result[typeDescriptor.type.name].prototype) {
+      //   if (name in (Result[typeDescriptor.type.name].prototype)) {
+      //     return name;
+      //   }
+      // }
+
+    }
   }
 
   var cononicalName = nameInScope(context) + '.';
@@ -4713,7 +4722,7 @@ var addProperty = function(type, p) {
     if (!type.private_properies) type.private_properties = [];
     type.private_properties.push(p);
   } else {
-    addIdentifier(p.name, p.name, p.type, true);
+    addIdentifier(p.name, 'this.' + p.name, p.type, true);
     if (p.initial_value && p.initial_value.kind == 'literal') {
       type[p.name] = p.initial_value.value;
     } else {
@@ -4740,12 +4749,25 @@ var addMethod = function(type, m) {
   var name = qualifiers_str(m.qualifiers);
   name = name + typeName(m.return_type.name) + '_';
   name = name + m.name;
-  type.prototype[m] = function() {};
+  var params = parameterList(m.parameters);
+  var body = flatten(m.statements);
+  if (p.qualifiers & JOG_QUALIFIER_PRIVATE) {
+    if (!type.private_properies) type.private_methods = [];
+    type.private_methods.push(p);
+  } else  {
+    addIdentifier(m.name, m.name, m.type, true);
+    //if (!type.prototype) type.prototype = {};
+    //type.prototype[m.name] = new Function(params, body);
+    type[m.name] = new Function(params, body);
+  }
 };
 
 var addClass = function(type) {
   if (trace) print('Class: ' + type.name);
+
   var ctype = Result[type.name] = {name:type.name};
+  // var ctype = Result[type.name] = function() {};
+  // ctype.name = type.name;
 
   //pushScope();
   addIdentifier(type.name,
@@ -4785,7 +4807,7 @@ var addClass = function(type) {
     if (trace) print('have mehtods');
     for (var j = 0; j < type.methods.length; j++) {
       var m = type.methods[j];
-      addMethods(ctype, m);
+      addMethod(ctype, m);
     }
   }
 
