@@ -2908,6 +2908,9 @@ var equal = function(a, b) {
   return true;
 };
 
+var capitalize = function(str) {
+  return str.charAt(0).toLocaleUpperCase() + str.slice(1);
+}
 
 var test_tokenize = function () {
   var tests = [
@@ -4370,38 +4373,33 @@ var operatorStr = function(a) {
   quit();
 };
 
-var nameInContext = function(context, id) {
+var typeDescriptorForName = function(id) {
+  var name = (typeof(id) === 'object') ? id.name : id;
+  if (trace) print('typeDescriptorForName: ' + name);
+  var curScope = scope.length - 1;
+  for (var i = curScope; i >= 0; i--) {
+    if (name in scope[i]) {
+      var n = scope[i][name];
+      return n;
+    }
+  }
+  return null;
+};
+
+var nameInContext = function(context, id, assignment) {
   var name = (typeof(id) === 'object') ? id.name : id;
   if (trace) print('nameInContext: ' + context);
   if (trace) print('  name: ' + name);
 
-  // TODO: if context is a variable we need to check if id is a
-  // field
-  var typeDescriptorForName = function(id) {
-    var name = (typeof(id) === 'object') ? id.name : id;
-    if (trace) print('typeDescriptorForName: ' + name);
-    var curScope = scope.length - 1;
-    for (var i = curScope; i >= 0; i--) {
-      if (name in scope[i]) {
-        var n = scope[i][name];
-        return n;
-      }
-    }
-  };
-
+  // if context is a variable we need to check if id is a
+  // field of the type
   var typeDescriptor = typeDescriptorForName(context);
-  print_ast(typeDescriptor)
-  if (typeDescriptor) {
-    if (typeDescriptor.type) {
-      if (name in Result[typeDescriptor.type.name])
-        return name;
+  var typeName = null;
 
-      // if (Result[typeDescriptor.type.name].prototype) {
-      //   if (name in (Result[typeDescriptor.type.name].prototype)) {
-      //     return name;
-      //   }
-      // }
-
+  if (typeDescriptor && typeDescriptor.type) {
+    typeName = typeDescriptor.type.name;
+    if (name in Result[typeName]) {
+      return name;
     }
   }
 
@@ -4417,6 +4415,10 @@ var nameInContext = function(context, id) {
       continue;
     }
   }
+
+  var privateName = privateMemberName(typeName, name);
+  if (privateName) return privateName;
+
   print(name + ' is not a member of ' + context);
   quit();
 };
@@ -4431,9 +4433,41 @@ var nameInScope = function(id) {
       return n.name;
     }
   }
+
+  var typeDescriptor = typeDescriptorForName('this');
+  var typeName = null;
+  if (typeDescriptor && typeDescriptor.type) {
+    typeName = typeDescriptor.type.name;
+  }
+  var privateName = privateMemberName(typeName, name);
+  if (privateName) return 'this' + privateName;
+
   print(name + ' is not defined');
   quit();
 };
+
+var privateMemberName = function(typeName, name) {
+  if (typeName) {
+    var type = Result[typeName];
+    if (type && type.private_methods) {
+      var privMethods = type.private_methods;
+      if (name in privMethods) {
+        return '[\'<private>\'].' + name;
+      } else {
+        print(name + ' is a private method');
+        quit();
+      }
+    } else if (type && type.private_properties) {
+      var privProps = type.private_properties;
+      if (name in privProps) {
+        return '[\'<private>\'][\'<mutate>\'](\'' + name + '\'';
+      } else {
+        print(name + ' is private');
+        quit();
+      }
+    }
+  }
+}
 
 var addIdentifier = function(name, cononicalName, type, shadowable) {
   if (trace) print('addIdentifier');
@@ -4530,10 +4564,22 @@ var flatten = function(stm, sep, context) {
       ret = ret + '=' + flatten(stm.initial_value);
       break;
     case 'assignment':
-      var loc = nameInScope(stm.location);
-      ret = ret + loc;
-      ret = ret + operatorStr(token);
-      ret = ret + flatten(stm.new_value);
+      var loc = flatten(stm.location, sep, context);
+      if (/<private>/.test(loc)) {
+        ret = ret + loc.replace('this.', 'this').slice(0, -1);
+        var new_value = flatten(stm.new_value);
+        if (token == TOKEN_ASSIGN) {
+          ret = ret + ',' + new_value + ')';
+        } else {
+          var val = flatten(stm.location, sep, context);
+          var op = operatorStr(token);
+          ret = ret + ',' + val + op + new_value + ')';
+        }
+      } else {
+        ret = ret + loc;
+        ret = ret + operatorStr(token);
+        ret = ret + flatten(stm.new_value);
+      }
       break;
     case 'ternary':
       ret = ret + flatten(stm.expression);
@@ -4556,7 +4602,10 @@ var flatten = function(stm, sep, context) {
     case 'new':
       ret = ret + 'Java.new(' + flatten(stm.type) + ',';
       ret = ret + constructorForArguments(stm.args);
-      ret = ret + flatten(stm.args, ',');
+      if (stm.args && stm.args.length > 0) {
+        ret = ret + ',';
+        ret = ret + flatten(stm.args, ',');
+      }
       ret = ret + ');'
       break;
     case 'prefix':
@@ -4567,8 +4616,11 @@ var flatten = function(stm, sep, context) {
       ret = ret + flatten(stm.operand);
       if (stm.term) {
         var cntx = stm.operand.name;
-        ret = ret + '.'
-        ret = ret + flatten_in_context(cntx, stm.term);
+        var term = flatten_in_context(cntx, stm.term);
+        if (!(/<private>/.test(term))) {
+          ret = ret + '.'
+        }
+        ret = ret + term;
       } else {
         ret = ret + operatorStr(token);
       }
@@ -4654,6 +4706,9 @@ var flatten = function(stm, sep, context) {
           name = nameInScope(stm);
         }
       }
+      if (/<mutate>/.test(name)) {
+        name = name + ')';
+      }
       ret = ret + name;
       if (stm.args) {
         ret = ret + '(';
@@ -4714,13 +4769,13 @@ var addClassProperty = function(type, cp) {
   type[name] = value;
 };
 
-var addProperty = function(type, p) {
+var addProperty = function(type, p, processPriv) {
   if (trace) print('addPropery');
   // var name = qualifiers_str(cp.qualifiers);
   // name = name + '_' + p.name;
-  if (p.qualifiers & JOG_QUALIFIER_PRIVATE) {
-    if (!type.private_properies) type.private_properties = [];
-    type.private_properties.push(p);
+  if ((p.qualifiers & JOG_QUALIFIER_PRIVATE) && !processPriv) {
+    if (!type.private_properies) type.private_properties = {};
+    type.private_properties[p.name] = p;
   } else {
     addIdentifier(p.name, 'this.' + p.name, p.type, true);
     if (p.initial_value && p.initial_value.kind == 'literal') {
@@ -4744,21 +4799,25 @@ var addClassMethod = function(type, cm) {
   popScope();
 };
 
-var addMethod = function(type, m) {
+var addMethod = function(type, m, processPriv) {
   if (trace) print('addMehtod: ' + m.name);
-  var name = qualifiers_str(m.qualifiers);
-  name = name + typeName(m.return_type.name) + '_';
-  name = name + m.name;
-  var params = parameterList(m.parameters);
-  var body = flatten(m.statements);
-  if (p.qualifiers & JOG_QUALIFIER_PRIVATE) {
-    if (!type.private_properies) type.private_methods = [];
-    type.private_methods.push(p);
-  } else  {
+  // var name = qualifiers_str(m.qualifiers);
+  // name = name + typeName(m.return_type.name) + '_';
+  // name = name + m.name;
+  if ((m.qualifiers & JOG_QUALIFIER_PRIVATE) && !processPriv) {
+    if (!type.private_methods) type.private_methods = {};
+    type.private_methods[m.name] = m;
+  } else {
+    pushScope();
+    var params = parameterList(m.parameters);
+    var body = flatten(m.statements);
     addIdentifier(m.name, m.name, m.type, true);
+    type[m.name] = new Function(params, body);
+
+
     //if (!type.prototype) type.prototype = {};
     //type.prototype[m.name] = new Function(params, body);
-    type[m.name] = new Function(params, body);
+    popScope();
   }
 };
 
@@ -4769,12 +4828,12 @@ var addClass = function(type) {
   // var ctype = Result[type.name] = function() {};
   // ctype.name = type.name;
 
-  //pushScope();
   addIdentifier(type.name,
                 'Result.' + type.name,
                 {token:TOKEN_CLASS, name:type.name},
                 true);
 
+  pushScope();
   if (type.static_initializers) {
     if (trace) print('have static_initializers');
     for (var j = 0; j < type.static_initializers.length; j++) {
@@ -4804,17 +4863,64 @@ var addClass = function(type) {
     }
   }
   if (type.methods) {
-    if (trace) print('have mehtods');
+    if (trace) print('have methods');
+    addIdentifier('this',
+                  'this',
+                  {token:TOKEN_CLASS, name:type.name},
+                  false);
     for (var j = 0; j < type.methods.length; j++) {
       var m = type.methods[j];
       addMethod(ctype, m);
     }
+
   }
 
-  // TODO: write privates
+  var private_methods = '';
+  if (ctype.private_methods) {
+    if (trace) print('have private methods');
+    for (var mKey in ctype.private_methods) {
+      var m = ctype.private_methods[mKey];
+      pushScope();
+      var params = parameterList(m.parameters);
+      var body = flatten(m.statements);
+      addIdentifier(m.name, m.name, m.type, true);
+      private_methods = private_methods
+          + m.name + ': function (' + params.join(',') + ') {'
+          + body
+          + '}';
+      popScope();
+      private_methods = private_methods + ',';
+    }
+    delete ctype.private_methods;
+  }
+  var private_properties = {};
+  if (ctype.private_properties) {
+    if (trace) print('have private properties');
+    for (var p in ctype.private_properties) {
+      addProperty(private_properties, ctype.private_properties[p], true);
+    }
+    delete ctype.private_properties;
+  }
 
-  //popScope();
+  ctype['<class>'] =
+      (new Function(
+        'if (this[\'<private>\']) {'
+            + 'print(\'class already initialized.\');'
+            + 'quit();'
+            + '}'
+            + 'this[\'<private>\'] = function(self) {'
+            + 'var privates = ' + JSON.stringify(private_properties) + ';'
+            + 'return {' + private_methods
+            + '\'<mutate>\': function (field, x) {'
+            + 'if (typeof(x) === \'undefined\') {'
+            + ' return privates[field];'
+            + '} else {'
+            + ' privates[field] = x;'
+            + '}}}}(this);'));
+
+  popScope();
 }
+
 
 var compile = function(ast) {
   if (trace) print('compile');
