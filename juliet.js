@@ -4456,8 +4456,7 @@ var nameInContext = function(context, id) {
     typeName = typeDescriptor.type.name;
     if (name in Result[typeName]) {
       return name;
-    }
-    if ((name + argTypeSig) in Result[typeName]) {
+    } else if ((name + argTypeSig) in Result[typeName]) {
       return name + argTypeSig;
     }
   }
@@ -4823,8 +4822,6 @@ var addClassProperty = function(type, cp) {
 
 var addProperty = function(type, p, processPriv) {
   if (trace) print('addPropery');
-  // var name = qualifiers_str(cp.qualifiers);
-  // name = name + '_' + p.name;
   if ((p.qualifiers & JOG_QUALIFIER_PRIVATE) && !processPriv) {
     if (!type.private_properies) type.private_properties = {};
     type.private_properties[p.name] = p;
@@ -4842,9 +4839,8 @@ var addProperty = function(type, p, processPriv) {
 var addClassMethod = function(type, cm) {
   if (trace) print('addClassMethod: ' + cm.name);
   pushScope();
-  var name = qualifiers_str(cm.qualifiers);
-  name = name + typeName(cm.return_type.name) + '_';
-  name = name + cm.name;
+  var name = methodSignature(cm);
+
   var params = parameterList(cm.parameters);
   var body = flatten(cm.statements);
   type[name] = new Function(params, body);
@@ -4853,12 +4849,8 @@ var addClassMethod = function(type, cm) {
 
 var addMethod = function(type, m, processPriv) {
   if (trace) print('addMehtod: ' + m.name);
-  // var name = qualifiers_str(m.qualifiers);
-  // name = name + typeName(m.return_type.name) + '_';
-  // name = name + m.name;
   var name = methodSignature(m);
   //print('Signature: ' + name);
-
   if ((m.qualifiers & JOG_QUALIFIER_PRIVATE) && !processPriv) {
     if (!type.private_methods) type.private_methods = {};
     type.private_methods[m.name] = m;
@@ -4867,12 +4859,7 @@ var addMethod = function(type, m, processPriv) {
     var params = parameterList(m.parameters);
     var body = flatten(m.statements);
     addIdentifier(m.name, m.name, m.type, true);
-
-    //type[m.name] = new Function(params, body);
     type[name] = new Function(params, body);
-
-    //if (!type.prototype) type.prototype = {};
-    //type.prototype[m.name] = new Function(params, body);
     popScope();
   }
 };
@@ -4881,8 +4868,6 @@ var addClass = function(type) {
   if (trace) print('Class: ' + type.name);
 
   var ctype = Result[type.name] = {name:type.name};
-  // var ctype = Result[type.name] = function() {};
-  // ctype.name = type.name;
 
   addIdentifier(type.name,
                 'Result.' + type.name,
@@ -5029,7 +5014,8 @@ if (argc) {
 
   if (run) {
     if (Result[className]) {
-      var main = Result[className].public_static_void_main;
+      //var main = Result[className].public_static_void_main;
+      var main = Result[className]['main___String[]'];
       if (!main) {
         print(className + ' does not have a main mehtod.');
         quit();
