@@ -4386,10 +4386,66 @@ var typeDescriptorForName = function(id) {
   return null;
 };
 
-var nameInContext = function(context, id, assignment) {
+var typeListSignature = function(typeList) {
+  var ret = '';
+  var arity = 0;
+  if (typeList) arity = typeList.length;
+  if (arity > 0) ret = ret + '___';
+  for (var i = 0; i < arity; i++) {
+    switch (typeList[i].kind) {
+    case 'parameter':
+      ret = ret + typeList[i].type.name;
+      break;
+    case 'literal':
+      switch (typeList[i].token) {
+      case LITERAL_CHAR:
+        ret = ret + 'char';
+        break;
+      case LITERAL_STRING:
+        ret = ret + 'string';
+        break;
+      case LITERAL_DOUBLE:
+        ret = ret + 'double';
+        break
+      case LITERAL_INT:
+        ret = ret + 'int';
+        break;
+      case LITERAL_BOOLEAN:
+        ret = ret + 'boolean';
+        break;
+      case TOKEN_NULL:
+        ret = ret + 'Object';
+        break;
+      }
+    }
+    if (i < arity - 1) ret = ret + '_';
+  }
+  //if (arity > 0) ret = ret + ')';
+  return ret;
+}
+
+var methodSignature = function (m) {
+  var arity = 0;
+  var sig = m.name;
+  return sig + typeListSignature(m.parameters);
+};
+
+var methodDescriptor = function () {
+};
+
+var mostApplicableMethod = function () {
+};
+
+var nameInContext = function(context, id) {
   var name = (typeof(id) === 'object') ? id.name : id;
   if (trace) print('nameInContext: ' + context);
   if (trace) print('  name: ' + name);
+
+  var args = id.args;
+  var argTypeSig = '';
+  if (args) {
+    argTypeSig = typeListSignature(args);
+  }
 
   // if context is a variable we need to check if id is a
   // field of the type
@@ -4401,6 +4457,9 @@ var nameInContext = function(context, id, assignment) {
     if (name in Result[typeName]) {
       return name;
     }
+    if ((name + argTypeSig) in Result[typeName]) {
+      return name + argTypeSig;
+    }
   }
 
   var cononicalName = nameInScope(context) + '.';
@@ -4409,6 +4468,10 @@ var nameInContext = function(context, id, assignment) {
     if ((context in scope[i])) {
       if (name in scope[i]) {
         var n = scope[i][name].name;
+        return n.replace(cononicalName, '');
+      } else if ((name + argTypeSig) in scope[i]) {
+        //var n = scope[i][name].name;
+        var n = name + argTypeSig;
         return n.replace(cononicalName, '');
       } else break;
     } else {
@@ -4488,8 +4551,7 @@ var addIdentifier = function(name, cononicalName, type, shadowable) {
 };
 
 var constructorForArguments = function(args) {
-  // TODO:
-  return '\'<init>\'';
+  return '\'<init>' + typeListSignature(args) + '\'';
 };
 
 var pushScope = function() {
@@ -4739,16 +4801,6 @@ var flatten = function(stm, sep, context) {
   return ret;
 };
 
-var methodSigniture = function () {
-  var arity;
-};
-
-var methodDescriptor = function () {
-};
-
-var mostApplicableMethod = function () {
-};
-
 var addStaticInitializer = function(type, si) {
   if (trace) print('addStaticInitializer');
   type[si.name] = function() {};
@@ -4804,6 +4856,9 @@ var addMethod = function(type, m, processPriv) {
   // var name = qualifiers_str(m.qualifiers);
   // name = name + typeName(m.return_type.name) + '_';
   // name = name + m.name;
+  var name = methodSignature(m);
+  //print('Signature: ' + name);
+
   if ((m.qualifiers & JOG_QUALIFIER_PRIVATE) && !processPriv) {
     if (!type.private_methods) type.private_methods = {};
     type.private_methods[m.name] = m;
@@ -4812,8 +4867,9 @@ var addMethod = function(type, m, processPriv) {
     var params = parameterList(m.parameters);
     var body = flatten(m.statements);
     addIdentifier(m.name, m.name, m.type, true);
-    type[m.name] = new Function(params, body);
 
+    //type[m.name] = new Function(params, body);
+    type[name] = new Function(params, body);
 
     //if (!type.prototype) type.prototype = {};
     //type.prototype[m.name] = new Function(params, body);
