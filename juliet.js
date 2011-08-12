@@ -4402,7 +4402,7 @@ var typeListSignature = function(typeList) {
         ret = ret + 'char';
         break;
       case LITERAL_STRING:
-        ret = ret + 'string';
+        ret = ret + 'String';
         break;
       case LITERAL_DOUBLE:
         ret = ret + 'double';
