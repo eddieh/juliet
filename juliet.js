@@ -4383,6 +4383,7 @@ var typeDescriptorForName = function(id) {
       return n;
     }
   }
+  // TODO: super
   return null;
 };
 
@@ -4455,8 +4456,10 @@ var nameInContext = function(context, id) {
   if (typeDescriptor && typeDescriptor.type) {
     typeName = typeDescriptor.type.name;
     if (name in Result[typeName]) {
+      // TODO: accessible?
       return name;
     } else if ((name + argTypeSig) in Result[typeName]) {
+      // TODO: accessible?
       return name + argTypeSig;
     }
   }
@@ -4467,11 +4470,14 @@ var nameInContext = function(context, id) {
     if ((context in scope[i])) {
       if (name in scope[i]) {
         var n = scope[i][name].name;
+        // TODO: accessible?
         return n.replace(cononicalName, '');
       } else if ((name + argTypeSig) in scope[i]) {
         //var n = scope[i][name].name;
+        //return n.replace(cononicalName, '');
         var n = name + argTypeSig;
-        return n.replace(cononicalName, '');
+        // TODO: accessible?
+        return n;
       } else break;
     } else {
       continue;
@@ -4488,11 +4494,21 @@ var nameInContext = function(context, id) {
 var nameInScope = function(id) {
   var name = (typeof(id) === 'object') ? id.name : id;
   if (trace) print('nameInScope: ' + name);
+
+  var args = id.args;
+  var argTypeSig = '';
+  if (args) {
+    argTypeSig = typeListSignature(args);
+  }
+
   var curScope = scope.length - 1;
   for (var i = curScope; i >= 0; i--) {
     if (name in scope[i]) {
       var n = scope[i][name];
       return n.name;
+    } else if ((name + argTypeSig) in scope[i]) {
+      var n = 'this.' + name + argTypeSig;
+      return n;
     }
   }
 
@@ -4503,6 +4519,11 @@ var nameInScope = function(id) {
   }
   var privateName = privateMemberName(typeName, name);
   if (privateName) return 'this' + privateName;
+
+  // TODO: super
+
+  // TODO: single-static-import declarations
+  // TODO: static-import-on-demand declarations
 
   print(name + ' is not defined');
   quit();
@@ -4855,10 +4876,10 @@ var addMethod = function(type, m, processPriv) {
     if (!type.private_methods) type.private_methods = {};
     type.private_methods[m.name] = m;
   } else {
+    addIdentifier(name, name, m.return_type, true);
     pushScope();
     var params = parameterList(m.parameters);
     var body = flatten(m.statements);
-    addIdentifier(m.name, m.name, m.type, true);
     type[name] = new Function(params, body);
     popScope();
   }
