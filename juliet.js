@@ -4298,6 +4298,56 @@ Java = {
     if (typeof(inst[constructor]) === 'function')
         inst[constructor].apply(inst, args);
     return inst;
+  },
+  'dispatch': function (name, context) {
+    var args = [];
+    var argTypeSig = '___';
+    for (var i = 2; i < arguments.length; i++) {
+      var a = arguments[i];
+      args.push(a);
+      switch(typeof(a)) {
+      case 'object':
+        // what is the objects Java type
+        argTypeSig = argTypeSig + 'Object';
+        break;
+      case 'boolean':
+        argTypeSig = argTypeSig + 'boolean';
+        break;
+      case 'number':
+        // integer or double?
+        var n = Number(a).toString();
+        if (n.indexOf('.') == -1) {
+          argTypeSig = argTypeSig + 'int';
+        } else {
+          argTypeSig = argTypeSig + 'double';
+        }
+        break;
+      case 'string':
+        // character or string?
+        if (a.length == 1) {
+          argTypeSig = argTypeSig + 'char';
+        } else {
+          argTypeSig = argTypeSig + 'String';
+        }
+        break;
+      case 'function':
+        // what is the objects Java type
+        argTypeSig = argTypeSig + 'Object';
+        break;
+      default:
+        break;
+
+      }
+      if (i < arguments.length - 1) argTypeSig = argTypeSig + '_';
+    }
+
+    if (typeof(context) === 'string') {
+      var t = Result[context][name + argTypeSig]
+      t.apply(t, args);
+    } else {
+      context[name + argTypeSig].apply(context, args);
+    }
+
   }
 };
 var System = {
@@ -4391,7 +4441,7 @@ var typeListSignature = function(typeList) {
   var ret = '';
   var arity = 0;
   if (typeList) arity = typeList.length;
-  if (arity > 0) ret = ret + '___';
+  ret = ret + '___';
   for (var i = 0; i < arity; i++) {
     switch (typeList[i].kind) {
     case 'parameter':
@@ -4418,6 +4468,15 @@ var typeListSignature = function(typeList) {
         ret = ret + 'Object';
         break;
       }
+    case 'construct':
+      var t = typeDescriptorForName(typeList[i].name);
+      if (t && t.type) ret = ret + t.type.name;
+      break;
+    default:
+      // can't determine at compile-time return the empty string so
+      // that the methods base name is used
+      return '';
+      break;
     }
     if (i < arity - 1) ret = ret + '_';
   }
@@ -4426,7 +4485,6 @@ var typeListSignature = function(typeList) {
 }
 
 var methodSignature = function (m) {
-  var arity = 0;
   var sig = m.name;
   return sig + typeListSignature(m.parameters);
 };
@@ -4446,6 +4504,9 @@ var nameInContext = function(context, id) {
   var argTypeSig = '';
   if (args) {
     argTypeSig = typeListSignature(args);
+    if (argTypeSig === '') {
+      return 'Java.dispatch(\'' + name + '\',\'' + context + '\',';
+    }
   }
 
   // if context is a variable we need to check if id is a
@@ -4499,17 +4560,24 @@ var nameInScope = function(id) {
   var argTypeSig = '';
   if (args) {
     argTypeSig = typeListSignature(args);
+    if (argTypeSig === '') {
+      return 'Java.dispatch(\'' + name + '\',this,';
+    }
   }
 
   var curScope = scope.length - 1;
   for (var i = curScope; i >= 0; i--) {
+
     if (name in scope[i]) {
       var n = scope[i][name];
       return n.name;
-    } else if ((name + argTypeSig) in scope[i]) {
+    }
+
+    if ((name + argTypeSig) in scope[i]) {
       var n = 'this.' + name + argTypeSig;
       return n;
     }
+
   }
 
   var typeDescriptor = typeDescriptorForName('this');
@@ -4793,7 +4861,9 @@ var flatten = function(stm, sep, context) {
       }
       ret = ret + name;
       if (stm.args) {
-        ret = ret + '(';
+        if (typeListSignature(stm.args) !== '') {
+          ret = ret + '(';
+        }
         ret = ret + flatten(stm.args, ',');
         ret = ret + ')';
       }
@@ -4876,6 +4946,7 @@ var addMethod = function(type, m, processPriv) {
     if (!type.private_methods) type.private_methods = {};
     type.private_methods[m.name] = m;
   } else {
+    //addIdentifier(m.name, m.name, null, true);
     addIdentifier(name, name, m.return_type, true);
     pushScope();
     var params = parameterList(m.parameters);
