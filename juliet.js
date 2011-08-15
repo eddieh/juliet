@@ -4967,6 +4967,49 @@ var addClass = function(type) {
                 true);
 
   pushScope();
+
+  var base_class = null;
+  if (type.base_class) {
+    base_class = baseClass(type.base_class.name);
+    if (base_class.class_properties) {
+      if (trace) print('have super class_properties');
+      for (var j = 0; j < base_class.class_properties.length; j++) {
+        var cp = base_class.class_properties[j];
+        if (!(cp.qualifiers & JOG_QUALIFIER_PRIVATE))
+          addClassProperty(ctype, cp);
+      }
+    }
+    if (base_class.properties) {
+      if (trace) print('have super properties');
+      for (var j = 0; j < base_class.properties.length; j++) {
+        var p = base_class.properties[j];
+        if (!(p.qualifiers & JOG_QUALIFIER_PRIVATE))
+          addProperty(ctype, p);
+      }
+    }
+    if (base_class.class_methods) {
+      if (trace) print('have super class_methods');
+      for (var j = 0; j < base_class.class_methods.length; j++) {
+        var cm = base_class.class_methods[j];
+        if (!(cm.qualifiers & JOG_QUALIFIER_PRIVATE))
+          addClassMethod(ctype, cm);
+      }
+    }
+    if (base_class.methods) {
+      if (trace) print('have super methods');
+      addIdentifier('this',
+                    'this',
+                    {token:TOKEN_CLASS, name:base_class.name},
+                    false);
+      for (var j = 0; j < base_class.methods.length; j++) {
+        var m = base_class.methods[j];
+        if (!(m.qualifiers & JOG_QUALIFIER_PRIVATE))
+          if (m.kind != 'constructor')
+            addMethod(ctype, m);
+      }
+    }
+  }
+
   if (type.static_initializers) {
     if (trace) print('have static_initializers');
     for (var j = 0; j < type.static_initializers.length; j++) {
@@ -5005,7 +5048,6 @@ var addClass = function(type) {
       var m = type.methods[j];
       addMethod(ctype, m);
     }
-
   }
 
   var private_methods = '';
@@ -5052,8 +5094,17 @@ var addClass = function(type) {
             + '}}}}(this);'));
 
   popScope();
-}
+};
 
+var baseClass = function(name) {
+  var ast = Parser;
+  var type = null;
+  for (var i = 0; i < ast.parsed_types.length; i++) {
+    type = ast.parsed_types[i];
+    if (type.name == name) return type;
+  }
+  return null;
+};
 
 var compile = function(ast) {
   if (trace) print('compile');
