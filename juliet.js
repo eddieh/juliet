@@ -520,7 +520,10 @@ var tokenize = function() {
       continue;
     }
 
-    if (!ch) return false; // EOF
+    if (!ch) {
+      if (trace) print('EOF');
+      return false; // EOF
+    }
 
     //
     // Comments
@@ -1426,7 +1429,7 @@ var parse_type_def = function() {
     // property values
     if (is_class(type) && !is_template(type)) {
       type.static_initializers = [{token:t.type,
-                                   kind:'initializer',
+                                   kind:'static-initializer',
                                    qualifiers:JOG_QUALIFIER_STATIC,
                                    // TODO: type_context:type,
                                    return_type:null,
@@ -1605,7 +1608,7 @@ var parse_member = function(type) {
   var name = '';
   var first = true;
 
-  // static initiaizer
+  // static initializer
   if (quals == JOG_QUALIFIER_STATIC && next_is(TOKEN_LCURLY)) {
     if (trace) print('static initiaizer');
     if (is_interface(type)) {
@@ -1613,9 +1616,9 @@ var parse_member = function(type) {
     }
 
     m = {token:t.type,
-         kind:'initiaizer',
+         kind:'static-initializer',
          qualifiers:quals,
-         type:type,
+         //type:type,
          return_type:null,
          name:'static'};
     Parser.this_method = m;
@@ -1631,6 +1634,37 @@ var parse_member = function(type) {
       }
     }
     must_consume(TOKEN_RCURLY, 'Expected }');
+    if (next_is(TOKEN_SEMICOLON)) read();
+    return true;
+  }
+
+  // instance initializer
+  if (quals == 0 && next_is(TOKEN_LCURLY)) {
+    if (trace) print('instance initializer');
+    if (is_interface(type)) {
+      throw t.error('Instance initialization block not allowed here.');
+    }
+
+    m = {token:t.type,
+         kind:'instance-initializer',
+         qualifiers:quals,
+         //type:type,
+         return_type:null,
+         name:'instance'};
+    Parser.this_method = m;
+    if (!type.instance_initializers) type.instance_initializers = [];
+    type.instance_initializers.push(m);
+
+    read();
+    while (!next_is(TOKEN_RCURLY)) {
+      stm = parse_statement(true);
+      if (stm) {
+        if (!m.statements) m.statements = [];
+        m.statements.push(stm);
+      }
+    }
+    must_consume(TOKEN_RCURLY, 'Expected }');
+    if (next_is(TOKEN_SEMICOLON)) read();
     return true;
   }
 
@@ -4300,6 +4334,13 @@ Java = {
     }
     if (typeof(inst['<class>']) === 'function')
       inst['<class>'].call(inst);
+    if (inst['<instance-initializers>']) {
+      var len = inst['<instance-initializers>'].length;
+      for (var i = 0; i < len; i++) {
+        var ii = inst['<instance-initializers>'][i];
+        if (typeof(ii) === 'function') ii.call(inst);
+      }
+    }
     if (typeof(inst[constructor]) === 'function')
         inst[constructor].apply(inst, args);
     return inst;
@@ -4902,14 +4943,23 @@ var flatten = function(stm, sep, context) {
 
 var addStaticInitializer = function(type, si) {
   if (trace) print('addStaticInitializer');
-  type[si.name] = function() {};
+  if (!type['<static-initializers>']) type['<static-initializers>'] = [];
+  var body = flatten(si.statements);
+  type['<static-initializers>'].push(new Function(body));
+};
+
+var addInstanceInitializer = function(type, ii) {
+  if (trace) print('addInstanceInitializer');
+  if (!type['<instance-initializers>']) type['<instance-initializers>'] = [];
+  var body = flatten(ii.statements);
+  type['<instance-initializers>'].push(new Function(body));
 };
 
 var addClassProperty = function(type, cp) {
   if (trace) print('addClassProperty');
-  var name = qualifiers_str(cp.qualifiers) + cp.name
+  //var name = qualifiers_str(cp.qualifiers) + cp.name
   addIdentifier(cp.name,
-                'Result.' + type.name + '.' + name,
+                'Result.' + type.name + '.' + cp.name,
                 cp.type,
                 true);
   var value = cp.initial_value;
@@ -4917,7 +4967,7 @@ var addClassProperty = function(type, cp) {
     value = value.value;
   else
     value = flatten(value);
-  type[name] = value;
+  type[cp.name] = value;
 };
 
 var addProperty = function(type, p, processPriv) {
@@ -5025,13 +5075,6 @@ var addClass = function(type) {
     }
   }
 
-  if (type.static_initializers) {
-    if (trace) print('have static_initializers');
-    for (var j = 0; j < type.static_initializers.length; j++) {
-      var si = type.static_initializers[j];
-      addStaticInitializer(ctype, si);
-    }
-  }
   if (type.class_properties) {
     if (trace) print('have class_properties');
     for (var j = 0; j < type.class_properties.length; j++) {
@@ -5118,6 +5161,21 @@ var addClass = function(type) {
             + ' privates[field] = x;'
             + '}}}}(this);'));
 
+  if (type.static_initializers) {
+    if (trace) print('have static_initializers');
+    for (var j = 0; j < type.static_initializers.length; j++) {
+      var si = type.static_initializers[j];
+      addStaticInitializer(ctype, si);
+    }
+  }
+  if (type.instance_initializers) {
+    if (trace) print('have instance_initializers');
+    for (var j = 0; j < type.instance_initializers.length; j++) {
+      var si = type.instance_initializers[j];
+      addInstanceInitializer(ctype, si);
+    }
+  }
+
   popScope();
 };
 
@@ -5134,6 +5192,9 @@ var classByName = function(name) {
 var compile = function(ast) {
   if (trace) print('compile');
   if (!ast) { print('Nothing to compile.'); return; }
+  // TODO: there is a possible naming collision here if
+  // someone defines a class named "package" or a class
+  // named "imports"
   if (ast['package']) Result['package'] = ast['package'];
   if (ast.imports) {
     // TODO: recursively add imports
@@ -5181,6 +5242,22 @@ if (argc) {
   if (verbose) print_ast(Result);
 
   if (run) {
+    // initialize classes
+    for (var c in Result) {
+      // TODO: remove this kludge
+      if (c == 'package') continue;
+      if (c == 'imports') continue;
+
+      var klass = Result[c];
+      if (klass['<static-initializers>']) {
+        var len = klass['<static-initializers>'].length;
+        for (var i = 0; i < len; i++) {
+          var si = klass['<static-initializers>'][i];
+          if (typeof(si) === 'function') si.call();
+        }
+      }
+    }
+
     if (Result[className]) {
       //var main = Result[className].public_static_void_main;
       var main = Result[className]['main___String[]'];

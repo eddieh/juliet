@@ -6,7 +6,7 @@ class Initializers {
     };
     {
         x = 7;
-    }
+    };
 }
 
 class Runner {
