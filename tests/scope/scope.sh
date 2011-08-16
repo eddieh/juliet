@@ -18,7 +18,7 @@ output[12]="x is already defined"
 output[13]="9"
 output[14]=$'4\n3'
 
-js="/Users/eddie/src/v8-read-only/d8"
+js="vendor/v8/d8"
 
 pass_count=0
 fail_count=0
