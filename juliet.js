@@ -1744,7 +1744,12 @@ var parse_member = function(type) {
     if (quals & JOG_QUALIFIER_NATIVE) {
       throw t.error('native qualifier cannot be used for properties.');
     }
+
     if (is_interface(type)) {
+      // TODO: interfaces can in fact have field declarations, however
+      // *every* field declaration in the body of an interface is
+      // implicityly public, static, and final. As such, each field in
+      // an interface must have an initial value.
       throw t.error('Interface cannot have properties.');
     }
 
@@ -4971,6 +4976,25 @@ var addClass = function(type) {
                 true);
 
   pushScope();
+
+
+  if (type.interfaces) {
+    if (trace) print('have interfaces');
+    for (var j = 0; j < type.interfaces.length; j++) {
+      var anInterface = type.interfaces[j];
+      if (anInterface.class_properties) {
+        if (trace) print('have interface class_properties');
+        for (var j = 0; j < anInterface.class_properties.length; j++) {
+          var cp = anInterface.class_properties[j];
+          addClassProperty(ctype, cp);
+        }
+      }
+      if (anInterface.methods) {
+        if (trace) print('have interface methods');
+        // TODO: ensure methods are implemented
+      }
+    }
+  }
 
   var base_class = null;
   if (type.base_class) {
