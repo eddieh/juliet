@@ -9,3 +9,7 @@ test:
 	sh tests/test.sh
 	@echo ""
 	sh tests/scope/scope.sh
+
+clean:
+	-cd tests && rm *.class
+	-cd tests/scope && rm *.class
