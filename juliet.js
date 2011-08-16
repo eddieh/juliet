@@ -1627,7 +1627,7 @@ var parse_member = function(type) {
       stm = parse_statement(true);
       if (stm) {
         if (!m.statements) m.statements = [];
-        m.push(stm);
+        m.statements.push(stm);
       }
     }
     must_consume(TOKEN_RCURLY, 'Expected }');
