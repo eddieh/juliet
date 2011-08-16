@@ -4981,7 +4981,7 @@ var addClass = function(type) {
   if (type.interfaces) {
     if (trace) print('have interfaces');
     for (var j = 0; j < type.interfaces.length; j++) {
-      var anInterface = type.interfaces[j];
+      var anInterface = classByName(type.interfaces[j].name);
       if (anInterface.class_properties) {
         if (trace) print('have interface class_properties');
         for (var j = 0; j < anInterface.class_properties.length; j++) {
@@ -4998,7 +4998,7 @@ var addClass = function(type) {
 
   var base_class = null;
   if (type.base_class) {
-    base_class = baseClass(type.base_class.name);
+    base_class = classByName(type.base_class.name);
     if (base_class.class_properties) {
       if (trace) print('have super class_properties');
       for (var j = 0; j < base_class.class_properties.length; j++) {
@@ -5121,7 +5121,7 @@ var addClass = function(type) {
   popScope();
 };
 
-var baseClass = function(name) {
+var classByName = function(name) {
   var ast = Parser;
   var type = null;
   for (var i = 0; i < ast.parsed_types.length; i++) {
