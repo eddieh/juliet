@@ -4863,6 +4863,10 @@ var flatten = function(stm, sep, context) {
       if (stm.args) {
         if (typeListSignature(stm.args) !== '') {
           ret = ret + '(';
+        } else {
+          // TODO: remove this too
+          if (stm.name == 'println')
+            ret = ret + '(';
         }
         ret = ret + flatten(stm.args, ',');
         ret = ret + ')';
@@ -4995,19 +4999,6 @@ var addClass = function(type) {
           addClassMethod(ctype, cm);
       }
     }
-    if (base_class.methods) {
-      if (trace) print('have super methods');
-      addIdentifier('this',
-                    'this',
-                    {token:TOKEN_CLASS, name:base_class.name},
-                    false);
-      for (var j = 0; j < base_class.methods.length; j++) {
-        var m = base_class.methods[j];
-        if (!(m.qualifiers & JOG_QUALIFIER_PRIVATE))
-          if (m.kind != 'constructor')
-            addMethod(ctype, m);
-      }
-    }
   }
 
   if (type.static_initializers) {
@@ -5038,12 +5029,22 @@ var addClass = function(type) {
       addClassMethod(ctype, cm);
     }
   }
+
+  addIdentifier('this',
+                'this',
+                {token:TOKEN_CLASS, name:type.name},
+                false);
+  if (base_class && base_class.methods) {
+    if (trace) print('have super methods');
+    for (var j = 0; j < base_class.methods.length; j++) {
+      var m = base_class.methods[j];
+      if (!(m.qualifiers & JOG_QUALIFIER_PRIVATE))
+        if (m.kind != 'constructor')
+          addMethod(ctype, m);
+    }
+  }
   if (type.methods) {
     if (trace) print('have methods');
-    addIdentifier('this',
-                  'this',
-                  {token:TOKEN_CLASS, name:type.name},
-                  false);
     for (var j = 0; j < type.methods.length; j++) {
       var m = type.methods[j];
       addMethod(ctype, m);
