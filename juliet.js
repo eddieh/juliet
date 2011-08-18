@@ -2025,6 +2025,8 @@ var parse_statement = function(require_semicolon) {
     return conditional;
   }
 
+  // TODO: TOKEN_DO
+
   if (consume(TOKEN_WHILE)) {
     must_consume(TOKEN_LPAREN, 'Expected (.');
     loop = {token:t.type,
@@ -4698,6 +4700,17 @@ var popScope = function() {
   scope.pop();
 };
 
+var isIdentifier = function(expr) {
+  var kind = expr.kind;
+  if (kind != 'construct') {
+    if (kind == 'postfix') {
+      while (expr.term) expr = expr.term;
+      kind = expr.kind;
+    }
+  }
+  return (kind == 'construct');
+}
+
 var flatten = function(stm, sep, context) {
   if (trace) print('flatten');
   if (!stm) return '';
@@ -4760,8 +4773,13 @@ var flatten = function(stm, sep, context) {
       ret = ret + '=' + flatten(stm.initial_value);
       break;
     case 'assignment':
+      if (!isIdentifier(stm.location)) {
+        print('unexpected type: must assign to a variable');
+        quit();
+      }
       var loc = flatten(stm.location, sep, context);
       if (/<private>/.test(loc)) {
+        // must use private access method
         ret = ret + loc.replace('this.', 'this').slice(0, -1);
         var new_value = flatten(stm.new_value);
         if (token == TOKEN_ASSIGN) {
@@ -4772,6 +4790,7 @@ var flatten = function(stm, sep, context) {
           ret = ret + ',' + val + op + new_value + ')';
         }
       } else {
+        // directly assignable
         ret = ret + loc;
         ret = ret + operatorStr(token);
         ret = ret + flatten(stm.new_value);

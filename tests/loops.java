@@ -7,5 +7,8 @@ class Loops {
         for (int i = 0; i < 3; i++) {
             System.out.println("three");
         }
+        // do {
+        //     System.out.println("you don't see me");
+        // } while (false);
     }
 }
