@@ -2642,7 +2642,7 @@ var parse_postfix_unary = function(operand) {
       must_consume(TOKEN_RBRACKET, 'Expected ] (Error4).');
       return parse_postfix_unary({token:t.type,
                                   kind:'postfix',
-                                  context:operand,
+                                  operand:operand,
                                   expression:index});
     }
   }
@@ -3386,17 +3386,17 @@ var test_parse = function() {
       initial_value:null}]],
     ['a[0]', {
       token:TOKEN_LBRACKET,
-      context:{token:TOKEN_ID, name:'a'},
+      operand:{token:TOKEN_ID, name:'a'},
       expression:{token:LITERAL_INT, value:0}}],
     ['a[b]', {
       token:TOKEN_LBRACKET,
-      context:{token:TOKEN_ID, name:'a'},
+      operand:{token:TOKEN_ID, name:'a'},
       expression:{token:TOKEN_ID, name:'b'}}],
     ['a[0][0]', {
       token:TOKEN_LBRACKET,
-      context:{
+      operand:{
         token:TOKEN_LBRACKET,
-        context:{token:TOKEN_ID, name:'a'},
+        operand:{token:TOKEN_ID, name:'a'},
         expression:{token:LITERAL_INT, value:0}},
       expression:{token:LITERAL_INT, value:0}}],
     ['var1 |= (true || false);', {
@@ -4836,6 +4836,10 @@ var flatten = function(stm, sep, context) {
           ret = ret + '.'
         }
         ret = ret + term;
+      } else if (stm.expression) {
+        ret = ret + '[';
+        ret = ret + flatten(stm.expression);
+        ret = ret + ']';
       } else {
         ret = ret + operatorStr(token);
       }
