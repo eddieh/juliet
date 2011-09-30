@@ -4320,6 +4320,11 @@ var test_parse_types = function () {
 
 var scope = [];
 var Result = {};
+var init_compiler = function ()  {
+  scope = [];
+  Result = {};
+};
+
 Java = {
   'new': function (klass, constructor) {
     var inst = Object.create(klass);
@@ -4458,7 +4463,7 @@ var parameterList = function(params) {
     var type = typeName(params[i].type.name);
     var typedName = type + '_' + name;
     lst.push(name);
-    addIdentifier(name, name, params[i].type, false);
+    addIdentifier(name, name, params[i].type, false, 'local');
   }
   return lst;
 };
@@ -4668,7 +4673,7 @@ var privateMemberName = function(typeName, name) {
   }
 }
 
-var addIdentifier = function(name, cononicalName, type, shadowable) {
+var addIdentifier = function(name, cononicalName, type, shadowable, kind) {
   if (trace) print('addIdentifier');
 
   var curScope = scope.length - 1;
@@ -4683,7 +4688,8 @@ var addIdentifier = function(name, cononicalName, type, shadowable) {
 
   scope[scope.length - 1][name] = {name:cononicalName,
                                    type:type,
-                                   shadowable:shadowable};
+                                   shadowable:shadowable,
+                                   kind:kind};
 };
 
 var constructorForArguments = function(args) {
@@ -4700,16 +4706,86 @@ var popScope = function() {
   scope.pop();
 };
 
-var isIdentifier = function(expr) {
-  var kind = expr.kind;
-  if (kind != 'construct') {
-    if (kind == 'postfix') {
-      while (expr.term) expr = expr.term;
-      kind = expr.kind;
+var identifierForExpression = function(expr) {
+  while (expr && (expr.kind != 'construct')) {
+    if (expr.term) expr = expr.term;
+    else if (expr.operand) expr = expr.operand;
+    else expr = null;
+  }
+  return (expr && expr.kind == 'construct') ? expr.name : null;
+};
+
+var isLocal = function(id) {
+  return id.kind == 'local';
+};
+
+var isField = function(id) {
+  return id.kind == 'field';
+};
+
+var isArrayAccess = function(id) {
+  return true;
+};
+
+var isLeftHandSide = function(lhs) {
+  var name = identifierForExpression(lhs);
+  if (!name) return false;
+
+  // simple name
+  var curScope = scope.length - 1;
+  for (var i = curScope; i >= 0; i--) {
+    if (name in scope[i]) {
+      var x = scope[i][name];
+      return isLocal(x) || isField(x);
     }
   }
-  return (kind == 'construct');
-}
+
+  // name in context
+  if (!x) {
+    var context = null;
+    var expr = lhs;
+    while (expr.kind != 'construct') {
+      context = expr.operand.name;
+      if (expr.term) expr = expr.term;
+      else if (expr.operand) expr = expr.operand;
+    }
+
+    var typeDescriptor = typeDescriptorForName(context);
+    if (typeDescriptor && typeDescriptor.type) {
+      var props = typeDescriptor.type.properties;
+      if (!props) {
+        typeDescriptor = typeDescriptorForName(typeDescriptor.type.name);
+        if (typeDescriptor && typeDescriptor.type) {
+          props = typeDescriptor.type.properties;
+        }
+      }
+      if (props) {
+        for (var i = 0; i < props.length; i++) {
+          if (props[i].name == name) {
+            return true;
+          }
+        }
+      }
+
+      var cprops = typeDescriptor.type.class_properties;
+      if (!cprops) {
+        typeDescriptor = typeDescriptorForName(typeDescriptor.type.name);
+        if (typeDescriptor && typeDescriptor.type) {
+          cprops = typeDescriptor.type.class_properties;
+        }
+      }
+      if (cprops) {
+        for (var i = 0; i < cprops.length; i++) {
+          if (cprops[i].name == name) {
+            return true;
+          }
+        }
+      }
+    }
+  }
+
+  return false;
+};
 
 var flatten = function(stm, sep, context) {
   if (trace) print('flatten');
@@ -4766,17 +4842,20 @@ var flatten = function(stm, sep, context) {
       var name = stm.name;
       var type = typeName(stm.type.name);
       var typedName = type + '_' + name;
-      addIdentifier(name, name, stm.type, false);
+      addIdentifier(name, name, stm.type, false, 'local');
       ret = ret + 'var ';
       ret = ret + name;
-      // TODO: doesn't necessarily have an initial value?
-      ret = ret + '=' + flatten(stm.initial_value);
+      if (stm.initial_value) {
+        // TODO: type check
+        ret = ret + '=' + flatten(stm.initial_value);
+      }
       break;
     case 'assignment':
-      if (!isIdentifier(stm.location)) {
-        print('unexpected type: must assign to a variable');
-        quit();
+      if (!isLeftHandSide(stm.location)) {
+          print('unexpected type: must assign to a variable');
+          quit();
       }
+      // TODO: type check
       var loc = flatten(stm.location, sep, context);
       if (/<private>/.test(loc)) {
         // must use private access method
@@ -4786,6 +4865,7 @@ var flatten = function(stm, sep, context) {
           ret = ret + ',' + new_value + ')';
         } else {
           var val = flatten(stm.location, sep, context);
+          // TODO: we want the non-compound operator string
           var op = operatorStr(token);
           ret = ret + ',' + val + op + new_value + ')';
         }
@@ -4892,11 +4972,12 @@ var flatten = function(stm, sep, context) {
       // in the loop body
       ret = ret + 'var ' + name + '_iter=' + flatten(stm.iterable, ';');
       var inferedType = {};
-      addIdentifier('iter', name + '_iter', inferedType, false);
+      // TODO: possible name collision
+      addIdentifier('iter', name + '_iter', inferedType, false, 'local');
       addIdentifier(name,
                     nameInScope('iter') + '[' + name + ']',
                     stm.type,
-                    false);
+                    false, 'local');
       ret = ret + 'for (var ' + name;
       ret = ret + ' in ' + nameInScope('iter');
       ret = ret + ')';
@@ -4984,7 +5065,9 @@ var addClassProperty = function(type, cp) {
   addIdentifier(cp.name,
                 'Result.' + type.name + '.' + cp.name,
                 cp.type,
-                true);
+                true,
+               'field');
+  // TODO: type check
   var value = cp.initial_value;
   if (value && value.kind == 'literal')
     value = value.value;
@@ -4999,7 +5082,8 @@ var addProperty = function(type, p, processPriv) {
     if (!type.private_properies) type.private_properties = {};
     type.private_properties[p.name] = p;
   } else {
-    addIdentifier(p.name, 'this.' + p.name, p.type, true);
+    addIdentifier(p.name, 'this.' + p.name, p.type, true, 'field');
+    // TODO: type check
     if (p.initial_value && p.initial_value.kind == 'literal') {
       type[p.name] = p.initial_value.value;
     } else {
@@ -5029,7 +5113,7 @@ var addMethod = function(type, m, processPriv) {
     type.private_methods[m.name] = m;
   } else {
     //addIdentifier(m.name, m.name, null, true);
-    addIdentifier(name, name, m.return_type, true);
+    addIdentifier(name, name, m.return_type, true, 'method');
     pushScope();
     var params = parameterList(m.parameters);
     var body = flatten(m.statements);
@@ -5045,8 +5129,9 @@ var addClass = function(type) {
 
   addIdentifier(type.name,
                 'Result.' + type.name,
-                {token:TOKEN_CLASS, name:type.name},
-                true);
+                type,
+                true,
+               'class');
 
   pushScope();
 
@@ -5059,7 +5144,9 @@ var addClass = function(type) {
         if (trace) print('have interface class_properties');
         for (var j = 0; j < anInterface.class_properties.length; j++) {
           var cp = anInterface.class_properties[j];
-          addClassProperty(ctype, cp);
+          if (!type.class_properties) type.class_properties = [];
+          type.class_properties.unshift(cp);
+          //addClassProperty(ctype, cp);
         }
       }
       if (anInterface.methods) {
@@ -5076,24 +5163,33 @@ var addClass = function(type) {
       if (trace) print('have super class_properties');
       for (var j = 0; j < base_class.class_properties.length; j++) {
         var cp = base_class.class_properties[j];
-        if (!(cp.qualifiers & JOG_QUALIFIER_PRIVATE))
-          addClassProperty(ctype, cp);
+        if (!(cp.qualifiers & JOG_QUALIFIER_PRIVATE)) {
+          if (!type.class_properties) type.class_properties = [];
+          type.class_properties.unshift(cp);
+          //addClassProperty(ctype, cp);
+        }
       }
     }
     if (base_class.properties) {
       if (trace) print('have super properties');
       for (var j = 0; j < base_class.properties.length; j++) {
         var p = base_class.properties[j];
-        if (!(p.qualifiers & JOG_QUALIFIER_PRIVATE))
-          addProperty(ctype, p);
+        if (!(p.qualifiers & JOG_QUALIFIER_PRIVATE)) {
+          if (!type.properties) type.properties = [];
+          type.properties.unshift(p);
+          //addProperty(ctype, p);
+        }
       }
     }
     if (base_class.class_methods) {
       if (trace) print('have super class_methods');
       for (var j = 0; j < base_class.class_methods.length; j++) {
         var cm = base_class.class_methods[j];
-        if (!(cm.qualifiers & JOG_QUALIFIER_PRIVATE))
-          addClassMethod(ctype, cm);
+        if (!(cm.qualifiers & JOG_QUALIFIER_PRIVATE)) {
+          if (!type.class_methods) type.class_methods = [];
+          type.class_methods.unshift(cm);
+          //addClassMethod(ctype, cm);
+        }
       }
     }
   }
@@ -5122,15 +5218,19 @@ var addClass = function(type) {
 
   addIdentifier('this',
                 'this',
-                {token:TOKEN_CLASS, name:type.name},
-                false);
+                type,
+                false,
+               'this');
   if (base_class && base_class.methods) {
     if (trace) print('have super methods');
     for (var j = 0; j < base_class.methods.length; j++) {
       var m = base_class.methods[j];
       if (!(m.qualifiers & JOG_QUALIFIER_PRIVATE))
-        if (m.kind != 'constructor')
-          addMethod(ctype, m);
+        if (m.kind != 'constructor') {
+          if (!type.methods) type.methods = [];
+          type.methods.unshift(m);
+          //addMethod(ctype, m);
+        }
     }
   }
   if (type.methods) {
@@ -5149,7 +5249,7 @@ var addClass = function(type) {
       pushScope();
       var params = parameterList(m.parameters);
       var body = flatten(m.statements);
-      addIdentifier(m.name, m.name, m.type, true);
+      addIdentifier(m.name, m.name, m.type, true, 'field');
       private_methods = private_methods
           + m.name + ': function (' + params.join(',') + ') {'
           + body
@@ -5231,6 +5331,37 @@ var compile = function(ast) {
   popScope();
 };
 
+var execute = function(className) {
+  // initialize classes
+  for (var c in Result) {
+    // TODO: remove this kludge
+    if (c == 'package') continue;
+    if (c == 'imports') continue;
+
+    var klass = Result[c];
+    if (klass['<static-initializers>']) {
+      var len = klass['<static-initializers>'].length;
+      for (var i = 0; i < len; i++) {
+        var si = klass['<static-initializers>'][i];
+        if (typeof(si) === 'function') si.call();
+      }
+    }
+  }
+
+  if (Result[className]) {
+    //var main = Result[className].public_static_void_main;
+    var main = Result[className]['main___String[]'];
+    if (!main) {
+      print(className + ' does not have a main mehtod.');
+      quit();
+    }
+    main.call();
+  } else {
+    print(className + ' not found.');
+    quit();
+  }
+};
+
 var filepath = '';
 var verbose = false;
 var run = false;
@@ -5255,6 +5386,7 @@ if (argc) {
 
   init();
   init_parser();
+  init_compiler();
   data = readFile(filepath);
   if (trace) print(data);
   parse();
@@ -5265,33 +5397,6 @@ if (argc) {
   if (verbose) print_ast(Result);
 
   if (run) {
-    // initialize classes
-    for (var c in Result) {
-      // TODO: remove this kludge
-      if (c == 'package') continue;
-      if (c == 'imports') continue;
-
-      var klass = Result[c];
-      if (klass['<static-initializers>']) {
-        var len = klass['<static-initializers>'].length;
-        for (var i = 0; i < len; i++) {
-          var si = klass['<static-initializers>'][i];
-          if (typeof(si) === 'function') si.call();
-        }
-      }
-    }
-
-    if (Result[className]) {
-      //var main = Result[className].public_static_void_main;
-      var main = Result[className]['main___String[]'];
-      if (!main) {
-        print(className + ' does not have a main mehtod.');
-        quit();
-      }
-      main.call();
-    } else {
-      print(className + ' not found.');
-      quit();
-    }
+    execute(className);
   }
 }
