@@ -6,10 +6,9 @@ bootstrap:
 	cd vendor/v8 && scons console=readline d8
 
 test:
-	sh tests/test.sh
-	@echo ""
-	sh tests/scope/scope.sh
+	vendor/v8/d8 tests/tests.js
 
 clean:
 	-cd tests && rm *.class
 	-cd tests/scope && rm *.class
+	-cd tests/assignments && rm *.class

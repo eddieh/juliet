@@ -4,6 +4,8 @@ class Initializers {
     static {
         i = 3;
     };
+    static {};
+    {};
     {
         x = 7;
     };
