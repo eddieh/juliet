@@ -114,11 +114,13 @@ load('juliet.js');
       principal:'Test0',
       expected:'3\n'
     },
-    {
-      path:'tests/scope/test1.java',
-      principal:'Test1',
-      expected:'undefined\n'
-    },
+
+    // {
+    //   path:'tests/scope/test1.java',
+    //   principal:'Test1',
+    //   expected:'undefined\n'
+    // },
+
     {
       path:'tests/scope/test2.java',
       principal:'Test2',
@@ -183,7 +185,76 @@ load('juliet.js');
       path:'tests/scope/test14.java',
       principal:'Test14',
       expected:'4\n3\n'
+    },
+    {
+      path:'tests/scope/test15.java',
+      principal:'Test15',
+      expected:'Hello from static_method()\n' +
+               'Hello from static_method()\n'
+    },
+    {
+      path:'tests/scope/test16.java',
+      principal:'Runner',
+      expected:'Hello from static_method()\n' +
+               'Hello from static_method()\n'
+    },
+    {
+      path:'tests/scope/test17.java',
+      principal:'Test17',
+      expected:'instance_method is not defined\n'
+    },
+    {
+      path:'tests/scope/test18.java',
+      principal:'Test18',
+      expected:'x is not defined\n'
     }
+
+    // {
+    //   path:'tests/assignments/test0.java',
+    //   principal:'Test0',
+    //   expected:'3\n'
+    // },
+    // {
+    //   path:'tests/assignments/test1.java',
+    //   principal:'Test1',
+    //   expected:'unexpected type: must assign to a variable\n'
+    // },
+    // {
+    //   path:'tests/assignments/test2.java',
+    //   principal:'Test2',
+    //   expected:'3\n'
+    // },
+    // {
+    //   path:'tests/assignments/test3.java',
+    //   principal:'Test3',
+    //   expected:'incompatible types\n'
+    // },
+    // {
+    //   path:'tests/assignments/test4.java',
+    //   principal:'Test4',
+    //   expected:'9\n'
+    // },
+    // {
+    //   path:'tests/assignments/test5.java',
+    //   principal:'Runner',
+    //   expected:'13\n'
+    // },
+    // {
+    //   path:'tests/assignments/test6.java',
+    //   principal:'Test6',
+    //   expected:'5\n'
+    // },
+    // {
+    //   path:'tests/assignments/test7.java',
+    //   principal:'Test7',
+    //   expected:'32\n'
+    // },
+    // {
+    //   path:'tests/assignments/test8.java',
+    //   principal:'Test8',
+    //   expected:'32\n'
+    // }
+
   ];
 
   var result = '';
@@ -204,7 +275,7 @@ load('juliet.js');
   var putln = function(a) {
     test_info = test_info + a + '\n';
   };
-      
+
   tprint('BEGIN TESTS');
   tprint('');
 
@@ -221,7 +292,7 @@ load('juliet.js');
       compile(Parser);
       execute(tests[i].principal);
     } catch (e) {
-      
+
     }
 
     test_info = '';

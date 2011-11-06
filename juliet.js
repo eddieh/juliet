@@ -4320,8 +4320,10 @@ var test_parse_types = function () {
 
 var scope = [];
 var Result = {};
+var static_context = null;
 var init_compiler = function ()  {
   scope = [];
+  static_context = null;
   Result = {};
 };
 
@@ -4605,7 +4607,7 @@ var nameInContext = function(context, id) {
   quit();
 };
 
-var nameInScope = function(id) {
+var nameInScope = function(id, simple) {
   var name = (typeof(id) === 'object') ? id.name : id;
   if (trace) print('nameInScope: ' + name);
 
@@ -4627,7 +4629,17 @@ var nameInScope = function(id) {
     }
 
     if ((name + argTypeSig) in scope[i]) {
-      var n = 'this.' + name + argTypeSig;
+      var context = 'this.';
+
+      if (static_context) {
+        context = 'Result.' + static_context.name + '.';
+      }
+
+      if (simple) {
+        context = '';
+      }
+
+      var n = context + name + argTypeSig;
       return n;
     }
 
@@ -4646,6 +4658,9 @@ var nameInScope = function(id) {
   // TODO: single-static-import declarations
   // TODO: static-import-on-demand declarations
 
+  // TODO: if in static context, check if this is an instance
+  // identifier and print appropriate message
+  // (update tests/scope/test17.java to reflect this change)
   print(name + ' is not defined');
   quit();
 };
@@ -4831,6 +4846,7 @@ var flatten = function(stm, sep, context) {
     var kind = stm.kind;
     switch (kind) {
     case 'block':
+      if (trace) print('block');
       sep = '';
       pushScope();
       ret = ret + '{';
@@ -4839,6 +4855,7 @@ var flatten = function(stm, sep, context) {
       popScope();
       break;
     case 'local':
+      if (trace) print('local');
       var name = stm.name;
       var type = typeName(stm.type.name);
       var typedName = type + '_' + name;
@@ -4847,10 +4864,12 @@ var flatten = function(stm, sep, context) {
       ret = ret + name;
       if (stm.initial_value) {
         // TODO: type check
+        // compatibleTypes(stm, stm.initial_value);
         ret = ret + '=' + flatten(stm.initial_value);
       }
       break;
     case 'assignment':
+      if (trace) print('assignment');
       if (!isLeftHandSide(stm.location)) {
           print('unexpected type: must assign to a variable');
           quit();
@@ -4877,6 +4896,7 @@ var flatten = function(stm, sep, context) {
       }
       break;
     case 'ternary':
+      if (trace) print('ternary');
       ret = ret + flatten(stm.expression);
       ret = ret + '?';
       ret = ret + flatten(stm.true_value);
@@ -4884,6 +4904,7 @@ var flatten = function(stm, sep, context) {
       ret = ret + flatten(stm.false_value);
       break;
     case 'binary':
+      if (trace) print('binary');
       ret = ret + '(';
       ret = ret + flatten(stm.lhs);
       ret = ret + operatorStr(token);
@@ -4891,10 +4912,12 @@ var flatten = function(stm, sep, context) {
       ret = ret + ')';
       break;
     case 'cast':
+      if (trace) print('cast');
       throw new Error('casting is not implemented');
       quit();
       break;
     case 'new':
+      if (trace) print('new');
       ret = ret + 'Java.new(' + flatten(stm.type) + ',';
       ret = ret + constructorForArguments(stm.args);
       if (stm.args && stm.args.length > 0) {
@@ -4904,10 +4927,12 @@ var flatten = function(stm, sep, context) {
       ret = ret + ');'
       break;
     case 'prefix':
+      if (trace) print('prefix');
       ret = ret + operatorStr(token);
       ret = ret + flatten(stm.operand);
       break;
     case 'postfix':
+      if (trace) print('postfix');
       ret = ret + flatten(stm.operand);
       if (stm.term) {
         var cntx = stm.operand.name;
@@ -4925,11 +4950,13 @@ var flatten = function(stm, sep, context) {
       }
       break;
     case 'return':
+      if (trace) print('return');
       ret = ret + 'return';
       if (stm.expression)
         ret = ret + ' ' + flatten(stm.expression);
       break;
     case 'abrupt':
+      if (trace) print('abrupt');
       if (token == TOKEN_BREAK)
         ret = ret + 'break';
       if (token == TOKEN_CONTINUE)
@@ -4938,10 +4965,12 @@ var flatten = function(stm, sep, context) {
         ret = ret + ' ' + flatten(stm.identifier);
       break;
     case 'assert':
+      if (trace) print('assert');
       throw new Errot('assert not implemented');
       quit();
       break;
     case 'if':
+      if (trace) print('if');
       ret = ret + 'if (' + flatten(stm.expression) + ')';
       ret = ret + flatten(stm.body, ';');
       if (stm.else_body) {
@@ -4950,10 +4979,12 @@ var flatten = function(stm, sep, context) {
       }
       break;
     case 'while':
+      if (trace) print('while');
       ret = ret + 'while (' + flatten(stm.expression) + ')';
       ret = ret + flatten(stm.body);
       break;
     case 'for':
+      if (trace) print('for');
       pushScope();
       ret = ret + 'for (' + flatten(stm.initialization, ',') + ';';
       ret = ret + flatten(stm.condition) + ';';
@@ -4962,6 +4993,7 @@ var flatten = function(stm, sep, context) {
       popScope();
       break;
     case 'for-each':
+      if (trace) print('for-each');
       pushScope();
       var name = stm.name;
       var type = typeName(stm.type.name);
@@ -4985,16 +5017,20 @@ var flatten = function(stm, sep, context) {
       popScope();
       break;
     case 'array':
+      if (trace) print('array');
       ret = ret + '[';
       ret = ret + flatten(stm.terms, ',');
       ret = ret + ']';
       break;
     case 'super':
+      if (trace) print('super');
       throw new Error('super is not implemented');
       quit();
       break;
     case 'type':
+      if (trace) print('type');
     case 'construct':
+      if (trace) print('construct');
       var name = '';
       // TODO: remove this kludge
       if (stm.name == 'System' || stm.name == 'out' || stm.name == 'println')
@@ -5023,6 +5059,7 @@ var flatten = function(stm, sep, context) {
       }
       break;
     case 'literal':
+      if (trace) print('literal');
       switch(token) {
       case LITERAL_CHAR:
       case LITERAL_STRING:
@@ -5095,12 +5132,14 @@ var addProperty = function(type, p, processPriv) {
 
 var addClassMethod = function(type, cm) {
   if (trace) print('addClassMethod: ' + cm.name);
-  pushScope();
   var name = methodSignature(cm);
-
+  addIdentifier(name, name, cm.return_type, true, 'method');
+  pushScope();
+  static_context = type;
   var params = parameterList(cm.parameters);
   var body = flatten(cm.statements);
   type[name] = new Function(params, body);
+  static_context = null;
   popScope();
 };
 
