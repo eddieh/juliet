@@ -1,4 +1,7 @@
 syntax: glob
 .DS_Store
 *.d8_history
+*.class
+kinds.txt
+langspec-3.0.pdf
 vendor

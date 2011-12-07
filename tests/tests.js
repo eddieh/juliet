@@ -2,6 +2,9 @@ load('juliet.js');
 
 (function() {
   var tests = [
+    /*
+      Base tests
+    */
     {
       path:'tests/arrays.java',
       principal:'Arrays',
@@ -109,6 +112,10 @@ load('juliet.js');
           'character\n' +
           'string\n'
     },
+
+    /*
+       Scope
+    */
     {
       path:'tests/scope/test0.java',
       principal:'Test0',
@@ -207,8 +214,11 @@ load('juliet.js');
       path:'tests/scope/test18.java',
       principal:'Test18',
       expected:'x is not defined\n'
-    }
+    },
 
+    /*
+       Assignment
+    */
     // {
     //   path:'tests/assignments/test0.java',
     //   principal:'Test0',
@@ -253,7 +263,411 @@ load('juliet.js');
     //   path:'tests/assignments/test8.java',
     //   principal:'Test8',
     //   expected:'32\n'
-    // }
+    // },
+
+    /*
+      Type checking
+    */
+    {
+      path:'tests/typechecks/test000.java',
+      expected:
+        'incompatible types\n' +
+        'found   : java.lang.String\n' +
+        'required: int\n'
+    },
+    {
+      path:'tests/typechecks/test001.java',
+      expected:
+        'incompatible types\n' +
+        'found   : String\n' +
+        'required: int\n'
+    },
+    {
+      path:'tests/typechecks/test002.java',
+      expected:
+        'incompatible types\n' +
+        'found   : String\n' +
+        'required: int\n'
+    },
+    {
+      path:'tests/typechecks/test003.java',
+      expected:
+        'incompatible types\n' +
+        'found   : java.lang.String\n' +
+        'required: int\n'
+    },
+    {
+      path:'tests/typechecks/test004.java',
+      expected:
+        'incompatible types\n' +
+        'found   : java.lang.String\n' +
+        'required: int\n'
+    },
+    {
+      path:'tests/typechecks/test005.java',
+      expected:
+        'incompatible types\n' +
+        'found   : java.lang.String\n' +
+        'required: int\n'
+    },
+    {
+      path:'tests/typechecks/test006.java',
+      expected:''
+    },
+    {
+      path:'tests/typechecks/test007.java',
+      expected:
+        'incompatible types\n' +
+        'found   : java.lang.String\n' +
+        'required: int\n'
+    },
+    {
+      path:'tests/typechecks/test008.java',
+      expected:''
+    },
+    {
+      path:'tests/typechecks/test009.java',
+      expected:
+        'incompatible types\n' +
+        'found   : java.lang.String\n' +
+        'required: int\n'
+    },
+    {
+      path:'tests/typechecks/test010.java',
+      expected:
+        'incompatible types\n' +
+        'found   : java.lang.String\n' +
+        'required: int\n'
+    },
+    {
+      path:'tests/typechecks/test011.java',
+      expected:
+        'incompatible types\n' +
+        'found   : java.lang.String\n' +
+        'required: int\n'
+    },
+    {
+      path:'tests/typechecks/test012.java',
+      expected:''
+    },
+    {
+      path:'tests/typechecks/test013.java',
+      expected:
+        'incompatible types\n' +
+        'found   : java.lang.String\n' +
+        'required: int\n'
+    },
+    {
+      path:'tests/typechecks/test014.java',
+      expected:
+        'incompatible types\n' +
+        'found   : java.lang.String\n' +
+        'required: int\n'
+    },
+    {
+      path:'tests/typechecks/test015.java',
+      expected:''
+    },
+    {
+      path:'tests/typechecks/test016.java',
+      expected:
+        'incompatible types\n' +
+        'found   : java.lang.String\n' +
+        'required: int\n'
+    },
+    {
+      path:'tests/typechecks/test017.java',
+      expected:
+        'incompatible types\n' +
+        'found   : Object\n' +
+        'required: int\n'
+    },
+    {
+      path:'tests/typechecks/test018.java',
+      expected:
+        'unexpected type\n' +
+        'required: variable\n' +
+        'found   : literal\n'
+    },
+    {
+      path:'tests/typechecks/test019.java',
+      expected:
+        'unexpected type\n' +
+        'required: variable\n' +
+        'found   : literal\n'
+    },
+    {
+      path:'tests/typechecks/test020.java',
+      expected:''
+    },
+    {
+      path:'tests/typechecks/test021.java',
+      expected:
+        'possible loss of precision\n' +
+        'found   : float\n' +
+        'required: int\n'
+      // TODO: this fails because 1.0 is tokenized as a double instead
+      // of a float
+    },
+    {
+      path:'tests/typechecks/test022.java',
+      expected:
+        'possible loss of precision\n' +
+        'found   : double\n' +
+        'required: int\n'
+    },
+    {
+      path:'tests/typechecks/test023.java',
+      expected:
+        'unexpected type\n' +
+        'required: variable\n' +
+        'found   : literal\n'
+    },
+    {
+      path:'tests/typechecks/test024.java',
+      expected:''
+    },
+    {
+      path:'tests/typechecks/test025.java',
+      expected:
+        'unexpected type\n' +
+        'required: variable\n' +
+        'found   : binary\n'
+    },
+    {
+      path:'tests/typechecks/test026.java',
+      expected:
+        'unexpected type\n' +
+        'required: variable\n' +
+        'found   : method\n'
+    },
+    {
+      path:'tests/typechecks/test027.java',
+      expected:'operator ++ cannot be applied to String\n'
+      // FIXME: when we have a stdlib this should be:
+      // expected:'operator ++ cannot be applied to java.lang.String\n'
+    },
+    {
+      path:'tests/typechecks/test028.java',
+      expected:'operator -- cannot be applied to String\n'
+      // FIXME: when we have a stdlib this should be:
+      // expected:'operator -- cannot be applied to java.lang.String\n'
+    },
+    {
+      path:'tests/typechecks/test029.java',
+      expected:'operator + cannot be applied to String\n'
+      // FIXME: when we have a stdlib this should be:
+      // expected:'operator + cannot be applied to java.lang.String\n'
+      // TODO: this fails because the parser discards leading +
+      // operator
+    },
+    {
+      path:'tests/typechecks/test030.java',
+      expected:'operator - cannot be applied to String\n'
+      // FIXME: when we have a stdlib this should be:
+      // expected:'operator - cannot be applied to java.lang.String\n'
+    },
+    {
+      path:'tests/typechecks/test031.java',
+      expected:'operator ~ cannot be applied to String\n'
+      // FIXME: when we have a stdlib this should be:
+      // expected:'operator ~ cannot be applied to java.lang.String\n'
+    },
+    {
+      path:'tests/typechecks/test032.java',
+      expected:'operator ! cannot be applied to String\n'
+      // FIXME: when we have a stdlib this should be:
+      // expected:'operator ! cannot be applied to java.lang.String\n'
+    },
+    {
+      path:'tests/typechecks/test033.java',
+      expected:
+        'unexpected type\n' +
+        'required: variable\n' +
+        'found   : literal\n'
+    },
+    {
+      path:'tests/typechecks/test034.java',
+      expected:
+        'unexpected type\n' +
+        'required: variable\n' +
+        'found   : literal\n'
+    },
+    {
+      path:'tests/typechecks/test035.java',
+      expected:''
+    },
+    {
+      path:'tests/typechecks/test036.java',
+      expected:''
+    },
+    {
+      path:'tests/typechecks/test037.java',
+      expected:
+        'unexpected type\n' +
+        'required: variable\n' +
+        'found   : literal\n'
+    },
+    {
+      path:'tests/typechecks/test038.java',
+      expected:''
+    },
+    {
+      path:'tests/typechecks/test039.java',
+      expected:'operator * cannot be applied to Widget, Widget\n'
+    },
+    {
+      path:'tests/typechecks/test040.java',
+      expected:'operator * cannot be applied to Widget, int\n'
+    },
+    {
+      path:'tests/typechecks/test041.java',
+      expected:''
+    },
+    {
+      path:'tests/typechecks/test042.java',
+      expected:
+        'possible loss of precision\n' +
+        'found   : double\n' +
+        'required: int\n'
+    },
+    {
+      path:'tests/typechecks/test043.java',
+      expected:
+        'incompatible types\n' +
+        'found   : java.lang.String\n' +
+        'required: int\n'
+    },
+    {
+      path:'tests/typechecks/test044.java',
+      expected:
+        'incompatible types\n' +
+        'found   : Widget\n' +
+        'required: int\n'
+    },
+    {
+      path:'tests/typechecks/test045.java',
+      expected:'illegal initializer for int\n'
+    },
+    {
+      path:'tests/typechecks/test046.java',
+      expected:'illegal initializer for int\n'
+    },
+    {
+      path:'tests/typechecks/test047.java',
+      expected:''
+    },
+    {
+      path:'tests/typechecks/test048.java',
+      expected:''
+    },
+    {
+      path:'tests/typechecks/test049.java',
+      expected:
+        'incompatible types\n' +
+        'found   : int[][]\n' +
+        'required: int[]\n'
+    },
+    {
+      path:'tests/typechecks/test050.java',
+      expected:''
+    },
+    {
+      path:'tests/typechecks/test051.java',
+      expected:
+        'incompatible types\n' +
+        'found   : int[]\n' +
+        'required: int[][]\n'
+    },
+    {
+      path:'tests/typechecks/test052.java',
+      expected:'array dimension missing\n'
+    },
+    {
+      path:'tests/typechecks/test053.java',
+      expected:''
+    },
+    {
+      path:'tests/typechecks/test054.java',
+      expected:''
+    },
+    {
+      path:'tests/typechecks/test055.java',
+      expected:''
+    },
+    {
+      path:'tests/typechecks/test056.java',
+      expected:''
+    },
+    {
+      path:'tests/typechecks/test057.java',
+      expected:
+        'incompatible types\n' +
+        'found   : int\n' +
+        'required: int[]\n'
+    },
+    {
+      path:'tests/typechecks/test058.java',
+      expected:
+        'incompatible types\n' +
+        'found   : int\n' +
+        'required: int[]\n'
+    },
+    {
+      path:'tests/typechecks/test059.java',
+      expected:
+        'incompatible types\n' +
+        'found   : java.lang.String\n' +
+        'required: int\n'
+    },
+    {
+      path:'tests/typechecks/test060.java',
+      expected:
+        'incompatible types\n' +
+        'found   : Widget\n' +
+        'required: int\n'
+    },
+    {
+      path:'tests/typechecks/test061.java',
+      expected:
+        'incompatible types\n' +
+        'found   : double[]\n' +
+        'required: int[]\n'
+    },
+    {
+      path:'tests/typechecks/test062.java',
+      expected:
+        'incompatible types\n' +
+        'found   : double[]\n' +
+        'required: int[]\n'
+    },
+    {
+      path:'tests/typechecks/test063.java',
+      expected:''
+    },
+    {
+      path:'tests/typechecks/test064.java',
+      expected:''
+    },
+    {
+      path:'tests/typechecks/test065.java',
+      expected:
+        'possible loss of precision\n' +
+        'found   : double\n' +
+        'required: int\n'
+    },
+    {
+      path:'tests/typechecks/test066.java',
+      expected:
+        'incompatible types\n' +
+        'found   : String\n' +
+        'required: int\n'
+      // FIXME: when we have a stdlib this should be:
+      // expected:
+      //   'incompatible types\n' +
+      //   'found   : java.lang.String\n' +
+      //   'required: int\n'
+    }
 
   ];
 
@@ -290,9 +704,11 @@ load('juliet.js');
       data = readFile(tests[i].path);
       parse();
       compile(Parser);
-      execute(tests[i].principal);
+      if (tests[i].principal) {
+        execute(tests[i].principal);
+      }
     } catch (e) {
-
+      //if (e.message != 'QUIT') print(e);
     }
 
     test_info = '';

@@ -6,3 +6,13 @@ class Arrays {
         }
     }
 }
+
+// TODO:
+// array dimension missing
+//        int[] a = new int[];
+//                           ^
+// class Tests {
+//     public static void main(String[] args) {
+//         int[] a = new int[];
+//     }
+// }

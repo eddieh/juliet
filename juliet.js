@@ -2550,7 +2550,7 @@ var parse_array_decl = function(t, array_type) {
   while (consume(TOKEN_LBRACKET)) {
     if (consume(TOKEN_RBRACKET)) {
       saw_empty = true;
-      dim_expr.add(null);
+      dim_expr.push(null);
     } else {
       if (saw_empty) {
         throw t.error('Must provide proceeding dimension.');
@@ -2568,8 +2568,11 @@ var parse_array_decl = function(t, array_type) {
                 length:dim_expr.length};
 
   if (!dim_specified) {
-    if (next_is(TOKEN_LCURLY)) {
-      throw t.error('Expected literal array.');
+    if (!next_is(TOKEN_LCURLY)) {
+      //throw t.error('Expected literal array.');
+      print('array dimension missing');
+      //print('or expected literal array');
+      quit();
     }
     return parse_literal_array(array_type);
   }
@@ -2716,9 +2719,13 @@ var parse_literal_array = function(of_type) {
       if (next_is(TOKEN_LCURLY)) {
         // nexted literal array
         element_type_name = of_type.name.slice(0, -2);
-        if (element_type_name.charAt(element_type_name.length - 1) != ']') {
-          throw t.error('Array type does not support this many dimensions.');
-        }
+
+        // This is now a compile time error rather than a parse time
+        // error.
+        // if (element_type_name.charAt(element_type_name.length - 1) != ']') {
+        //   throw t.error('Array type does not support this many dimensions.');
+        // }
+
         element_type = {token:of_type.token,
                         kind:'type',
                         name:element_type_name};
@@ -2840,6 +2847,20 @@ var parse_term = function() {
             value:t.content};
   }
 
+  // FIXME: this should possibly give an error more like the following
+  // test056.java:4: illegal start of expression
+  //       i[0] = {1};
+  //              ^
+  // test056.java:4: not a statement
+  //         i[0] = {1};
+  //                 ^
+  // test056.java:4: ';' expected
+  //         i[0] = {1};
+  //                  ^
+  // test056.java:8: class, interface, or enum expected
+  // }
+  // ^
+
   throw p.error('Something really bad!');
 };
 
@@ -2875,6 +2896,7 @@ var print_processed = function() {
 
 
 var ast_str = function(a, depth) {
+  if (a === undefined) return 'undefined';
   if (depth === undefined) depth = 1;
   var indent = function(d) {
     var ret = '';
@@ -2924,6 +2946,26 @@ var reinterpret_as_type = function(a) {
 
 // TODO: Built in lint.
 
+var has = function(a, o) {
+  return a.some(function(e) {
+    return equal(e, o);
+  });
+};
+
+var copy = function(obj, without) {
+  var theCopy = {};
+  for (var propKey in obj) {
+    if (obj.hasOwnProperty(propKey)) {
+      if (without && has(without, propKey)) continue;
+      if (typeof(obj[propKey]) === 'object') {
+        theCopy[propKey] = copy(obj[propKey], without);
+      } else {
+        theCopy[propKey] = obj[propKey];
+      }
+    }
+  }
+  return theCopy;
+};
 
 var isArray = function(obj) {
   if (obj.constructor.toString().indexOf('Array') == -1)
@@ -4721,15 +4763,6 @@ var popScope = function() {
   scope.pop();
 };
 
-var identifierForExpression = function(expr) {
-  while (expr && (expr.kind != 'construct')) {
-    if (expr.term) expr = expr.term;
-    else if (expr.operand) expr = expr.operand;
-    else expr = null;
-  }
-  return (expr && expr.kind == 'construct') ? expr.name : null;
-};
-
 var isLocal = function(id) {
   return id.kind == 'local';
 };
@@ -4743,63 +4776,1264 @@ var isArrayAccess = function(id) {
 };
 
 var isLeftHandSide = function(lhs) {
-  var name = identifierForExpression(lhs);
-  if (!name) return false;
 
-  // simple name
-  var curScope = scope.length - 1;
-  for (var i = curScope; i >= 0; i--) {
-    if (name in scope[i]) {
-      var x = scope[i][name];
-      return isLocal(x) || isField(x);
-    }
+};
+
+var booleanType = function(name) {
+  switch (name) {
+  case 'boolean':
+  case 'Boolean':
+    return true;
   }
-
-  // name in context
-  if (!x) {
-    var context = null;
-    var expr = lhs;
-    while (expr.kind != 'construct') {
-      context = expr.operand.name;
-      if (expr.term) expr = expr.term;
-      else if (expr.operand) expr = expr.operand;
-    }
-
-    var typeDescriptor = typeDescriptorForName(context);
-    if (typeDescriptor && typeDescriptor.type) {
-      var props = typeDescriptor.type.properties;
-      if (!props) {
-        typeDescriptor = typeDescriptorForName(typeDescriptor.type.name);
-        if (typeDescriptor && typeDescriptor.type) {
-          props = typeDescriptor.type.properties;
-        }
-      }
-      if (props) {
-        for (var i = 0; i < props.length; i++) {
-          if (props[i].name == name) {
-            return true;
-          }
-        }
-      }
-
-      var cprops = typeDescriptor.type.class_properties;
-      if (!cprops) {
-        typeDescriptor = typeDescriptorForName(typeDescriptor.type.name);
-        if (typeDescriptor && typeDescriptor.type) {
-          cprops = typeDescriptor.type.class_properties;
-        }
-      }
-      if (cprops) {
-        for (var i = 0; i < cprops.length; i++) {
-          if (cprops[i].name == name) {
-            return true;
-          }
-        }
-      }
-    }
-  }
-
   return false;
+};
+
+var integralType = function(name) {
+  switch (name) {
+  case 'byte':
+  case 'short':
+  case 'int':
+  case 'long':
+  case 'char':
+    return true;
+  }
+  return false;
+};
+
+var numericType = function(name) {
+  switch (name) {
+  case 'byte':
+  case 'short':
+  case 'int':
+  case 'long':
+  case 'char':
+  case 'float':
+  case 'double':
+    return true;
+  }
+  return false;
+};
+
+var primitiveType = function(name) {
+  switch (name) {
+  case 'boolean':
+  case 'byte':
+  case 'short':
+  case 'int':
+  case 'long':
+  case 'char':
+  case 'float':
+  case 'double':
+    return true;
+  }
+  return false;
+};
+
+var primitiveTypeWidth = function(name) {
+  switch (name) {
+  case 'boolean': return 1;
+  case 'byte':    return 2;
+  case 'short':   return 3;
+  case 'char':    return 4;
+  case 'int':     return 5;
+  case 'long':    return 6;
+  case 'float':   return 7;
+  case 'double':  return 8;
+  }
+  return 0;
+};
+
+var referenceType = function(name) {
+  return !primitiveType(name);
+};
+
+var stringType = function(type) {
+  switch (type) {
+  case 'java.lang.String':
+  case 'String':
+    return true;
+  }
+  return false;
+};
+
+var arrayType = function(name) {
+  var i = name.indexOf('[');
+  if (i == -1) return name;
+  return name.substring(0, i);
+};
+
+var arrayDimension = function(name) {
+  var i = name.indexOf('[');
+  return name.substring(i).split('[]').length - 1;
+};
+
+var primitiveStr = function(t) {
+  switch (t) {
+  case LITERAL_DOUBLE:
+    return 'double';
+  case LITERAL_FLOAT:
+    return 'float';
+  case LITERAL_LONG:
+    return 'long';
+  case LITERAL_INT:
+    return 'int';
+  case LITERAL_CHAR:
+    return 'char';
+  case LITERAL_SHORT:
+    return 'short';
+  case LITERAL_BYTE:
+    return 'byte';
+  case LITERAL_BOOLEAN:
+    return 'boolean';
+  case LITERAL_STRING:
+    return 'java.lang.String';
+  case TOKEN_NULL:
+    return 'null';
+  }
+}
+
+var getType = function(a) {
+  if (a.kind == 'literal') {
+    return a;
+  }
+
+  if (a.kind == 'construct') {
+    if (a.token == TOKEN_ID) {
+      var typeDescriptor = typeDescriptorForName(a.name);
+      if (typeDescriptor.type) {
+        return typeDescriptor.type;
+      }
+
+    } else {
+      return a;
+    }
+  }
+
+  if (a.kind == 'type') {
+    return a;
+  }
+
+  return null;
+}
+
+var getTypeName = function(a) {
+  if (a.kind == 'literal') {
+    return primitiveStr(a.token);
+  } else if (a.kind == 'type') {
+    return a.name;
+  } else if (a.kind == 'construct') {
+    if (a.token == TOKEN_ID) {
+      var typeDescriptor = typeDescriptorForName(a.name);
+
+      if (!typeDescriptor) {
+        var name = nameInScope(a, true);
+        typeDescriptor = typeDescriptorForName(name);
+      }
+
+      if (typeDescriptor.type) {
+        if (typeDescriptor.type.name) {
+          return typeDescriptor.type.name;
+        }
+      }
+    } else {
+      return a.name;
+    }
+  }
+
+  if (a.kind == 'type') {
+    return a.name;
+  }
+
+  return null;
+};
+
+var compatibleTypes = function(leftType, rightType) {
+  var leftTypeName = getTypeName(leftType);
+  var rightTypeName = getTypeName(rightType);
+
+  if (primitiveType(leftTypeName)) {
+
+    // TODO: is this helpful?
+    if (rightType.kind == 'array') {
+      print('illegal initializer for ' + leftTypeName);
+      quit();
+    }
+
+    if (leftTypeName == 'double') {
+      switch (rightTypeName) {
+      case 'double':
+      case 'float':
+      case 'long':
+      case 'int':
+      case 'char':
+      case 'short':
+      case 'byte':
+      case 'null':
+        return;
+      }
+      print('incompatible types');
+      print('found   : ' + rightTypeName);
+      print('required: ' + leftTypeName);
+      quit();
+    }
+
+    if (leftTypeName == 'float') {
+      switch (rightTypeName) {
+      case 'float':
+      case 'long':
+      case 'int':
+      case 'char':
+      case 'short':
+      case 'byte':
+      case 'null':
+        return;
+      }
+      if (primitiveType(rightTypeName))
+        print('possible loss of precision');
+      else
+        print('incompatible types');
+      print('found   : ' + rightTypeName);
+      print('required: ' + leftTypeName);
+      quit();
+    }
+
+    if (leftTypeName == 'long') {
+      switch (rightTypeName) {
+      case 'long':
+      case 'int':
+      case 'char':
+      case 'short':
+      case 'byte':
+      case 'null':
+        return;
+      }
+      if (primitiveType(rightTypeName))
+        print('possible loss of precision');
+      else
+        print('incompatible types');
+      print('found   : ' + rightTypeName);
+      print('required: ' + leftTypeName);
+      quit();
+    }
+
+    if (leftTypeName == 'int') {
+      switch (rightTypeName) {
+      case 'int':
+      case 'char':
+      case 'short':
+      case 'byte':
+      case 'null':
+        return;
+      }
+      if (primitiveType(rightTypeName))
+        print('possible loss of precision');
+      else
+        print('incompatible types');
+      print('found   : ' + rightTypeName);
+      print('required: ' + leftTypeName);
+      quit();
+    }
+
+    if (leftTypeName == 'char') {
+      switch (rightTypeName) {
+      case 'char':
+      case 'short':
+      case 'byte':
+      case 'null':
+        return;
+      }
+      if (primitiveType(rightTypeName))
+        print('possible loss of precision');
+      else
+        print('incompatible types');
+      print('found   : ' + rightTypeName);
+      print('required: ' + leftTypeName);
+      quit();
+    }
+
+    if (leftTypeName == 'short') {
+      switch (rightTypeName) {
+      case 'char':
+      case 'short':
+      case 'byte':
+      case 'null':
+        return;
+      }
+      if (primitiveType(rightTypeName))
+        print('possible loss of precision');
+      else
+        print('incompatible types');
+      print('found   : ' + rightTypeName);
+      print('required: ' + leftTypeName);
+      quit();
+    }
+
+    if (leftTypeName == 'byte') {
+      switch (rightTypeName) {
+      case 'byte':
+      case 'null':
+        return;
+      }
+      if (primitiveType(rightTypeName))
+        print('possible loss of precision');
+      else
+        print('incompatible types');
+      print('found   : ' + rightTypeName);
+      print('required: ' + leftTypeName);
+      quit();
+    }
+  } else {
+
+    if (leftTypeName[leftTypeName.length - 1] == ']') {
+      if (trace) print('  ARRAY');
+
+      // print_ast(leftType);
+      // print_ast(rightType);
+
+      // print('leftTypeName: ' + arrayType(leftTypeName));
+      // print('rightTypeName: ' + arrayType(rightTypeName));
+
+      // compatible types?
+      if (arrayType(leftTypeName) != arrayType(rightTypeName)) {
+        print('incompatible types');
+        print('found   : ' + rightTypeName);
+        print('required: ' + leftTypeName);
+        quit();
+      }
+
+      // compatible dimensions?
+      var ldim = arrayDimension(leftTypeName);
+      var rdim = 0;
+      if (rightType.length) {
+        rdim = rightType.length;
+      } else {
+        rdim = arrayDimension(rightTypeName);
+      }
+
+      // print('l.length: ' + ldim);
+      // print('r.length: ' + rdim);
+
+      if (ldim != rdim) {
+        var displayName = rightTypeName;
+        if (rightType.length) {
+          for (var i = 0, len = rightType.length; i < len; i++) {
+            displayName = displayName + '[]';
+          }
+        }
+
+        print('incompatible types');
+        print('found   : ' + displayName);
+        print('required: ' + leftTypeName);
+        quit();
+      }
+    }
+  }
+};
+
+var reduceByOneDimension = function(name) {
+  var i = name.lastIndexOf('[');
+  return name.substring(0, i);
+}
+
+var arrayAccessExpressionType = function(expr) {
+  var depth = 1;
+  while (expr.operand.kind != 'construct') {
+    expr = expr.operand;
+    depth++;
+  }
+
+  var name = nameInScope(expr.operand, true);
+  typeDescriptor = typeDescriptorForName(name);
+
+  var effectiveTypeName = typeDescriptor.type.name;
+  for (var i = 0; i < depth; i++) {
+    effectiveTypeName = reduceByOneDimension(effectiveTypeName);
+  }
+
+  var type = copy(typeDescriptor.type);
+  type.name = effectiveTypeName;
+  return type;
+};
+
+var typeCheckArray = function(array) {
+  var name = array.type.name;
+  if (array.token == TOKEN_LCURLY && array.terms) {
+    var arrayElements = array.terms;
+    for (elementKey in arrayElements) {
+      if (!arrayElements.hasOwnProperty(elementKey)) continue;
+
+      var t = copy(array.type);
+      t.name = reduceByOneDimension(name);
+
+      var t2 = arrayElements[elementKey];
+
+      // TODO: this needs to be recursive!
+
+      // print_ast(array.type);
+      // print('t:');print_ast(t);
+      // print('t2:');print_ast(t2);
+
+      compatibleTypes(t, t2);
+    }
+  }
+  return array.type;
+};
+
+var typeCheckNew = function(expr) {
+  return expr.type;
+};
+
+var typeCheckWiderNumericType = function(leftType, rightType) {
+  var leftTypeName = getTypeName(leftType);
+  var rightTypeName = getTypeName(rightType);
+
+  var leftWidth = primitiveTypeWidth(leftTypeName);
+  var rightWidth = primitiveTypeWidth(rightTypeName);
+
+  if (leftWidth > rightWidth) return leftType;
+  return rightType;
+
+  // TODO: should we return a special value type?
+  return {
+    token:TOKEN_INT,
+    kind:'value',
+  };
+};
+
+var typeCheckIncDecExpr = function(expr) {
+  // variable?
+  if (expr.operand) {
+    if (expr.operand.kind != 'construct') {
+      print('unexpected type');
+      print('required: variable');
+      print('found   : ' + expr.operand.kind);
+      quit();
+    }
+
+    var name = nameInScope(expr.operand, true);
+    var type = typeDescriptorForName(name);
+    if ((type.kind != 'local') && (type.kind != 'field')) {
+      print('unexpected type');
+      print('required: variable');
+      print('found   : ' + type.kind);
+      quit();
+    }
+
+    // TODO: we'll need to check if it's been declared final, etc
+  }
+
+  // numeric?
+  var operandType = getType(expr.operand);
+  var operandTypeName = getTypeName(expr.operand);
+
+  if (!numericType(operandTypeName)) {
+    print('operator ' +
+          operatorStr(expr.token) +
+          ' cannot be applied to ' +
+          operandTypeName);
+    quit();
+  }
+
+  return operandType;
+};
+
+var typeCheckPostfixExpr = function(expr) {
+  var operand = typeCheckExpr(expr.operand);
+
+  // ++, -- must be applied to variables with numeric types
+  if ((expr.token == TOKEN_INCREMENT) || (expr.token == TOKEN_DECREMENT)) {
+    return typeCheckIncDecExpr(expr);
+  }
+
+  if (expr.token == TOKEN_LBRACKET) {
+    return arrayAccessExpressionType(expr);
+  }
+
+};
+
+var typeCheckPrefixExpr = function(expr) {
+  var operand = typeCheckExpr(expr.operand);
+
+  // ++, -- must be applied to variables with numeric types
+  if ((expr.token == TOKEN_INCREMENT) || (expr.token == TOKEN_DECREMENT)) {
+    return typeCheckIncDecExpr(expr);
+  }
+
+  var operandType = getType(operand);
+  var operandTypeName = getTypeName(operand);
+
+  // +, - must be applied to a type that can be converted to a
+  // numeric (primitive?) type
+  if ((expr.token == TOKEN_PLUS) || (expr.token == TOKEN_MINUS)) {
+    if (!numericType(operandTypeName)) {
+      print('operator ' +
+            operatorStr(expr.token) +
+            ' cannot be applied to ' +
+            operandTypeName);
+      quit();
+    }
+
+    // TODO:
+    // See 15.15.3, 15.15.4
+    // See 5.6.1 Unary Numeric Promotion
+    return operandType;
+  }
+
+  // ~ must be applied to a type that can be converted to a
+  // primitive integral type
+  if (expr.token == TOKEN_TILDE) {
+    if (!integralType(operandTypeName)) {
+      print('operator ' +
+            operatorStr(expr.token) +
+            ' cannot be applied to ' +
+            operandTypeName);
+      quit();
+    }
+
+    // TODO:
+    return operandType;
+  }
+
+  // ! must be applied to boolean or Boolean
+  if (expr.token == TOKEN_BANG) {
+    if (operandTypeName != 'boolean' || operandTypeName != 'Boolean') {
+      print('operator ' +
+            operatorStr(expr.token) +
+            ' cannot be applied to ' +
+            operandTypeName);
+      quit();
+    }
+
+    // TODO:
+    return operandType;
+  }
+};
+
+var typeCheckBinaryExpr = function(expr) {
+
+  var multiplicative = function(a) {
+    switch (a) {
+    case TOKEN_STAR:
+    case TOKEN_SLASH:
+    case TOKEN_PERCENT:
+      return true;
+    }
+    return false;
+  };
+
+  var shift = function(a) {
+    switch (a) {
+    case TOKEN_SHL:
+    case TOKEN_SHR:
+    case TOKEN_SHRX:
+      return true;
+    }
+    return false;
+  };
+
+  var relational = function(a) {
+    switch (a) {
+    case TOKEN_LT:
+    case TOKEN_LE:
+    case TOKEN_GT:
+    case TOKEN_GE:
+      return true;
+    }
+    return false;
+  };
+
+  var equality = function (a) {
+    switch (a) {
+    case TOKEN_EQ:
+    case TOKEN_NE:
+      return true;
+    }
+    return false;
+  };
+
+  var bitwiseAndLogical = function(a) {
+    switch (a) {
+    case TOKEN_AMPERSAND:
+    case TOKEN_PIPE:
+    case TOKEN_CARET:
+      return true;
+    }
+    return false;
+  };
+
+  var conditional = function(a) {
+    switch (a) {
+    case TOKEN_LOGICAL_AND:
+    case TOKEN_LOGICAL_OR:
+      return true;
+    }
+    return false;
+  };
+
+  var lhs = typeCheckExpr(expr.lhs);
+  var rhs = typeCheckExpr(expr.rhs);
+
+  var leftType = getType(lhs);
+  var rightType = getType(rhs);
+
+  var leftTypeName = getTypeName(lhs);
+  var rightTypeName = getTypeName(rhs);
+
+  // Multiplicative Operators
+  if (multiplicative(expr.token)) {
+    if (!numericType(leftTypeName) || !numericType(rightTypeName)) {
+      print('operator ' +
+            operatorStr(expr.token) +
+            ' cannot be applied to ' +
+            leftTypeName + ', ' + rightTypeName);
+      quit();
+    }
+
+    // TODO:
+    // for now just use whichever kind is wider
+    return typeCheckWiderNumericType(leftType, rightType);
+  }
+
+  // Additive Operators
+  if (expr.token == TOKEN_PLUS) {
+    // if either operand of + is String the operation is string
+    // concatenation
+    if (stringType(leftTypeName) || stringType(rightTypeName)) {
+      return {
+        token:TOKEN_ID,
+        kind:'type',
+        name:'java.lang.String'
+      };
+    }
+
+    // otherwise each operand must be a numeric type
+    if (!numericType(leftTypeName) || !numericType(rightTypeName)) {
+      print('operator ' +
+            operatorStr(expr.token) +
+            ' cannot be applied to ' +
+            leftTypeName + ', ' + rightTypeName);
+      quit();
+    }
+
+    // TODO:
+    // See 15.18.2 on how to determine the tpe of the additive
+    // expression
+    // See 5.6.2 Binary Numeric Promotion
+
+    // for now just use whichever kind is wider
+    return typeCheckWiderNumericType(leftType, rightType);
+  }
+
+  if (expr.token == TOKEN_MINUS) {
+    if (!numericType(leftTypeName) || !numericType(rightTypeName)) {
+      print('operator ' +
+            operatorStr(expr.token) +
+            ' cannot be applied to ' +
+            leftTypeName + ', ' + rightTypeName);
+      quit();
+    }
+
+    // TODO:
+    // for now just use whichever kind is wider
+    return typeCheckWiderNumericType(leftType, rightType);
+  }
+
+  // Shift Operators
+  if (shift(expr.token)) {
+    if (!integralType(leftTypeName) || !integralType(rightTypeName)) {
+      print('operator ' +
+            operatorStr(expr.token) +
+            ' cannot be applied to ' +
+            leftTypeName + ', ' + rightTypeName);
+      quit();
+    }
+
+    // TODO:
+    // for now just use whichever kind is wider
+    return typeCheckWiderNumericType(leftType, rightType);
+  }
+
+  // Relational Operators
+  if (relational(expr.token)) {
+    if (!numericType(leftTypeName) || !numericType(rightTypeName)) {
+      print('operator ' +
+            operatorStr(expr.token) +
+            ' cannot be applied to ' +
+            leftTypeName + ', ' + rightTypeName);
+      quit();
+    }
+
+    // TODO:
+    // for now just use whichever kind is wider
+    return typeCheckWiderNumericType(leftType, rightType);
+  }
+
+  if (expr.token == TOKEN_INSTANCEOF) {
+    // see langspec-3.0 15.20.2
+
+    print('instanceof type checking not implemented');
+    quit();
+  }
+
+  // Equality Operators
+  if (equality(expr.token)) {
+    // 15.21.1
+    // 15.21.2
+    // 15.21.3
+    print('equality operators type checking not implemented');
+    quit();
+  }
+
+  // Bitwise and Logical Operators
+  if (bitwiseAndLogical(expr.token)) {
+    // integral
+    if (integralType(leftTypeName)) {
+      if (!integralType(rightTypeName)) {
+        print('operator ' +
+              operatorStr(expr.token) +
+              ' cannot be applied to ' +
+              leftTypeName + ', ' + rightTypeName);
+        quit();
+      }
+    }
+    if (integralType(rightTypeName)) {
+      if (!integralType(leftTypeName)) {
+        print('operator ' +
+              operatorStr(expr.token) +
+              ' cannot be applied to ' +
+              leftTypeName + ', ' + rightTypeName);
+        quit();
+      }
+    }
+
+    // boolean
+    if (booleanType(leftTypeName)) {
+      if (!booleanType(rightTypeName)) {
+        print('operator ' +
+              operatorStr(expr.token) +
+              ' cannot be applied to ' +
+              leftTypeName + ', ' + rightTypeName);
+        quit();
+      }
+    }
+    if (booleanType(rightTypeName)) {
+      if (!booleanType(leftTypeName)) {
+        print('operator ' +
+              operatorStr(expr.token) +
+              ' cannot be applied to ' +
+              leftTypeName + ', ' + rightTypeName);
+        quit();
+      }
+    }
+
+    // TODO:
+    // for now just use whichever kind is wider
+    return typeCheckWiderNumericType(leftType, rightType);
+  }
+
+  if (conditional(expr.token)) {
+    if (booleanType(leftTypeName) || booleanType(rightTypeName)) {
+      print('operator ' +
+            operatorStr(expr.token) +
+            ' cannot be applied to ' +
+            leftTypeName + ', ' + rightTypeName);
+      quit();
+    }
+
+    // TODO:
+    // for now just use whichever kind is wider
+    return typeCheckWiderNumericType(leftType, rightType);
+  }
+};
+
+var typeCheckTernary = function(expr) {
+  var trueValue = typeCheckExpr(expr.true_value);
+  var falseValue = typeCheckExpr(expr.false_value);
+
+  // print_ast(expr);
+  var expressionType = getType(expr.expression);
+  var expressionTypeName = getTypeName(expr.expression);
+
+  if (!booleanType(expressionTypeName)) {
+    print('incompatible types');
+    print('found   : ' + expressionTypeName);
+    print('required: ' + 'boolean');
+    quit();
+  }
+
+  var trueValueType = getType(trueValue);
+  var falseValueType = getType(falseValue);
+  var trueValueTypeName = getTypeName(trueValue);
+  var falseValueTypeName = getTypeName(falseValue);
+
+  // print_ast(trueValue);
+  // print_ast(falseValue);
+  // print('trueValueType:');print_ast(trueValueType);
+  // print('falseValueType:');print_ast(falseValueType);
+
+  if (trueValueTypeName == 'void') {
+    print('cannot invoke void method here');
+    quit();
+  }
+
+  if (falseValueTypeName == 'void') {
+    print('cannot invoke void method here');
+    quit();
+  }
+
+  if (trueValueTypeName == falseValueTypeName) {
+    return trueValueType;
+  }
+
+  if (trueValueTypeName == 'boolean') {
+    if (falseValueTypeName == 'Boolean') {
+      return trueValueType;
+    }
+  }
+
+  if (falseValueTypeName == 'boolean') {
+    if (trueValueTypeName == 'Boolean') {
+      return falseValueType;
+    }
+  }
+
+  if (trueValueTypeName == 'null') {
+    if (referenceType(falseValueTypeName)) {
+      return falseValueType;
+    }
+  }
+
+  if (falseValueTypeName == 'null') {
+    if (referenceType(trueValueTypeName)) {
+      return trueValueType;
+    }
+  }
+
+  if (numericType(trueValueTypeName) && numericType(falseValueTypeName)) {
+
+    if (trueValueTypeName == 'byte' || trueValueTypeName == 'Byte') {
+      if (falseValueTypeName == 'short' || falseValueTypeName == 'Short') {
+        return {
+          token:TOKEN_SHORT,
+          kind:'type',
+          name:'short'
+        };
+      }
+    }
+
+    if (has(['byte', 'short', 'char'], trueValueTypeName)) {
+      if (falseValueType.token == LITERAL_INT) {
+        switch (trueValueTypeName) {
+        case 'byte':
+          if (falseValue.value >= -128 && falseValue.value <= 127) {
+            return {
+              token:TOKEN_BYTE,
+              kind:'type',
+              name:'byte'
+            };
+          }
+        case 'short':
+          if (falseValue.value >= -32768 && falseValue.value <= 32767) {
+            return {
+              token:TOKEN_SHORT,
+              kind:'type',
+              name:'short'
+            };
+          }
+        case 'char':
+          if (falseValue.value >= -32768 && falseValue.value <= 32767) {
+            return {
+              token:TOKEN_CHAR,
+              kind:'type',
+              name:'char'
+            };
+          }
+        }
+      }
+    }
+
+    if (has(['byte', 'short', 'char'], falseValueTypeName)) {
+      if (trueValueType.token == LITERAL_INT) {
+        switch (falseValueTypeName) {
+        case 'byte':
+          if (trueValue.value >= -128 && trueValue.value <= 127) {
+            return {
+              token:TOKEN_BYTE,
+              kind:'type',
+              name:'byte'
+            };
+          }
+        case 'short':
+          if (trueValue.value >= -32768 && trueValue.value <= 32767) {
+            return {
+              token:TOKEN_SHORT,
+              kind:'type',
+              name:'short'
+            };
+          }
+        case 'char':
+          if (trueValue.value >= -32768 && trueValue.value <= 32767) {
+            return {
+              token:TOKEN_CHAR,
+              kind:'type',
+              name:'char'
+            };
+          }
+        }
+      }
+    }
+
+    if (has(['Byte', 'Short', 'Character'], trueValueTypeName)) {
+      if (falseValueType.token == LITERAL_INT) {
+        switch (trueValueTypeName) {
+        case 'Byte':
+          if (falseValue.value >= -128 && falseValue.value <= 127) {
+            return {
+              token:TOKEN_BYTE,
+              kind:'type',
+              name:'byte'
+            };
+          }
+        case 'Short':
+          if (falseValue.value >= -32768 && falseValue.value <= 32767) {
+            return {
+              token:TOKEN_SHORT,
+              kind:'type',
+              name:'short'
+            };
+          }
+        case 'Character':
+          if (falseValue.value >= -32768 && falseValue.value <= 32767) {
+            return {
+              token:TOKEN_CHAR,
+              kind:'type',
+              name:'char'
+            };
+          }
+        }
+      }
+    }
+
+    if (has(['Byte', 'Short', 'Character'], falseValueTypeName)) {
+      if (trueValueType.token == LITERAL_INT) {
+        switch (falseValueTypeName) {
+        case 'Byte':
+          if (trueValue.value >= -128 && trueValue.value <= 127) {
+            return {
+              token:TOKEN_BYTE,
+              kind:'type',
+              name:'byte'
+            };
+          }
+        case 'Short':
+          if (trueValue.value >= -32768 && trueValue.value <= 32767) {
+            return {
+              token:TOKEN_SHORT,
+              kind:'type',
+              name:'short'
+            };
+          }
+        case 'Character':
+          if (trueValue.value >= -32768 && trueValue.value <= 32767) {
+            return {
+              token:TOKEN_CHAR,
+              kind:'type',
+              name:'char'
+            };
+          }
+        }
+      }
+    }
+
+    // TODO: unboxing conversion see 5.1.8
+    // TODO: value set conversion see 5.1.13
+    return typeCheckWiderNumericType(trueValueType, falseValueType);
+  }
+
+  // TODO: box see 5.1.7
+  // TODO: capture conversion see 5.1.10
+
+  // FIXME: these are not proper rules
+  if (referenceType(trueValueTypeName)) {
+    return trueValueType;
+  }
+
+  if (referenceType(falseValueTypeName)) {
+    return falseValueType;
+  }
+
+  print('no other rules for determining the type of ?: expression');
+  quit();
+
+};
+
+var typeCheckExpr = function(expr) {
+  if (expr.kind == 'literal') {
+    return expr;
+  }
+
+  if (expr.kind == 'construct') {
+    var name = nameInScope(expr, true);
+    typeDescriptor = typeDescriptorForName(name);
+
+    return typeDescriptor.type;
+  }
+
+  if (expr.kind == 'binary') {
+    return typeCheckBinaryExpr(expr);
+  }
+
+  if (expr.kind == 'postfix') {
+    return typeCheckPostfixExpr(expr);
+  }
+
+  if (expr.kind == 'prefix') {
+    return typeCheckPrefixExpr(expr);
+  }
+
+  if (expr.kind == 'array') {
+    return typeCheckArray(expr);
+  }
+
+  if (expr.kind == 'new') {
+    return typeCheckNew(expr);
+  }
+
+  if (expr.kind == 'ternary') {
+    return typeCheckTernary(expr);
+  }
+
+};
+
+var typeCheckLocalDecl = function(decl) {
+  var localType = decl.type;
+  var initialValueType = typeCheckExpr(decl.initial_value);
+
+  var localTypeName = getTypeName(localType);
+  var initialValueTypeName = getTypeName(initialValueType);
+
+  // sanity check, remove later maybe?
+  if (!localTypeName || !initialValueTypeName) {
+    print('***');
+    print('no name?');
+    print_ast(localType);
+    print_ast(initialValueType);
+    quit();
+  }
+
+  // print(localTypeName);
+  // print(initialValueTypeName);
+
+  // TODO: is this helpful?
+  if (primitiveType(localTypeName)) {
+    if (decl.initial_value.kind == 'array') {
+      print('illegal initializer for ' + localTypeName);
+      quit();
+    }
+  }
+
+  compatibleTypes(localType, initialValueType);
+}
+
+function getContext(expr) {
+  var context = null;
+  while (expr.kind != 'construct') {
+    context = expr.operand.name;
+    if (expr.term) expr = expr.term;
+    else if (expr.operand) expr = expr.operand;
+  }
+  return context;
+};
+
+function propertyInContext(context, name) {
+  // instance propery?
+  var typeDescriptor = typeDescriptorForName(context);
+  var staticContext = false;
+  // print('CONTEXT: ');
+  // print_ast(typeDescriptor);
+
+  if (typeDescriptor && typeDescriptor.type) {
+    var tn = typeDescriptor.type.name;
+
+    if (tn) {
+      if (!referenceType(tn)) {
+        print(tn + ' cannot be dereferenced');
+        quit();
+      }
+    }
+
+    if (typeDescriptor.type.kind == 'definition') {
+      // print('STATIC CONTEXT');
+      staticContext = true;
+    }
+
+    var props = typeDescriptor.type.properties;
+    if (!props) {
+      typeDescriptor = typeDescriptorForName(typeDescriptor.type.name);
+      if (typeDescriptor && typeDescriptor.type) {
+        props = typeDescriptor.type.properties;
+      }
+    }
+    if (props) {
+      for (var i = 0; i < props.length; i++) {
+        if (props[i].name == name) {
+          // print('INSTANCE IN CONTEXT: ' + context);
+          // print_ast(props[i]);
+          if (staticContext) {
+            print('non-static variable ' + name +
+                  ' cannot be referenced from a static context');
+            quit();
+          }
+          return props[i];
+        }
+      }
+    }
+
+    // class/static property?
+    var cprops = typeDescriptor.type.class_properties;
+    if (!cprops) {
+      typeDescriptor = typeDescriptorForName(typeDescriptor.type.name);
+      if (typeDescriptor && typeDescriptor.type) {
+        cprops = typeDescriptor.type.class_properties;
+      }
+    }
+    if (cprops) {
+      for (var i = 0; i < cprops.length; i++) {
+        if (cprops[i].name == name) {
+          // print('STATIC IN CONTEXT: ' + context);
+          // print_ast(cprops[i]);
+          return cprops[i];
+        }
+      }
+    }
+  }
+};
+
+var typeCheckContextualAccess = function(expr) {
+  if (expr.kind == 'postfix' && expr.token == TOKEN_PERIOD) {
+    return typeCheckFieldAccessExpression(expr);
+  }
+
+  if (expr.kind == 'postfix' && expr.token == TOKEN_LBRACKET) {
+    return typeCheckArrayAccessExpression(expr);
+  }
+
+  print('unexpected type: must assign to a variable');
+  quit();
+}
+
+var typeCheckFieldAccessExpression = function(expr) {
+  var name = identifierForExpression(expr);
+
+  var typeDescriptor = null;
+  if (expr.operand.kind == 'postfix') {
+    typeDescriptor = typeCheckContextualAccess(expr.operand);
+  }
+
+  if (typeDescriptor) {
+    typeDescriptor = propertyInContext(typeDescriptor.type.name, name);
+  } else {
+    var context = getContext(expr);
+    typeDescriptor = propertyInContext(context, name);
+  }
+
+  return typeDescriptor;
+};
+
+var typeCheckArrayAccessExpression = function(expr) {
+  var name = identifierForExpression(expr);
+
+  var typeDescriptor = null;
+  if (expr.operand.kind == 'postfix') {
+    typeDescriptor = typeCheckContextualAccess(expr.operand);
+  }
+  // print(name);
+  // print_ast(typeDescriptor);
+
+  var depth = 0;
+  while (expr.expression) {
+    expr = expr.operand;
+    depth++;
+  }
+
+  if (!typeDescriptor) {
+    typeDescriptor = typeDescriptorForName(name);
+  }
+
+  var effectiveTypeName = typeDescriptor.type.name;
+  for (var i = 0; i < depth; i++) {
+    effectiveTypeName = reduceByOneDimension(effectiveTypeName);
+  }
+  // TODO: error if there are too many array accesses
+  // Consider: int[] i = {}; i[0][0] = 1; // should error
+
+  var effectiveTypeDescriptor = copy(typeDescriptor, ['initial_value']);
+  effectiveTypeDescriptor.type.name = effectiveTypeName;
+
+  // print('ARRAY ACCESS');
+  // print_ast(typeDescriptor);
+  // print_ast(effectiveTypeDescriptor);
+  return effectiveTypeDescriptor;
+};
+
+var identifierForExpression = function(expr) {
+  while (expr && (expr.kind != 'construct')) {
+    if (expr.term) expr = expr.term;
+    else if (expr.operand) expr = expr.operand;
+    else expr = null;
+  }
+  return (expr && expr.kind == 'construct') ? expr.name : null;
+};
+
+var typeCheckLeftHandSide = function(lhs) {
+  var name = identifierForExpression(lhs);
+  if (!name) {
+    print('unexpected type: must assign to a variable');
+    quit();
+  }
+
+  // simple name in scope
+  if (lhs.kind == 'construct' && lhs.token == TOKEN_ID) {
+    var curScope = scope.length - 1;
+    for (var i = curScope; i >= 0; i--) {
+      if (name in scope[i]) {
+        var x = scope[i][name];
+        if (isLocal(x) || isField(x)) {
+          // print('SIMPLE NAME');
+          // print_ast(x);
+          return x;
+        }
+      }
+    }
+  }
+
+  return typeCheckContextualAccess(lhs);
+};
+
+var typeCheckAssignmentExpr = function(assign) {
+  // print_ast(assign);
+  var leftHandSide = typeCheckLeftHandSide(assign.location);
+  var newValue = typeCheckExpr(assign.new_value);
+
+  // print_ast(leftHandSide);
+  // print_ast(newValue);
+
+  var leftHandSideType = getType(leftHandSide.type);
+  var newValueType = getType(newValue);
+  // print_ast(leftHandSideType);
+  // print_ast(newValueType);
+
+  var leftHandSideTypeName = getTypeName(leftHandSide.type);
+  var newValueTypeName = getTypeName(newValue);
+  // print(leftHandSideTypeName);
+  // print(newValueTypeName);
+
+  if (assign.token == TOKEN_ASSIGN) {
+    compatibleTypes(leftHandSideType, newValueType);
+  } else {
+    // TODO: 15.26.2
+  }
+
 };
 
 var flatten = function(stm, sep, context) {
@@ -4857,24 +6091,22 @@ var flatten = function(stm, sep, context) {
     case 'local':
       if (trace) print('local');
       var name = stm.name;
+      // TODO: qualified type names?
       var type = typeName(stm.type.name);
       var typedName = type + '_' + name;
       addIdentifier(name, name, stm.type, false, 'local');
       ret = ret + 'var ';
       ret = ret + name;
       if (stm.initial_value) {
-        // TODO: type check
-        // compatibleTypes(stm, stm.initial_value);
+        //compatibleTypes(stm, stm.initial_value);
+        typeCheckLocalDecl(stm);
         ret = ret + '=' + flatten(stm.initial_value);
       }
       break;
     case 'assignment':
       if (trace) print('assignment');
-      if (!isLeftHandSide(stm.location)) {
-          print('unexpected type: must assign to a variable');
-          quit();
-      }
-      // TODO: type check
+      //compatibleTypes(stm.location, stm.new_value);
+      typeCheckAssignmentExpr(stm);
       var loc = flatten(stm.location, sep, context);
       if (/<private>/.test(loc)) {
         // must use private access method
@@ -4905,6 +6137,8 @@ var flatten = function(stm, sep, context) {
       break;
     case 'binary':
       if (trace) print('binary');
+      //binaryTypeCheck(stm);
+      typeCheckBinaryExpr(stm);
       ret = ret + '(';
       ret = ret + flatten(stm.lhs);
       ret = ret + operatorStr(token);
@@ -4928,11 +6162,14 @@ var flatten = function(stm, sep, context) {
       break;
     case 'prefix':
       if (trace) print('prefix');
+      //prefixTypeCheck(stm);
+      typeCheckPrefixExpr(stm);
       ret = ret + operatorStr(token);
       ret = ret + flatten(stm.operand);
       break;
     case 'postfix':
       if (trace) print('postfix');
+      //postfixTypeCheck(stm);
       ret = ret + flatten(stm.operand);
       if (stm.term) {
         var cntx = stm.operand.name;
@@ -5402,6 +6639,7 @@ var execute = function(className) {
 };
 
 var filepath = '';
+var showAST = false;
 var verbose = false;
 var run = false;
 var className = '';
@@ -5409,6 +6647,7 @@ var argc = arguments.length;
 if (argc) {
   for (var i = 0; i < argc; i++) {
     if (arguments[i] == '--trace') trace = true;
+    else if (arguments[i] == '--ast') showAST = true;
     else if (arguments[i] == '--verbose') verbose = true;
     else if (arguments[i] == '--run') {
       run = true;
@@ -5430,7 +6669,7 @@ if (argc) {
   if (trace) print(data);
   parse();
   delete Parser.this_method;
-  if (trace) print_ast(Parser);
+  if (trace || showAST) print_ast(Parser);
 
   compile(Parser);
   if (verbose) print_ast(Result);
