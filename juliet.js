@@ -14,14 +14,55 @@
   limitations under the License.
 */
 
-// save arguments in spidermonkey
+
+/* Platform */
+
 if (typeof(arguments) === 'undefined') {
-  var arguments = scriptArgs || arguments;
+  if (scriptArgs) {
+    // save arguments in spidermonkey
+    var arguments = scriptArgs;
+  }
+}
+
+if (typeof(process) !== 'undefined' && process.argv) {
+  // save argumes in Node.js
+  var arguments = process.argv;
+}
+
+if (!print) {
+  if (console && console.log) {
+    var print = console.log;
+  }
+}
+
+if (!quit) {
+  if (process && process.exit) {
+    var quit = process.exit;
+  }
 }
 
 // save native read function.
 var readFile = read || readFile;
 
+if (!readFile) {
+  // could be Node.js
+  if (require) {
+    var fs = require('fs');
+    if (fs && fs.readFileSync) {
+      readFile = function (filename) {
+        return fs.readFileSync(filename, 'utf8');
+      }
+    }
+  }
+}
+
+if (!readFile) {
+  print('Could not find a suitable readFile function.');
+  quit();
+}
+
+
+/* Lexer */
 var next_token = 1;
 
 var TOKEN_ID = next_token++;
@@ -4361,7 +4402,7 @@ var test_parse_types = function () {
 // byte = int = long
 
 var scope = [];
-var Result = {};
+Result = {}; // no var
 var static_context = null;
 var init_compiler = function ()  {
   scope = [];
@@ -4369,6 +4410,9 @@ var init_compiler = function ()  {
   Result = {};
 };
 
+/* Runtime */
+
+// make sure this is global, so no var
 Java = {
   'new': function (klass, constructor) {
     var inst = Object.create(klass);
@@ -4447,13 +4491,18 @@ Java = {
 
   }
 };
-var System = {
+
+
+/* Standard Lib */
+// make sure this is global, so no var
+System = {
   out: {
     println: function(args) {
       print(args);
     }
   }
 };
+
 
 var qualifiers_str = function(quals) {
   var ret = '';
@@ -6643,6 +6692,7 @@ var showAST = false;
 var verbose = false;
 var run = false;
 var className = '';
+
 var argc = arguments.length;
 if (argc) {
   for (var i = 0; i < argc; i++) {

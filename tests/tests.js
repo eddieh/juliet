@@ -1,4 +1,10 @@
-load('juliet.js');
+if (typeof(load) !== 'undefined') {
+  load('juliet.js');
+} else if (typeof(require) !== 'undefined') {
+  var fs = require('fs');
+  var juliet = fs.readFileSync('juliet.js', 'utf8');
+  eval(juliet);
+}
 
 (function() {
   var tests = [
