@@ -93,7 +93,7 @@ var rewind_to_mark = function() {
 var next_is = function(token_type) {
   var t = peek();
 
-  if (isArray(token_type) && t) {
+  if (Juliet.util.isArray(token_type) && t) {
     return token_type.some(function(tok) {
       return this == tok;
     },t.type);
@@ -105,7 +105,7 @@ var next_is = function(token_type) {
 var consume = function(token_type) {
   var p = peek();
 
-  if (isArray(token_type) && p) {
+  if (Juliet.util.isArray(token_type) && p) {
     var match = token_type.some(function(tok) {
       return this == tok;
     },p.type);
@@ -124,7 +124,7 @@ var consume = function(token_type) {
 };
 
 var must_consume = function(token_type, error_message) {
-  if (trace) print('must_consume ' + token_str(token_type));
+  if (trace) print('must_consume ' + Juliet.util.token_str(token_type));
   if (consume(token_type)) return;
   throw new Error(error_message);
 };

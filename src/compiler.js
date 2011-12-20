@@ -68,7 +68,7 @@ var operatorStr = function(a) {
   for (op in operators) {
     if (a == operators[op]) return op;
   }
-  print(token_str(a) + ' not an operator or assignment.');
+  print(Juliet.util.token_str(a) + ' not an operator or assignment.');
   quit();
 };
 
@@ -639,8 +639,8 @@ var compatibleTypes = function(leftType, rightType) {
     if (leftTypeName[leftTypeName.length - 1] == ']') {
       if (trace) print('  ARRAY');
 
-      // print_ast(leftType);
-      // print_ast(rightType);
+      // Juliet.util.print_ast(leftType);
+      // Juliet.util.print_ast(rightType);
 
       // print('leftTypeName: ' + arrayType(leftTypeName));
       // print('rightTypeName: ' + arrayType(rightTypeName));
@@ -702,7 +702,7 @@ var arrayAccessExpressionType = function(expr) {
     effectiveTypeName = reduceByOneDimension(effectiveTypeName);
   }
 
-  var type = copy(typeDescriptor.type);
+  var type = Juliet.util.copy(typeDescriptor.type);
   type.name = effectiveTypeName;
   return type;
 };
@@ -714,16 +714,16 @@ var typeCheckArray = function(array) {
     for (elementKey in arrayElements) {
       if (!arrayElements.hasOwnProperty(elementKey)) continue;
 
-      var t = copy(array.type);
+      var t = Juliet.util.copy(array.type);
       t.name = reduceByOneDimension(name);
 
       var t2 = arrayElements[elementKey];
 
       // TODO: this needs to be recursive!
 
-      // print_ast(array.type);
-      // print('t:');print_ast(t);
-      // print('t2:');print_ast(t2);
+      // Juliet.util.print_ast(array.type);
+      // print('t:');Juliet.util.print_ast(t);
+      // print('t2:');Juliet.util.print_ast(t2);
 
       compatibleTypes(t, t2);
     }
@@ -1102,7 +1102,7 @@ var typeCheckTernary = function(expr) {
   var trueValue = typeCheckExpr(expr.true_value);
   var falseValue = typeCheckExpr(expr.false_value);
 
-  // print_ast(expr);
+  // Juliet.util.print_ast(expr);
   var expressionType = getType(expr.expression);
   var expressionTypeName = getTypeName(expr.expression);
 
@@ -1118,10 +1118,10 @@ var typeCheckTernary = function(expr) {
   var trueValueTypeName = getTypeName(trueValue);
   var falseValueTypeName = getTypeName(falseValue);
 
-  // print_ast(trueValue);
-  // print_ast(falseValue);
-  // print('trueValueType:');print_ast(trueValueType);
-  // print('falseValueType:');print_ast(falseValueType);
+  // Juliet.util.print_ast(trueValue);
+  // Juliet.util.print_ast(falseValue);
+  // print('trueValueType:');Juliet.util.print_ast(trueValueType);
+  // print('falseValueType:');Juliet.util.print_ast(falseValueType);
 
   if (trueValueTypeName == 'void') {
     print('cannot invoke void method here');
@@ -1173,7 +1173,7 @@ var typeCheckTernary = function(expr) {
       }
     }
 
-    if (has(['byte', 'short', 'char'], trueValueTypeName)) {
+    if (Juliet.util.has(['byte', 'short', 'char'], trueValueTypeName)) {
       if (falseValueType.token == LITERAL_INT) {
         switch (trueValueTypeName) {
         case 'byte':
@@ -1204,7 +1204,7 @@ var typeCheckTernary = function(expr) {
       }
     }
 
-    if (has(['byte', 'short', 'char'], falseValueTypeName)) {
+    if (Juliet.util.has(['byte', 'short', 'char'], falseValueTypeName)) {
       if (trueValueType.token == LITERAL_INT) {
         switch (falseValueTypeName) {
         case 'byte':
@@ -1235,7 +1235,7 @@ var typeCheckTernary = function(expr) {
       }
     }
 
-    if (has(['Byte', 'Short', 'Character'], trueValueTypeName)) {
+    if (Juliet.util.has(['Byte', 'Short', 'Character'], trueValueTypeName)) {
       if (falseValueType.token == LITERAL_INT) {
         switch (trueValueTypeName) {
         case 'Byte':
@@ -1266,7 +1266,7 @@ var typeCheckTernary = function(expr) {
       }
     }
 
-    if (has(['Byte', 'Short', 'Character'], falseValueTypeName)) {
+    if (Juliet.util.has(['Byte', 'Short', 'Character'], falseValueTypeName)) {
       if (trueValueType.token == LITERAL_INT) {
         switch (falseValueTypeName) {
         case 'Byte':
@@ -1368,8 +1368,8 @@ var typeCheckLocalDecl = function(decl) {
   if (!localTypeName || !initialValueTypeName) {
     print('***');
     print('no name?');
-    print_ast(localType);
-    print_ast(initialValueType);
+    Juliet.util.print_ast(localType);
+    Juliet.util.print_ast(initialValueType);
     quit();
   }
 
@@ -1402,7 +1402,7 @@ function propertyInContext(context, name) {
   var typeDescriptor = typeDescriptorForName(context);
   var staticContext = false;
   // print('CONTEXT: ');
-  // print_ast(typeDescriptor);
+  // Juliet.util.print_ast(typeDescriptor);
 
   if (typeDescriptor && typeDescriptor.type) {
     var tn = typeDescriptor.type.name;
@@ -1430,7 +1430,7 @@ function propertyInContext(context, name) {
       for (var i = 0; i < props.length; i++) {
         if (props[i].name == name) {
           // print('INSTANCE IN CONTEXT: ' + context);
-          // print_ast(props[i]);
+          // Juliet.util.print_ast(props[i]);
           if (staticContext) {
             print('non-static variable ' + name +
                   ' cannot be referenced from a static context');
@@ -1453,7 +1453,7 @@ function propertyInContext(context, name) {
       for (var i = 0; i < cprops.length; i++) {
         if (cprops[i].name == name) {
           // print('STATIC IN CONTEXT: ' + context);
-          // print_ast(cprops[i]);
+          // Juliet.util.print_ast(cprops[i]);
           return cprops[i];
         }
       }
@@ -1500,7 +1500,7 @@ var typeCheckArrayAccessExpression = function(expr) {
     typeDescriptor = typeCheckContextualAccess(expr.operand);
   }
   // print(name);
-  // print_ast(typeDescriptor);
+  // Juliet.util.print_ast(typeDescriptor);
 
   var depth = 0;
   while (expr.expression) {
@@ -1519,12 +1519,15 @@ var typeCheckArrayAccessExpression = function(expr) {
   // TODO: error if there are too many array accesses
   // Consider: int[] i = {}; i[0][0] = 1; // should error
 
-  var effectiveTypeDescriptor = copy(typeDescriptor, ['initial_value']);
+  var effectiveTypeDescriptor = Juliet.util.copy(
+    typeDescriptor,
+    ['initial_value']
+  );
   effectiveTypeDescriptor.type.name = effectiveTypeName;
 
   // print('ARRAY ACCESS');
-  // print_ast(typeDescriptor);
-  // print_ast(effectiveTypeDescriptor);
+  // Juliet.util.print_ast(typeDescriptor);
+  // Juliet.util.print_ast(effectiveTypeDescriptor);
   return effectiveTypeDescriptor;
 };
 
@@ -1552,7 +1555,7 @@ var typeCheckLeftHandSide = function(lhs) {
         var x = scope[i][name];
         if (isLocal(x) || isField(x)) {
           // print('SIMPLE NAME');
-          // print_ast(x);
+          // Juliet.util.print_ast(x);
           return x;
         }
       }
@@ -1563,17 +1566,17 @@ var typeCheckLeftHandSide = function(lhs) {
 };
 
 var typeCheckAssignmentExpr = function(assign) {
-  // print_ast(assign);
+  // Juliet.util.print_ast(assign);
   var leftHandSide = typeCheckLeftHandSide(assign.location);
   var newValue = typeCheckExpr(assign.new_value);
 
-  // print_ast(leftHandSide);
-  // print_ast(newValue);
+  // Juliet.util.print_ast(leftHandSide);
+  // Juliet.util.print_ast(newValue);
 
   var leftHandSideType = getType(leftHandSide.type);
   var newValueType = getType(newValue);
-  // print_ast(leftHandSideType);
-  // print_ast(newValueType);
+  // Juliet.util.print_ast(leftHandSideType);
+  // Juliet.util.print_ast(newValueType);
 
   var leftHandSideTypeName = getTypeName(leftHandSide.type);
   var newValueTypeName = getTypeName(newValue);
@@ -1609,7 +1612,7 @@ var flatten = function(stm, sep, context) {
     if (trace) print('flatten_in_context: ' + cntx);
     return flatten(stm, sep, cntx);
   };
-  if (isArray(stm)) {
+  if (Juliet.util.isArray(stm)) {
     if (sep === undefined) sep = ';';
 
     for (var i = 0; i < stm.length; i++) {

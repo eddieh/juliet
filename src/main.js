@@ -30,10 +30,10 @@ if (argc) {
   if (trace) print(data);
   parse();
   delete Parser.this_method;
-  if (trace || showAST) print_ast(Parser);
+  if (trace || showAST) Juliet.util.print_ast(Parser);
 
   compile(Parser);
-  if (verbose) print_ast(Result);
+  if (verbose) Juliet.util.print_ast(Result);
 
   if (run) {
     execute(className);

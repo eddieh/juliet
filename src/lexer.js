@@ -496,7 +496,7 @@ var tokenize = function() {
     if (this.col) loc = loc + ':' + this.col;
     if (this.length) loc = loc + ':' + this.length;
     if (this.type) token = this.type;
-    //print(token_str(token) + loc);
+    //print(Juliet.util.token_str(token) + loc);
     return new Error(error_message);
   };
 

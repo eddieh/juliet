@@ -26,6 +26,8 @@ if (typeof(load) === 'undefined') {
   }
 }
 
+Juliet = {};
+
 if (typeof(load) !== 'undefined') {
   load('src/util.js');
   load('src/platform.js');
