@@ -35,7 +35,9 @@ if (typeof(load) !== 'undefined') {
   load('src/runtime.js');
   load('src/stdlib.js');
   load('src/runner.js');
-  load('src/main.js');
+  if (typeof(noMain) === 'undefined') {
+    load('src/main.js');
+  }
 } else {
   include('src/util.js');
   include('src/lexer.js');

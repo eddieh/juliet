@@ -15,16 +15,16 @@
 */
 
 
-if (typeof(arguments) === 'undefined') {
-  if (typeof(scriptArgs) !== 'undefined') {
-    // save arguments in spidermonkey
-    arguments = scriptArgs;
-  }
-}
-
 if (typeof(process) !== 'undefined' && process.argv) {
   // save arguments in Node.js
-  arguments = process.argv;
+  scriptArgs = process.argv;
+}
+
+if (typeof(arguments) !== 'undefined') {
+  if (typeof(scriptArgs) === 'undefined') {
+    // save arguments in V8
+    scriptArgs = arguments;
+  }
 }
 
 if (typeof(print) === 'undefined') {

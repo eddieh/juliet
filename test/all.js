@@ -10,9 +10,10 @@ if (typeof(load) === 'undefined') {
   }
 }
 
+noMain = true;
 load('juliet.js');
 
-(function() {
+(function(args) {
   var tests = [
     /*
       Base tests
@@ -683,6 +684,14 @@ load('juliet.js');
 
   ];
 
+  var summarize = false;
+  var argc = args.length;
+  if (argc) {
+    for (var i = 0; i < argc; i++) {
+      if (args[i] == '--summarize') summarize = true;
+    }
+  }
+
   var result = '';
   System.out.println = function (a) {
     result = result + a + '\n';
@@ -702,8 +711,10 @@ load('juliet.js');
     test_info = test_info + a + '\n';
   };
 
-  tprint('BEGIN TESTS');
-  tprint('');
+  if (!summarize) {
+    tprint('BEGIN TESTS');
+    tprint('');
+  }
 
   var pass_count = 0;
   var fail_count = 0;
@@ -726,6 +737,7 @@ load('juliet.js');
 
     test_info = '';
     put('Running ' + tests[i].path + ' ' + tests[i].principal);
+
     if (tests[i].expected == result) {
       pass_count++;
       put(' pass');
@@ -739,12 +751,15 @@ load('juliet.js');
       putln('Code:');
       putln(data);
     }
-    tprint(test_info);
+    if (!summarize) tprint(test_info);
   }
 
-  tprint('\nSUMMARY');
-  tprint('=======');
+  if (!summarize) {
+    tprint('\nSUMMARY');
+    tprint('=======');
+  }
   tprint('Passed ' + pass_count + ' tests.');
   tprint('Failed ' + fail_count + ' tests.');
-  tprint('END TESTS');
-})();
+  if (!summarize) tprint('END TESTS');
+  else tprint('');
+})(scriptArgs);
