@@ -10,10 +10,12 @@ bootstrap:
 	cd vendor && svn checkout http://v8.googlecode.com/svn/trunk/ v8
 	cd vendor/v8 && scons console=readline d8
 
+.PHONY: test
 test:
-	$(JS) tests/tests.js
+	$(JS) test/all.js
 
 clean:
-	-cd tests && rm *.class
-	-cd tests/scope && rm *.class
-	-cd tests/assignments && rm *.class
+	-cd test && rm *.class
+	-cd test/scope && rm *.class
+	-cd test/assignments && rm *.class
+	-cd test/typechecks && rm *.class

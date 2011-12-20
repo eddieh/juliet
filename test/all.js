@@ -12,17 +12,17 @@ if (typeof(load) !== 'undefined') {
       Base tests
     */
     {
-      path:'tests/arrays.java',
+      path:'test/arrays.java',
       principal:'Arrays',
       expected:'96\n42\n'
     },
     {
-      path:'tests/assignments.java',
+      path:'test/assignments.java',
       principal:'Assignments',
       expected:'0\n'
     },
     {
-      path:'tests/conditionals.java',
+      path:'test/conditionals.java',
       principal:'Conditionals',
       expected:'You see me.\n' +
           'correct\n' +
@@ -30,17 +30,17 @@ if (typeof(load) !== 'undefined') {
           'two\n'
     },
     {
-      path:'tests/fields.java',
+      path:'test/fields.java',
       principal:'Runner',
       expected:'10\n'
     },
     {
-      path:'tests/hello.java',
+      path:'test/hello.java',
       principal:'Hello',
       expected:'I\'m alive!\n'
     },
     {
-      path:'tests/inheritance.java',
+      path:'test/inheritance.java',
       principal:'Runner',
       expected:'hello from A\n' +
           '  a = 1\n' +
@@ -55,17 +55,17 @@ if (typeof(load) !== 'undefined') {
           '  b = 2\n'
     },
     {
-      path:'tests/initializers.java',
+      path:'test/initializers.java',
       principal:'Runner',
       expected:'3\n7\n'
     },
     {
-      path:'tests/interfaces.java',
+      path:'test/interfaces.java',
       principal:'Runner',
       expected:'(2 3)\n'
     },
     {
-      path:'tests/jclass.java',
+      path:'test/jclass.java',
       principal:'Runner',
       expected:'3\n' +
           '7\n' +
@@ -75,7 +75,7 @@ if (typeof(load) !== 'undefined') {
           '99\n'
     },
     {
-      path:'tests/literals.java',
+      path:'test/literals.java',
       principal:'Literals',
       expected:'string\n' +
           'c\n' +
@@ -86,7 +86,7 @@ if (typeof(load) !== 'undefined') {
           'null\n'
     },
     {
-      path:'tests/loops.java',
+      path:'test/loops.java',
       principal:'Loops',
       expected:'twice\n' +
           'twice\n' +
@@ -95,12 +95,12 @@ if (typeof(load) !== 'undefined') {
           'three\n'
     },
     {
-      path:'tests/methods.java',
+      path:'test/methods.java',
       principal:'Runner',
       expected:'11\n'
     },
     {
-      path:'tests/overloading.java',
+      path:'test/overloading.java',
       principal:'Runner',
       expected:'character\n' +
           'string\n' +
@@ -123,101 +123,101 @@ if (typeof(load) !== 'undefined') {
        Scope
     */
     {
-      path:'tests/scope/test0.java',
+      path:'test/scope/test0.java',
       principal:'Test0',
       expected:'3\n'
     },
 
     // {
-    //   path:'tests/scope/test1.java',
+    //   path:'test/scope/test1.java',
     //   principal:'Test1',
     //   expected:'undefined\n'
     // },
 
     {
-      path:'tests/scope/test2.java',
+      path:'test/scope/test2.java',
       principal:'Test2',
       expected:'7\n'
     },
     {
-      path:'tests/scope/test3.java',
+      path:'test/scope/test3.java',
       principal:'Test3',
       expected:'1\n2\n'
     },
     {
-      path:'tests/scope/test4.java',
+      path:'test/scope/test4.java',
       principal:'Test4',
       expected:'x is not defined\n'
     },
     {
-      path:'tests/scope/test5.java',
+      path:'test/scope/test5.java',
       principal:'Test5',
       expected:'3\n1\n'
     },
     {
-      path:'tests/scope/test6.java',
+      path:'test/scope/test6.java',
       principal:'Test6',
       expected:'x is already defined\n'
     },
     {
-      path:'tests/scope/test7.java',
+      path:'test/scope/test7.java',
       principal:'Test7',
       expected:'x is already defined\n'
     },
     {
-      path:'tests/scope/test8.java',
+      path:'test/scope/test8.java',
       principal:'Test8',
       expected:'i is already defined\n'
     },
     {
-      path:'tests/scope/test9.java',
+      path:'test/scope/test9.java',
       principal:'Test9',
       expected:''
     },
     {
-      path:'tests/scope/test10.java',
+      path:'test/scope/test10.java',
       principal:'Test10',
       expected:'1\n2\n'
     },
     {
-      path:'tests/scope/test11.java',
+      path:'test/scope/test11.java',
       principal:'Test11',
       expected:'1\n'
     },
     {
-      path:'tests/scope/test12.java',
+      path:'test/scope/test12.java',
       principal:'Test12',
       expected:'x is already defined\n'
     },
     {
-      path:'tests/scope/test13.java',
+      path:'test/scope/test13.java',
       principal:'Test13',
       expected:'9\n'
     },
     {
-      path:'tests/scope/test14.java',
+      path:'test/scope/test14.java',
       principal:'Test14',
       expected:'4\n3\n'
     },
     {
-      path:'tests/scope/test15.java',
+      path:'test/scope/test15.java',
       principal:'Test15',
       expected:'Hello from static_method()\n' +
                'Hello from static_method()\n'
     },
     {
-      path:'tests/scope/test16.java',
+      path:'test/scope/test16.java',
       principal:'Runner',
       expected:'Hello from static_method()\n' +
                'Hello from static_method()\n'
     },
     {
-      path:'tests/scope/test17.java',
+      path:'test/scope/test17.java',
       principal:'Test17',
       expected:'instance_method is not defined\n'
     },
     {
-      path:'tests/scope/test18.java',
+      path:'test/scope/test18.java',
       principal:'Test18',
       expected:'x is not defined\n'
     },
@@ -226,47 +226,47 @@ if (typeof(load) !== 'undefined') {
        Assignment
     */
     // {
-    //   path:'tests/assignments/test0.java',
+    //   path:'test/assignments/test0.java',
     //   principal:'Test0',
     //   expected:'3\n'
     // },
     // {
-    //   path:'tests/assignments/test1.java',
+    //   path:'test/assignments/test1.java',
     //   principal:'Test1',
     //   expected:'unexpected type: must assign to a variable\n'
     // },
     // {
-    //   path:'tests/assignments/test2.java',
+    //   path:'test/assignments/test2.java',
     //   principal:'Test2',
     //   expected:'3\n'
     // },
     // {
-    //   path:'tests/assignments/test3.java',
+    //   path:'test/assignments/test3.java',
     //   principal:'Test3',
     //   expected:'incompatible types\n'
     // },
     // {
-    //   path:'tests/assignments/test4.java',
+    //   path:'test/assignments/test4.java',
     //   principal:'Test4',
     //   expected:'9\n'
     // },
     // {
-    //   path:'tests/assignments/test5.java',
+    //   path:'test/assignments/test5.java',
     //   principal:'Runner',
     //   expected:'13\n'
     // },
     // {
-    //   path:'tests/assignments/test6.java',
+    //   path:'test/assignments/test6.java',
     //   principal:'Test6',
     //   expected:'5\n'
     // },
     // {
-    //   path:'tests/assignments/test7.java',
+    //   path:'test/assignments/test7.java',
     //   principal:'Test7',
     //   expected:'32\n'
     // },
     // {
-    //   path:'tests/assignments/test8.java',
+    //   path:'test/assignments/test8.java',
     //   principal:'Test8',
     //   expected:'32\n'
     // },
@@ -275,139 +275,139 @@ if (typeof(load) !== 'undefined') {
       Type checking
     */
     {
-      path:'tests/typechecks/test000.java',
+      path:'test/typechecks/test000.java',
       expected:
         'incompatible types\n' +
         'found   : java.lang.String\n' +
         'required: int\n'
     },
     {
-      path:'tests/typechecks/test001.java',
+      path:'test/typechecks/test001.java',
       expected:
         'incompatible types\n' +
         'found   : String\n' +
         'required: int\n'
     },
     {
-      path:'tests/typechecks/test002.java',
+      path:'test/typechecks/test002.java',
       expected:
         'incompatible types\n' +
         'found   : String\n' +
         'required: int\n'
     },
     {
-      path:'tests/typechecks/test003.java',
+      path:'test/typechecks/test003.java',
       expected:
         'incompatible types\n' +
         'found   : java.lang.String\n' +
         'required: int\n'
     },
     {
-      path:'tests/typechecks/test004.java',
+      path:'test/typechecks/test004.java',
       expected:
         'incompatible types\n' +
         'found   : java.lang.String\n' +
         'required: int\n'
     },
     {
-      path:'tests/typechecks/test005.java',
+      path:'test/typechecks/test005.java',
       expected:
         'incompatible types\n' +
         'found   : java.lang.String\n' +
         'required: int\n'
     },
     {
-      path:'tests/typechecks/test006.java',
+      path:'test/typechecks/test006.java',
       expected:''
     },
     {
-      path:'tests/typechecks/test007.java',
+      path:'test/typechecks/test007.java',
       expected:
         'incompatible types\n' +
         'found   : java.lang.String\n' +
         'required: int\n'
     },
     {
-      path:'tests/typechecks/test008.java',
+      path:'test/typechecks/test008.java',
       expected:''
     },
     {
-      path:'tests/typechecks/test009.java',
+      path:'test/typechecks/test009.java',
       expected:
         'incompatible types\n' +
         'found   : java.lang.String\n' +
         'required: int\n'
     },
     {
-      path:'tests/typechecks/test010.java',
+      path:'test/typechecks/test010.java',
       expected:
         'incompatible types\n' +
         'found   : java.lang.String\n' +
         'required: int\n'
     },
     {
-      path:'tests/typechecks/test011.java',
+      path:'test/typechecks/test011.java',
       expected:
         'incompatible types\n' +
         'found   : java.lang.String\n' +
         'required: int\n'
     },
     {
-      path:'tests/typechecks/test012.java',
+      path:'test/typechecks/test012.java',
       expected:''
     },
     {
-      path:'tests/typechecks/test013.java',
+      path:'test/typechecks/test013.java',
       expected:
         'incompatible types\n' +
         'found   : java.lang.String\n' +
         'required: int\n'
     },
     {
-      path:'tests/typechecks/test014.java',
+      path:'test/typechecks/test014.java',
       expected:
         'incompatible types\n' +
         'found   : java.lang.String\n' +
         'required: int\n'
     },
     {
-      path:'tests/typechecks/test015.java',
+      path:'test/typechecks/test015.java',
       expected:''
     },
     {
-      path:'tests/typechecks/test016.java',
+      path:'test/typechecks/test016.java',
       expected:
         'incompatible types\n' +
         'found   : java.lang.String\n' +
         'required: int\n'
     },
     {
-      path:'tests/typechecks/test017.java',
+      path:'test/typechecks/test017.java',
       expected:
         'incompatible types\n' +
         'found   : Object\n' +
         'required: int\n'
     },
     {
-      path:'tests/typechecks/test018.java',
+      path:'test/typechecks/test018.java',
       expected:
         'unexpected type\n' +
         'required: variable\n' +
         'found   : literal\n'
     },
     {
-      path:'tests/typechecks/test019.java',
+      path:'test/typechecks/test019.java',
       expected:
         'unexpected type\n' +
         'required: variable\n' +
         'found   : literal\n'
     },
     {
-      path:'tests/typechecks/test020.java',
+      path:'test/typechecks/test020.java',
       expected:''
     },
     {
-      path:'tests/typechecks/test021.java',
+      path:'test/typechecks/test021.java',
       expected:
         'possible loss of precision\n' +
         'found   : float\n' +
@@ -416,51 +416,51 @@ if (typeof(load) !== 'undefined') {
       // of a float
     },
     {
-      path:'tests/typechecks/test022.java',
+      path:'test/typechecks/test022.java',
       expected:
         'possible loss of precision\n' +
         'found   : double\n' +
         'required: int\n'
     },
     {
-      path:'tests/typechecks/test023.java',
+      path:'test/typechecks/test023.java',
       expected:
         'unexpected type\n' +
         'required: variable\n' +
         'found   : literal\n'
     },
     {
-      path:'tests/typechecks/test024.java',
+      path:'test/typechecks/test024.java',
       expected:''
     },
     {
-      path:'tests/typechecks/test025.java',
+      path:'test/typechecks/test025.java',
       expected:
         'unexpected type\n' +
         'required: variable\n' +
         'found   : binary\n'
     },
     {
-      path:'tests/typechecks/test026.java',
+      path:'test/typechecks/test026.java',
       expected:
         'unexpected type\n' +
         'required: variable\n' +
         'found   : method\n'
     },
     {
-      path:'tests/typechecks/test027.java',
+      path:'test/typechecks/test027.java',
       expected:'operator ++ cannot be applied to String\n'
       // FIXME: when we have a stdlib this should be:
       // expected:'operator ++ cannot be applied to java.lang.String\n'
     },
     {
-      path:'tests/typechecks/test028.java',
+      path:'test/typechecks/test028.java',
       expected:'operator -- cannot be applied to String\n'
       // FIXME: when we have a stdlib this should be:
       // expected:'operator -- cannot be applied to java.lang.String\n'
     },
     {
-      path:'tests/typechecks/test029.java',
+      path:'test/typechecks/test029.java',
       expected:'operator + cannot be applied to String\n'
       // FIXME: when we have a stdlib this should be:
       // expected:'operator + cannot be applied to java.lang.String\n'
@@ -468,202 +468,202 @@ if (typeof(load) !== 'undefined') {
       // operator
     },
     {
-      path:'tests/typechecks/test030.java',
+      path:'test/typechecks/test030.java',
       expected:'operator - cannot be applied to String\n'
       // FIXME: when we have a stdlib this should be:
       // expected:'operator - cannot be applied to java.lang.String\n'
     },
     {
-      path:'tests/typechecks/test031.java',
+      path:'test/typechecks/test031.java',
       expected:'operator ~ cannot be applied to String\n'
       // FIXME: when we have a stdlib this should be:
       // expected:'operator ~ cannot be applied to java.lang.String\n'
     },
     {
-      path:'tests/typechecks/test032.java',
+      path:'test/typechecks/test032.java',
       expected:'operator ! cannot be applied to String\n'
       // FIXME: when we have a stdlib this should be:
       // expected:'operator ! cannot be applied to java.lang.String\n'
     },
     {
-      path:'tests/typechecks/test033.java',
+      path:'test/typechecks/test033.java',
       expected:
         'unexpected type\n' +
         'required: variable\n' +
         'found   : literal\n'
     },
     {
-      path:'tests/typechecks/test034.java',
+      path:'test/typechecks/test034.java',
       expected:
         'unexpected type\n' +
         'required: variable\n' +
         'found   : literal\n'
     },
     {
-      path:'tests/typechecks/test035.java',
+      path:'test/typechecks/test035.java',
       expected:''
     },
     {
-      path:'tests/typechecks/test036.java',
+      path:'test/typechecks/test036.java',
       expected:''
     },
     {
-      path:'tests/typechecks/test037.java',
+      path:'test/typechecks/test037.java',
       expected:
         'unexpected type\n' +
         'required: variable\n' +
         'found   : literal\n'
     },
     {
-      path:'tests/typechecks/test038.java',
+      path:'test/typechecks/test038.java',
       expected:''
     },
     {
-      path:'tests/typechecks/test039.java',
+      path:'test/typechecks/test039.java',
       expected:'operator * cannot be applied to Widget, Widget\n'
     },
     {
-      path:'tests/typechecks/test040.java',
+      path:'test/typechecks/test040.java',
       expected:'operator * cannot be applied to Widget, int\n'
     },
     {
-      path:'tests/typechecks/test041.java',
+      path:'test/typechecks/test041.java',
       expected:''
     },
     {
-      path:'tests/typechecks/test042.java',
+      path:'test/typechecks/test042.java',
       expected:
         'possible loss of precision\n' +
         'found   : double\n' +
         'required: int\n'
     },
     {
-      path:'tests/typechecks/test043.java',
+      path:'test/typechecks/test043.java',
       expected:
         'incompatible types\n' +
         'found   : java.lang.String\n' +
         'required: int\n'
     },
     {
-      path:'tests/typechecks/test044.java',
+      path:'test/typechecks/test044.java',
       expected:
         'incompatible types\n' +
         'found   : Widget\n' +
         'required: int\n'
     },
     {
-      path:'tests/typechecks/test045.java',
+      path:'test/typechecks/test045.java',
       expected:'illegal initializer for int\n'
     },
     {
-      path:'tests/typechecks/test046.java',
+      path:'test/typechecks/test046.java',
       expected:'illegal initializer for int\n'
     },
     {
-      path:'tests/typechecks/test047.java',
+      path:'test/typechecks/test047.java',
       expected:''
     },
     {
-      path:'tests/typechecks/test048.java',
+      path:'test/typechecks/test048.java',
       expected:''
     },
     {
-      path:'tests/typechecks/test049.java',
+      path:'test/typechecks/test049.java',
       expected:
         'incompatible types\n' +
         'found   : int[][]\n' +
         'required: int[]\n'
     },
     {
-      path:'tests/typechecks/test050.java',
+      path:'test/typechecks/test050.java',
       expected:''
     },
     {
-      path:'tests/typechecks/test051.java',
+      path:'test/typechecks/test051.java',
       expected:
         'incompatible types\n' +
         'found   : int[]\n' +
         'required: int[][]\n'
     },
     {
-      path:'tests/typechecks/test052.java',
+      path:'test/typechecks/test052.java',
       expected:'array dimension missing\n'
     },
     {
-      path:'tests/typechecks/test053.java',
+      path:'test/typechecks/test053.java',
       expected:''
     },
     {
-      path:'tests/typechecks/test054.java',
+      path:'test/typechecks/test054.java',
       expected:''
     },
     {
-      path:'tests/typechecks/test055.java',
+      path:'test/typechecks/test055.java',
       expected:''
     },
     {
-      path:'tests/typechecks/test056.java',
+      path:'test/typechecks/test056.java',
       expected:''
     },
     {
-      path:'tests/typechecks/test057.java',
+      path:'test/typechecks/test057.java',
       expected:
         'incompatible types\n' +
         'found   : int\n' +
         'required: int[]\n'
     },
     {
-      path:'tests/typechecks/test058.java',
+      path:'test/typechecks/test058.java',
       expected:
         'incompatible types\n' +
         'found   : int\n' +
         'required: int[]\n'
     },
     {
-      path:'tests/typechecks/test059.java',
+      path:'test/typechecks/test059.java',
       expected:
         'incompatible types\n' +
         'found   : java.lang.String\n' +
         'required: int\n'
     },
     {
-      path:'tests/typechecks/test060.java',
+      path:'test/typechecks/test060.java',
       expected:
         'incompatible types\n' +
         'found   : Widget\n' +
         'required: int\n'
     },
     {
-      path:'tests/typechecks/test061.java',
+      path:'test/typechecks/test061.java',
       expected:
         'incompatible types\n' +
         'found   : double[]\n' +
         'required: int[]\n'
     },
     {
-      path:'tests/typechecks/test062.java',
+      path:'test/typechecks/test062.java',
       expected:
         'incompatible types\n' +
         'found   : double[]\n' +
         'required: int[]\n'
     },
     {
-      path:'tests/typechecks/test063.java',
+      path:'test/typechecks/test063.java',
       expected:''
     },
     {
-      path:'tests/typechecks/test064.java',
+      path:'test/typechecks/test064.java',
       expected:''
     },
     {
-      path:'tests/typechecks/test065.java',
+      path:'test/typechecks/test065.java',
       expected:
         'possible loss of precision\n' +
         'found   : double\n' +
         'required: int\n'
     },
     {
-      path:'tests/typechecks/test066.java',
+      path:'test/typechecks/test066.java',
       expected:
         'incompatible types\n' +
         'found   : String\n' +
