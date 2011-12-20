@@ -1,10 +1,16 @@
-if (typeof(load) !== 'undefined') {
-  load('juliet.js');
-} else if (typeof(require) !== 'undefined') {
-  var fs = require('fs');
-  var juliet = fs.readFileSync('juliet.js', 'utf8');
-  eval(juliet);
+if (typeof(load) === 'undefined') {
+  if (typeof(require) !== 'undefined') {
+    nodeRequire = require;
+    load = function(filename) {
+      var fs = require('fs');
+      var script = fs.readFileSync(filename, 'utf8');
+      var evalGlobal = eval.bind(this);
+      evalGlobal(script);
+    };
+  }
 }
+
+load('juliet.js');
 
 (function() {
   var tests = [
@@ -714,7 +720,8 @@ if (typeof(load) !== 'undefined') {
         execute(tests[i].principal);
       }
     } catch (e) {
-      //if (e.message != 'QUIT') print(e);
+      // if (e.message != 'QUIT') System.out.println(e);
+      // if (e.message != 'QUIT') tprint(e);
     }
 
     test_info = '';
