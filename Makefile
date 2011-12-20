@@ -1,5 +1,7 @@
 V8=vendor/v8/d8
 NODE=node
+RHINO=rhino
+
 JS=$(V8)
 
 lint:

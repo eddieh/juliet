@@ -26,12 +26,22 @@ if (typeof(load) === 'undefined') {
   }
 }
 
-load('src/util.js');
-load('src/platform.js');
-load('src/lexer.js');
-load('src/parser.js');
-load('src/compiler.js');
-load('src/runtime.js');
-load('src/stdlib.js');
-load('src/runner.js');
-load('src/main.js');
+if (typeof(load) !== 'undefined') {
+  load('src/util.js');
+  load('src/platform.js');
+  load('src/lexer.js');
+  load('src/parser.js');
+  load('src/compiler.js');
+  load('src/runtime.js');
+  load('src/stdlib.js');
+  load('src/runner.js');
+  load('src/main.js');
+} else {
+  include('src/util.js');
+  include('src/lexer.js');
+  include('src/parser.js');
+  include('src/compiler.js');
+  include('src/runtime.js');
+  include('src/stdlib.js');
+  include('src/runner.js');
+}
