@@ -23,7 +23,7 @@ if (argc) {
 
   if (verbose) print('Compiling :' + filepath);
 
-  init();
+  Juliet.lexer.init();
   init_parser();
   init_compiler();
   data = readFile(filepath);

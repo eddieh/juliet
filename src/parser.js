@@ -14,6 +14,24 @@
   limitations under the License.
 */
 
+var JOG_QUALIFIER_PUBLIC      =   1;
+var JOG_QUALIFIER_PROTECTED   =   2;
+var JOG_QUALIFIER_PRIVATE     =   4;
+var JOG_QUALIFIER_STATIC      =   8;
+var JOG_QUALIFIER_NATIVE      =  16;
+var JOG_QUALIFIER_CLASS       =  32;
+var JOG_QUALIFIER_INTERFACE   =  64;
+var JOG_QUALIFIER_PRIMITIVE   = 128;
+var JOG_QUALIFIER_CONSTRUCTOR = 256;
+var JOG_QUALIFIER_ABSTRACT    = 512;
+var JOG_QUALIFIER_FINAL       = 1024;
+var JOG_QUALIFIER_STRICTFP    = 2048;
+var JOG_QUALIFIER_TRANSIENT   = 4096;
+var JOG_QUALIFIER_VOLATILE    = 8192;
+var JOG_QUALIFIER_SYNCRONIZED = 16384;
+
+var JOG_QUALIFIER_REFERENCE = (JOG_QUALIFIER_CLASS | JOG_QUALIFIER_INTERFACE);
+
 var Parser = {
   this_method: null,
   parsed_types: [],
@@ -36,17 +54,17 @@ var has_another = function() {
 
 var read = function() {
   var t = null;
-  if (pending.length) {
-    t = pending.pop();
+  if (Juliet.lexer.pending.length) {
+    t = Juliet.lexer.pending.pop();
   } else {
-    if (tokenize() == false) return false;
+    if (Juliet.lexer.tokenize() == false) return false;
     t = read();
   }
 
-  processed.push(t);
-  if (marks.length > 0) {
-    for (var i = 0, len = marks.length; i < len; i++) {
-      marks[i]++;
+  Juliet.lexer.processed.push(t);
+  if (Juliet.lexer.marks.length > 0) {
+    for (var i = 0, len = Juliet.lexer.marks.length; i < len; i++) {
+      Juliet.lexer.marks[i]++;
     }
   }
 
@@ -65,10 +83,10 @@ var peek = function(num_ahead) {
     return t;
   }
 
-  var len = pending.length;
+  var len = Juliet.lexer.pending.length;
   if (len) {
-    return pending[len - 1];
-  } else if (tokenize() == false) {
+    return Juliet.lexer.pending[len - 1];
+  } else if (Juliet.lexer.tokenize() == false) {
     return null;
   }
 
@@ -76,17 +94,17 @@ var peek = function(num_ahead) {
 };
 
 var set_mark = function() {
-  marks.push(0);
+  Juliet.lexer.marks.push(0);
 };
 
 var clear_mark = function() {
-  marks.pop();
+  Juliet.lexer.marks.pop();
 };
 
 var rewind_to_mark = function() {
-  var depth = marks.pop();
+  var depth = Juliet.lexer.marks.pop();
   for (var i = 0; i < depth; i ++) {
-    pending.push(processed.pop());
+    Juliet.lexer.pending.push(Juliet.lexer.processed.pop());
   }
 };
 
@@ -292,10 +310,10 @@ var parse_type_def = function() {
 
       parse_type_def(t, type);
 
-      var start = processed.length - marks[marks.length - 1];
-      for (var i = start, len = processed.length; i < len; i++) {
+      var start = Juliet.lexer.processed.length - Juliet.lexer.marks[Juliet.lexer.marks.length - 1];
+      for (var i = start, len = Juliet.lexer.processed.length; i < len; i++) {
         if (!type.template_tokens) type.template_tokens = [];
-        type.template_tokens.push(processed[i]);
+        type.template_tokens.push(Juliet.lexer.processed[i]);
       }
       clear_mark();
 

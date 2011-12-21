@@ -448,675 +448,665 @@ var keywords = {
   '???': TOKEN_UNKNOWN
 };
 
-var JOG_QUALIFIER_PUBLIC      =   1;
-var JOG_QUALIFIER_PROTECTED   =   2;
-var JOG_QUALIFIER_PRIVATE     =   4;
-var JOG_QUALIFIER_STATIC      =   8;
-var JOG_QUALIFIER_NATIVE      =  16;
-var JOG_QUALIFIER_CLASS       =  32;
-var JOG_QUALIFIER_INTERFACE   =  64;
-var JOG_QUALIFIER_PRIMITIVE   = 128;
-var JOG_QUALIFIER_CONSTRUCTOR = 256;
-var JOG_QUALIFIER_ABSTRACT    = 512;
-var JOG_QUALIFIER_FINAL       = 1024;
-var JOG_QUALIFIER_STRICTFP    = 2048;
-var JOG_QUALIFIER_TRANSIENT   = 4096;
-var JOG_QUALIFIER_VOLATILE    = 8192;
-var JOG_QUALIFIER_SYNCRONIZED = 16384;
-
-var JOG_QUALIFIER_REFERENCE = (JOG_QUALIFIER_CLASS | JOG_QUALIFIER_INTERFACE);
-
 var trace = !true;
 
 data = '';
-var data_i = 0;
-var pending = [];
-var processed = [];
-var marks = [];
-var line_i = 1;
-var col_i = 1;
 
-var init = function() {
-  data = '';
-  data_i = 0;
-  pending = [];
-  processed = [];
-  marks = [];
-  line_i = 1;
-  col_i = 1;
-};
+Juliet.lexer = function() {
 
-var tokenize = function() {
-  var buffer = '';
-  var next = {};
-  next.error = function(error_message) {
-    var token = null;
-    var loc = '';
-    if (this.line) loc = loc + ':' + this.line;
-    if (this.col) loc = loc + ':' + this.col;
-    if (this.length) loc = loc + ':' + this.length;
-    if (this.type) token = this.type;
-    //print(Juliet.util.token_str(token) + loc);
-    return new Error(error_message);
-  };
+  /* Pivates */
+  var data_i = 0;
+  var line_i = 1;
+  var col_i = 1;
 
-  while(true) {
-    var ch = data.charCodeAt(data_i);
+  return {
+    pending: [],
+    processed: [],
+    marks: [],
 
-    //
-    // White space
-    //
-    while (ch == 32 || ch == 9) {
-      data_i++;
-      ch = data.charCodeAt(data_i);
-      col_i++;
-    }
+    init: function() {
+      data = '';
+      this.data_ii = 0;
+      this.pending = [];
+      this.processed = [];
+      this.marks = [];
+      this.line_i = 1;
+      this.col_i = 1;
+    },
 
-    if (ch == 10) {
-      if (trace) print('newline');
-      data_i++
-      col_i = 1;
-      line_i++
-      continue;
-    }
-
-    if (!ch) {
-      if (trace) print('EOF');
-      return false; // EOF
-    }
-
-    //
-    // Comments
-    //
-    if (ch == 47) {
-      if (data[data_i + 1] == '/') {
-        if (trace) print('single-line comment');
-        // Discard single-line comment
-        data_i = data_i + 2;
-        ch = data.charCodeAt(data_i);
-        while (ch && ch != 10) {
-          data_i++;
-          ch = data.charCodeAt(data_i);
-        }
-        data_i++;
-        continue;
-      } else if (data[data_i + 1] == '*') {
-        if (trace) print('multi-line comment');
-        // Discard multi-line comment
-        data_i = data_i + 2;
-        ch = data.charCodeAt(data_i);
-        while (ch) {
-          if (ch == 10) line_i++;
-          if (ch == 42 && data[data_i + 1] == '/') {
-            data_i = data_i + 2;
-            break;
-          }
-          data_i++;
-          ch = data.charCodeAt(data_i);
-        }
-        continue;
-      }
-    }
-
-    //
-    // Parse Identifiers
-    //
-
-    // Default to an error unless we prove otherwise
-    var TYPE_DEFAULT = TOKEN_ERROR;
-    next.type = TYPE_DEFAULT;
-
-    next.line = line_i;
-    next.col = col_i;
-    next.length = 0;
-
-    pending.push(next);
-
-    // a-z, A-Z, _, $
-    if ((ch >= 97 && ch <= 122) ||
-        (ch >= 65 && ch <= 90) ||
-        (ch == 95) || (ch == 36)) {
-      // a-z, A-Z, _, $, 0-9
-      while ((ch >= 97 && ch <= 122) ||
-             (ch >= 65 && ch <= 90) ||
-             (ch == 95) || (ch == 36) ||
-             (ch >= 48 && ch <= 57)) {
-        buffer += data[data_i];
-        data_i++;
-        if (data_i == data.length) break;
-        ch = data.charCodeAt(data_i);
-      }
-      if (buffer in keywords) {
-        next.type = keywords[buffer];
-        next.content = buffer;
-        next.length = buffer.length;
-      } else {
-        next.type = TOKEN_ID;
-        next.content = buffer;
-        next.length = buffer.length;
-      }
-      if (data_i != data.length) {
-        if (token_seperator[data[data_i]] == null) {
-          print('Improper token termination: ' + data[data_i]);
-          next.type = TOKEN_ERROR;
-          return false;
-        }
-      }
-      if (keywords[next.content] != undefined) {
-        next.type = keywords[next.content];
-        if (next.type == TOKEN_TRUE) {
-          next.type = LITERAL_BOOLEAN;
-          next.content = true;
-          next.length = 4;
-        }
-        else if (next.type == TOKEN_FALSE) {
-          next.type = LITERAL_BOOLEAN;
-          next.content = false;
-          next.length = 4;
-        }
-      }
-      next.line = line_i;
-      next.col = col_i;
-      col_i = col_i + next.lenght;
-      return true;
-    }
-
-    //
-    // NUMBERS: Try to parse the token as a number
-    //
-
-    var is_negative = false;
-    var ch2;
-    if ((ch == 45) && (data_i < data.length - 1)) {
-      ch2 = data.charCodeAt(data_i + 1);
-      if ((ch2 >= 48 && ch2 <= 57) || (ch2 == 46)) {
-        is_negative = true;
-        data_i++;
-        ch = ch2;
-      }
-    }
-
-    var begins_with_decimal = false;
-    var ch3;
-    if ((ch == 46) && (data_i < data.length - 1)) {
-      ch3 = data.charCodeAt(data_i + 1);
-      if (ch3 >= 48 && ch3 <= 57) {
-        begins_with_decimal = true;
-        ch = ch3;
-      }
-    }
-
-    // The sequence begins with a character ranging from 0-9,
-    // or begins with a decimal immediately followed by a digit.
-    if (ch >= 48 && ch <= 57) {
-      var base = 10;
-      var underscore_neighbor = function(c) {
-        if (c == 95) return true;
-        if (base == 2) {
-          if (c > 49) return false;
-          if (c < 48) return false;
-        }
-        if (base == 8) {
-          if (c > 55) return false;
-          if (c < 48) return false;
-        }
-        if (base == 10) {
-          if (c > 57) return false;
-          if (c < 48) return false;
-        }
-        if (base == 16) {
-          if (c > 102) return false;
-          if ((c > 70) && (c < 97)) return false;
-          if ((c > 57) && (c < 64)) return false;
-          if (c < 48) return false;
-        }
-        return true;
+    tokenize: function() {
+      var buffer = '';
+      var next = {};
+      next.error = function(error_message) {
+        var token = null;
+        var loc = '';
+        if (this.line) loc = loc + ':' + this.line;
+        if (this.col) loc = loc + ':' + this.col;
+        if (this.length) loc = loc + ':' + this.length;
+        if (this.type) token = this.type;
+        //print(Juliet.util.token_str(token) + loc);
+        return new Error(error_message);
       };
 
-      // Add valid characters (0-9, a-z, A-Z, _, ., -, +) to the buffer
-      var valid_underscore = true;
-      var i = 0;
+      while(true) {
+        var ch = data.charCodeAt(this.data_ii);
 
-      if (begins_with_decimal) ch = 46;
-
-      while ((ch >= 48 && ch <= 57) ||
-             (ch >= 97 && ch <= 122) ||
-             (ch >= 65 && ch <= 90) ||
-             (ch == 95) || (ch == 46) ||
-             (ch == 45) || (ch == 43)) {
-
-        // +,- can prefix the exponent
-        if ((ch == 45) || (ch == 43)) {
-          if ((base == 10) && (i > 0) &&
-              ((data.charCodeAt(data_i - 1) == 69) ||
-               (data.charCodeAt(data_i - 1) == 101))) {
-            // If the previous character was an 'e' or an 'E' then this is a
-            // sign used in the exponent.
-          } else {
-            // Otherwise this symbol is a delimeter and forms part of the
-            // next token
-            break;
-          }
+        //
+        // White space
+        //
+        while (ch == 32 || ch == 9) {
+          this.data_ii++;
+          ch = data.charCodeAt(this.data_ii);
+          this.col_i++;
         }
 
-        // Handle or ignore underscores
-        if (ch == 95) {
-          // Java SE7 says underscores must be *between* digits
-          if (data_i == 0) {
-            valid_underscore = false;
-          }
-          else if (!underscore_neighbor(data.charCodeAt(data_i - 1))) {
-            valid_underscore = false;
-          }
-          else if (data_i == data.length - 1) {
-            valid_underscore = false;
-          }
-          else if (!underscore_neighbor(data.charCodeAt(data_i + 1))) {
-            valid_underscore = false;
-          }
-        } else {
-          var base_syntax = 0;
-          if ((base == 10) && (i == 1)) {
-            // The number starts with a zero which could indicate a different
-            // base. Java supports 4 numeric bases with 3 different syntaxes:
-            // 123 - Decimal (Syntax 0)
-            // 0123 - Octal (Syntax 1)
-            // 0x05F - Hexadecimal (Syntax 2)
-            // 0b010 - Binary (Syntax 2)
-            if (buffer[0] == '0') {
-              // Binary (b or B in SE7)
-              if ((ch == 98) || (ch == 66)) {
-                base = 2;
-                base_syntax = 2;
-              }
-              // Octal (0 followed by digit)
-              else if ((ch <= 57) && (ch >= 48)) {
-                var i = data_i;
-                var ch2 = data.charCodeAt(i);
-                var decimal = false;
-                while ((ch2 >= 48 && ch2 <= 57) ||
-                       (ch2 == 69) || (ch2 == 101) ||
-                       (ch2 == 95) || (ch2 == 46) ||
-                       (ch2 == 45) || (ch2 == 43)) {
-                  // Octal numbers don't have exponents or decimal points
-                  if ((ch2 == 69) || (ch2 == 101) || (ch2 == 46)) {
-                    decimal = true;
-                    break;
-                  }
-                  i++;
-                  if (i >= data.length) break;
-                  var ch2 = data.charCodeAt(i);
-                }
-                if (!decimal) {
-                  base = 8;
-                  base_syntax = 1;
-                }
-              }
-              // Hexadecimal (x or X)
-              else if ((ch == 120) || (ch == 88)) {
-                base = 16;
-                base_syntax = 2;
-              }
+        if (ch == 10) {
+          if (trace) print('newline');
+          this.data_ii++
+          this.col_i = 1;
+          this.line_i++
+          continue;
+        }
+
+        if (!ch) {
+          if (trace) print('EOF');
+          return false; // EOF
+        }
+
+        //
+        // Comments
+        //
+        if (ch == 47) {
+          if (data[this.data_ii + 1] == '/') {
+            if (trace) print('single-line comment');
+            // Discard single-line comment
+            this.data_ii = this.data_ii + 2;
+            ch = data.charCodeAt(this.data_ii);
+            while (ch && ch != 10) {
+              this.data_ii++;
+              ch = data.charCodeAt(this.data_ii);
             }
+            this.data_ii++;
+            continue;
+          } else if (data[this.data_ii + 1] == '*') {
+            if (trace) print('multi-line comment');
+            // Discard multi-line comment
+            this.data_ii = this.data_ii + 2;
+            ch = data.charCodeAt(this.data_ii);
+            while (ch) {
+              if (ch == 10) this.line_i++;
+              if (ch == 42 && data[this.data_ii + 1] == '/') {
+                this.data_ii = this.data_ii + 2;
+                break;
+              }
+              this.data_ii++;
+              ch = data.charCodeAt(this.data_ii);
+            }
+            continue;
           }
-          if (base_syntax == 0) {
-            buffer += data[data_i];
-          } else if (base_syntax == 1) {
-            buffer = '';
-            buffer += data[data_i];
+        }
+
+        //
+        // Parse Identifiers
+        //
+
+        // Default to an error unless we prove otherwise
+        var TYPE_DEFAULT = TOKEN_ERROR;
+        next.type = TYPE_DEFAULT;
+
+        next.line = this.line_i;
+        next.col = this.col_i;
+        next.length = 0;
+
+        this.pending.push(next);
+
+        // a-z, A-Z, _, $
+        if ((ch >= 97 && ch <= 122) ||
+            (ch >= 65 && ch <= 90) ||
+            (ch == 95) || (ch == 36)) {
+          // a-z, A-Z, _, $, 0-9
+          while ((ch >= 97 && ch <= 122) ||
+                 (ch >= 65 && ch <= 90) ||
+                 (ch == 95) || (ch == 36) ||
+                 (ch >= 48 && ch <= 57)) {
+            buffer += data[this.data_ii];
+            this.data_ii++;
+            if (this.data_ii == data.length) break;
+            ch = data.charCodeAt(this.data_ii);
+          }
+          if (buffer in keywords) {
+            next.type = keywords[buffer];
+            next.content = buffer;
+            next.length = buffer.length;
           } else {
-            buffer = '';
+            next.type = TOKEN_ID;
+            next.content = buffer;
+            next.length = buffer.length;
           }
-          i++;
-        }
-        data_i++;
-        if (data_i == data.length) break;
-        ch = data.charCodeAt(data_i);
-      }
-
-      // Default to buffer contents
-      next.content = buffer;
-
-      if (!valid_underscore) {
-        print('Invalid underscore placement in number.');
-        return false;
-      }
-
-      // Determine type from the final character in the buffer
-      var ch2 = buffer.charCodeAt(buffer.length - 1);
-      if ((ch2 == 76) || (ch2 == 108)) { // L or l
-        next.type = LITERAL_LONG;
-        buffer = buffer.substring(0, buffer.length - 1);
-      }
-      else if (base == 10) {
-        if ((ch2 == 70) || (ch2 == 102)) { // F or f
-          next.type = LITERAL_FLOAT;
-          buffer = buffer.substring(0, buffer.length - 1);
-        }
-        else if ((ch2 == 68) || (ch2 == 100)) { // D or d
-          next.type = LITERAL_DOUBLE;
-          buffer = buffer.substring(0, buffer.length - 1);
-        }
-      }
-
-      // Validate the digits.
-      var state = 0;
-      var has_decimal_digits = false;
-      for (var i = 0; i < buffer.length; i++) {
-        var ch2 = buffer.charCodeAt(i);
-        if (buffer[i] == '.') {
-
-          if (base != 10) {
-            // ERROR
-            print('Invalid number (Error1).');
-            next.type = TOKEN_ERROR;
-            return false;
-          }
-          if (state != 0) {
-            // ERROR
-            print('Invalid decimal point position.');
-            next.type = TOKEN_ERROR;
-            return false;
-          }
-          state = 1;
-          // It must be a double
-          if (next.type == TYPE_DEFAULT) next.type = LITERAL_DOUBLE;
-        } else if (ch2 == 48 || ch2 == 49) {
-          // digits 0-1 are always valid
-          has_decimal_digits = true;
-        } else if (ch2 >= 50 && ch2 <= 55) {
-          has_decimal_digits = true;
-          // digits 2-7 are valid for octal or better
-          if (base < 8) {
-            print('Invalid number (Error2).');
-            next.type = TOKEN_ERROR;
-            return false;
-          }
-        } else if (ch2 == 56 || ch2 == 57) {
-          has_decimal_digits = true;
-          if (base < 10) {
-            print('Invalid number (Error3).');
-            next.type = TOKEN_ERROR;
-            return false;
-          }
-        } else if ((ch2 == 43) || (ch2 == 45)) { // + or -
-          // correct position && number already checked..
-        } else if ((ch2 == 69) || (ch2 == 101)) { // e or E
-          if (base == 10) {
-            // E provides an exponent
-            if ((state > 1) || (has_decimal_digits == false)) {
-              // ERROR
-              print('Invalid E position.');
+          if (this.data_ii != data.length) {
+            if (token_seperator[data[this.data_ii]] == null) {
+              print('Improper token termination: ' + data[this.data_ii]);
               next.type = TOKEN_ERROR;
               return false;
             }
-            state = 2;
-            if (next.type == TYPE_DEFAULT) next.type = LITERAL_DOUBLE;
           }
-          if (base < 10) {
-            print('Invalid number (Error4).');
-            next.type = TOKEN_ERROR;
+          if (keywords[next.content] != undefined) {
+            next.type = keywords[next.content];
+            if (next.type == TOKEN_TRUE) {
+              next.type = LITERAL_BOOLEAN;
+              next.content = true;
+              next.length = 4;
+            }
+            else if (next.type == TOKEN_FALSE) {
+              next.type = LITERAL_BOOLEAN;
+              next.content = false;
+              next.length = 4;
+            }
+          }
+          next.line = this.line_i;
+          next.col = this.col_i;
+          this.col_i = this.col_i + next.lenght;
+          return true;
+        }
+
+        //
+        // NUMBERS: Try to parse the token as a number
+        //
+
+        var is_negative = false;
+        var ch2;
+        if ((ch == 45) && (this.data_ii < data.length - 1)) {
+          ch2 = data.charCodeAt(this.data_ii + 1);
+          if ((ch2 >= 48 && ch2 <= 57) || (ch2 == 46)) {
+            is_negative = true;
+            this.data_ii++;
+            ch = ch2;
+          }
+        }
+
+        var begins_with_decimal = false;
+        var ch3;
+        if ((ch == 46) && (this.data_ii < data.length - 1)) {
+          ch3 = data.charCodeAt(this.data_ii + 1);
+          if (ch3 >= 48 && ch3 <= 57) {
+            begins_with_decimal = true;
+            ch = ch3;
+          }
+        }
+
+        // The sequence begins with a character ranging from 0-9,
+        // or begins with a decimal immediately followed by a digit.
+        if (ch >= 48 && ch <= 57) {
+          var base = 10;
+          var underscore_neighbor = function(c) {
+            if (c == 95) return true;
+            if (base == 2) {
+              if (c > 49) return false;
+              if (c < 48) return false;
+            }
+            if (base == 8) {
+              if (c > 55) return false;
+              if (c < 48) return false;
+            }
+            if (base == 10) {
+              if (c > 57) return false;
+              if (c < 48) return false;
+            }
+            if (base == 16) {
+              if (c > 102) return false;
+              if ((c > 70) && (c < 97)) return false;
+              if ((c > 57) && (c < 64)) return false;
+              if (c < 48) return false;
+            }
+            return true;
+          };
+
+          // Add valid characters (0-9, a-z, A-Z, _, ., -, +) to the buffer
+          var valid_underscore = true;
+          var i = 0;
+
+          if (begins_with_decimal) ch = 46;
+
+          while ((ch >= 48 && ch <= 57) ||
+                 (ch >= 97 && ch <= 122) ||
+                 (ch >= 65 && ch <= 90) ||
+                 (ch == 95) || (ch == 46) ||
+                 (ch == 45) || (ch == 43)) {
+
+            // +,- can prefix the exponent
+            if ((ch == 45) || (ch == 43)) {
+              if ((base == 10) && (i > 0) &&
+                  ((data.charCodeAt(this.data_ii - 1) == 69) ||
+                   (data.charCodeAt(this.data_ii - 1) == 101))) {
+                // If the previous character was an 'e' or an 'E' then this is a
+                // sign used in the exponent.
+              } else {
+                // Otherwise this symbol is a delimeter and forms part of the
+                // next token
+                break;
+              }
+            }
+
+            // Handle or ignore underscores
+            if (ch == 95) {
+              // Java SE7 says underscores must be *between* digits
+              if (this.data_ii == 0) {
+                valid_underscore = false;
+              }
+              else if (!underscore_neighbor(data.charCodeAt(this.data_ii - 1))) {
+                valid_underscore = false;
+              }
+              else if (this.data_ii == data.length - 1) {
+                valid_underscore = false;
+              }
+              else if (!underscore_neighbor(data.charCodeAt(this.data_ii + 1))) {
+                valid_underscore = false;
+              }
+            } else {
+              var base_syntax = 0;
+              if ((base == 10) && (i == 1)) {
+                // The number starts with a zero which could indicate a different
+                // base. Java supports 4 numeric bases with 3 different syntaxes:
+                // 123 - Decimal (Syntax 0)
+                // 0123 - Octal (Syntax 1)
+                // 0x05F - Hexadecimal (Syntax 2)
+                // 0b010 - Binary (Syntax 2)
+                if (buffer[0] == '0') {
+                  // Binary (b or B in SE7)
+                  if ((ch == 98) || (ch == 66)) {
+                    base = 2;
+                    base_syntax = 2;
+                  }
+                  // Octal (0 followed by digit)
+                  else if ((ch <= 57) && (ch >= 48)) {
+                    var i = this.data_ii;
+                    var ch2 = data.charCodeAt(i);
+                    var decimal = false;
+                    while ((ch2 >= 48 && ch2 <= 57) ||
+                           (ch2 == 69) || (ch2 == 101) ||
+                           (ch2 == 95) || (ch2 == 46) ||
+                           (ch2 == 45) || (ch2 == 43)) {
+                      // Octal numbers don't have exponents or decimal points
+                      if ((ch2 == 69) || (ch2 == 101) || (ch2 == 46)) {
+                        decimal = true;
+                        break;
+                      }
+                      i++;
+                      if (i >= data.length) break;
+                      var ch2 = data.charCodeAt(i);
+                    }
+                    if (!decimal) {
+                      base = 8;
+                      base_syntax = 1;
+                    }
+                  }
+                  // Hexadecimal (x or X)
+                  else if ((ch == 120) || (ch == 88)) {
+                    base = 16;
+                    base_syntax = 2;
+                  }
+                }
+              }
+              if (base_syntax == 0) {
+                buffer += data[this.data_ii];
+              } else if (base_syntax == 1) {
+                buffer = '';
+                buffer += data[this.data_ii];
+              } else {
+                buffer = '';
+              }
+              i++;
+            }
+            this.data_ii++;
+            if (this.data_ii == data.length) break;
+            ch = data.charCodeAt(this.data_ii);
+          }
+
+          // Default to buffer contents
+          next.content = buffer;
+
+          if (!valid_underscore) {
+            print('Invalid underscore placement in number.');
             return false;
           }
-        } else if (((ch2 >= 65) && (ch2 <= 70)) ||
-                   ((ch2 >= 97) && (ch2 <= 102))) { // a-f, A-F
-              if (base < 16) {
-                print('Invalid number (Error5).');
+
+          // Determine type from the final character in the buffer
+          var ch2 = buffer.charCodeAt(buffer.length - 1);
+          if ((ch2 == 76) || (ch2 == 108)) { // L or l
+            next.type = LITERAL_LONG;
+            buffer = buffer.substring(0, buffer.length - 1);
+          }
+          else if (base == 10) {
+            if ((ch2 == 70) || (ch2 == 102)) { // F or f
+              next.type = LITERAL_FLOAT;
+              buffer = buffer.substring(0, buffer.length - 1);
+            }
+            else if ((ch2 == 68) || (ch2 == 100)) { // D or d
+              next.type = LITERAL_DOUBLE;
+              buffer = buffer.substring(0, buffer.length - 1);
+            }
+          }
+
+          // Validate the digits.
+          var state = 0;
+          var has_decimal_digits = false;
+          for (var i = 0; i < buffer.length; i++) {
+            var ch2 = buffer.charCodeAt(i);
+            if (buffer[i] == '.') {
+
+              if (base != 10) {
+                // ERROR
+                print('Invalid number (Error1).');
                 next.type = TOKEN_ERROR;
                 return false;
               }
-        } else {
-          // ERROR
-          print('Invalid number (Error6).');
-          next.type = TOKEN_ERROR;
-          return false;
-        }
-      }
+              if (state != 0) {
+                // ERROR
+                print('Invalid decimal point position.');
+                next.type = TOKEN_ERROR;
+                return false;
+              }
+              state = 1;
+              // It must be a double
+              if (next.type == TYPE_DEFAULT) next.type = LITERAL_DOUBLE;
+            } else if (ch2 == 48 || ch2 == 49) {
+              // digits 0-1 are always valid
+              has_decimal_digits = true;
+            } else if (ch2 >= 50 && ch2 <= 55) {
+              has_decimal_digits = true;
+              // digits 2-7 are valid for octal or better
+              if (base < 8) {
+                print('Invalid number (Error2).');
+                next.type = TOKEN_ERROR;
+                return false;
+              }
+            } else if (ch2 == 56 || ch2 == 57) {
+              has_decimal_digits = true;
+              if (base < 10) {
+                print('Invalid number (Error3).');
+                next.type = TOKEN_ERROR;
+                return false;
+              }
+            } else if ((ch2 == 43) || (ch2 == 45)) { // + or -
+              // correct position && number already checked..
+            } else if ((ch2 == 69) || (ch2 == 101)) { // e or E
+              if (base == 10) {
+                // E provides an exponent
+                if ((state > 1) || (has_decimal_digits == false)) {
+                  // ERROR
+                  print('Invalid E position.');
+                  next.type = TOKEN_ERROR;
+                  return false;
+                }
+                state = 2;
+                if (next.type == TYPE_DEFAULT) next.type = LITERAL_DOUBLE;
+              }
+              if (base < 10) {
+                print('Invalid number (Error4).');
+                next.type = TOKEN_ERROR;
+                return false;
+              }
+            } else if (((ch2 >= 65) && (ch2 <= 70)) ||
+                       ((ch2 >= 97) && (ch2 <= 102))) { // a-f, A-F
+                  if (base < 16) {
+                    print('Invalid number (Error5).');
+                    next.type = TOKEN_ERROR;
+                    return false;
+                  }
+            } else {
+              // ERROR
+              print('Invalid number (Error6).');
+              next.type = TOKEN_ERROR;
+              return false;
+            }
+          }
 
-      if ((next.type == LITERAL_DOUBLE) || (next.type == LITERAL_FLOAT)) {
-        if (is_negative) buffer = '-' + buffer;
-        var z = parseFloat(buffer);
-        if (z == Number.POSITIVE_INFINITY) {
-          print('Floating point value too large.');
-          next.type = TOKEN_ERROR;
-          return false;
-        }
-        if (z == Number.NEGATIVE_INFINITY) {
-          print('Floating point value too small.');
-          next.type = TOKEN_ERROR;
-          return false;
-        }
-        if (z == Number.NaN) {
-          print('Internal error.  Please report this as a bug.');
-          next.type = TOKEN_ERROR;
-          return false;
-        }
-        next.content = z;
-      } else {
-        if (next.type == TYPE_DEFAULT) next.type = LITERAL_INT;
-        if (is_negative) buffer = '-' + buffer;
-        // TODO: properly handle longs
-        var z = parseInt(buffer, base);
-        if(next.type == LITERAL_INT) {
-          if (z > 2147483647) {
-            print('Integer value too large.');
-            next.type = TOKEN_ERROR;
-            return false;
+          if ((next.type == LITERAL_DOUBLE) || (next.type == LITERAL_FLOAT)) {
+            if (is_negative) buffer = '-' + buffer;
+            var z = parseFloat(buffer);
+            if (z == Number.POSITIVE_INFINITY) {
+              print('Floating point value too large.');
+              next.type = TOKEN_ERROR;
+              return false;
+            }
+            if (z == Number.NEGATIVE_INFINITY) {
+              print('Floating point value too small.');
+              next.type = TOKEN_ERROR;
+              return false;
+            }
+            if (z == Number.NaN) {
+              print('Internal error.  Please report this as a bug.');
+              next.type = TOKEN_ERROR;
+              return false;
+            }
+            next.content = z;
+          } else {
+            if (next.type == TYPE_DEFAULT) next.type = LITERAL_INT;
+            if (is_negative) buffer = '-' + buffer;
+            // TODO: properly handle longs
+            var z = parseInt(buffer, base);
+            if(next.type == LITERAL_INT) {
+              if (z > 2147483647) {
+                print('Integer value too large.');
+                next.type = TOKEN_ERROR;
+                return false;
+              }
+              if (z < -2147483648) {
+                print('Integer value too small.');
+                next.type = TOKEN_ERROR;
+                return false;
+              }
+            } else if (next.type == LITERAL_LONG) {
+              if (z > 9223372036854775807) {
+                print('Long value too large.');
+                next.type = TOKEN_ERROR;
+                return false;
+              }
+              if (z < -9223372036854775808) {
+                print('Long value to small.');
+                next.type = TOKEN_ERROR;
+                return false;
+              }
+            }
+            next.content = z;
           }
-          if (z < -2147483648) {
-            print('Integer value too small.');
-            next.type = TOKEN_ERROR;
-            return false;
-          }
-        } else if (next.type == LITERAL_LONG) {
-          if (z > 9223372036854775807) {
-            print('Long value too large.');
-            next.type = TOKEN_ERROR;
-            return false;
-          }
-          if (z < -9223372036854775808) {
-            print('Long value to small.');
-            next.type = TOKEN_ERROR;
-            return false;
-          }
-        }
-        next.content = z;
-      }
 
-      if (data_i != data.length) {
-        if (token_seperator[data[data_i]] == null) {
-          print('Improper token termination: ' + data[data_i]);
-          next.type = TOKEN_ERROR;
-          return false;
+          if (this.data_ii != data.length) {
+            if (token_seperator[data[this.data_ii]] == null) {
+              print('Improper token termination: ' + data[this.data_ii]);
+              next.type = TOKEN_ERROR;
+              return false;
+            }
+          }
+          next.line = this.line_i;
+          next.col = this.col_i;
+          this.col_i = this.col_i + buffer.length;
+          return true;
         }
-      }
-      next.line = line_i;
-      next.col = col_i;
-      col_i = col_i + buffer.length;
-      return true;
-    }
 
-    var handle_character_code = function() {
-      if (data[data_i] == 'u') {
-        var buffer = '';
-        for (var i = 0; i < 4; i++) {
-          data_i++;
-          if (data_i == data.length) {
+        var handle_character_code = function() {
+          if (data[this.data_ii] == 'u') {
+            var buffer = '';
+            for (var i = 0; i < 4; i++) {
+              this.data_ii++;
+              if (this.data_ii == data.length) {
+                // ERROR
+                print('Incomplete character literal.');
+                return false;
+              }
+              var ch = data.charCodeAt(this.data_ii);
+              if ((ch >= 48 && ch <= 57) ||
+                  ((ch >= 65) && (ch <= 70)) ||
+                  ((ch >= 97) && (ch <= 102))) { // 0-9, a-f, A-F
+                    buffer += data[this.data_ii];
+              } else {
+                print('Malformed character literal.');
+                return false;
+              }
+            }
+            next.content = eval('\'\\u' + buffer + '\'');
+            if (trace) print(next.content);
+          } else if (data[this.data_ii] == 'n') next.content = '\n';
+          else if (data[this.data_ii] == 't') next.content = '\t';
+          else if (data[this.data_ii] == 'b') next.content = '\b';
+          else if (data[this.data_ii] == 'f') next.content = '\f';
+          else if (data[this.data_ii] == 'r') next.content = '\r';
+          else if (data[this.data_ii] == '\'') next.content = '\'';
+          else if (data[this.data_ii] == '\"') next.content = '\"';
+          else if (data[this.data_ii] == '\\') next.content = '\\';
+          else {
+            // ERROR
+            print('Malformed character literal.');
+            return false;
+          }
+
+          next.line = this.line_i;
+          next.col = this.col_i;
+          next.length = buffer.length;
+          this.col_i = this.col_i + buffer.lenght;
+          return true;
+        };
+
+        // qualified name
+        if (ch == '46') {
+          next.type = TOKEN_PERIOD;
+          next.content = '.'
+          this.data_ii++;
+          next.line = this.line_i;
+          next.col = this.col_i;
+          next.length = 1;
+          this.col_i++;
+          return true;
+        }
+
+        // Parse Operators
+        for (var i = 4; i > 0; i--) {
+          if (this.data_ii + i > data.length) continue;
+          var buffer = data.substring(this.data_ii, this.data_ii + i);
+          if (malformed_operators[buffer] != null) {
+            print('Malformed operator: ' + buffer);
+            next.type = TOKEN_ERROR;
+            return false;
+          }
+          if (operators[buffer] != undefined) {
+            next.type = operators[buffer];
+            next.content = buffer;
+            this.data_ii += buffer.length;
+            next.line = this.line_i;
+            next.col = this.col_i;
+            next.length = buffer.length;
+            this.col_i = this.col_i + buffer.length;
+            return true;
+          }
+        }
+
+        if (structure[data[this.data_ii]] != undefined) {
+          next.type = structure[data[this.data_ii]];
+          this.data_ii++;
+          next.line = this.line_i;
+          next.col = this.col_i;
+          next.length = 1;
+          this.col_i++;
+          return true;
+        }
+
+        // 'a'
+        if (ch == 39) {
+          this.data_ii++;
+          if (this.data_ii == data.length) {
             // ERROR
             print('Incomplete character literal.');
             return false;
           }
-          var ch = data.charCodeAt(data_i);
-          if ((ch >= 48 && ch <= 57) ||
-              ((ch >= 65) && (ch <= 70)) ||
-              ((ch >= 97) && (ch <= 102))) { // 0-9, a-f, A-F
-                buffer += data[data_i];
+          if (data[this.data_ii] == '\\') {
+            this.data_ii++;
+            if (this.data_ii == data.length) {
+              // ERROR
+              print('Incomplete character literal.');
+              return false;
+            }
+
+            if (!handle_character_code()) return false;
+
           } else {
+            next.content = data[this.data_ii];
+          }
+          this.data_ii++;
+          if (this.data_ii == data.length) {
+            // ERROR
+            print('Incomplete character literal.');
+            return false;
+          }
+          ch = data.charCodeAt(this.data_ii);
+          if (ch != 39) {
+            // ERROR
             print('Malformed character literal.');
             return false;
           }
-        }
-        next.content = eval('\'\\u' + buffer + '\'');
-        if (trace) print(next.content);
-      } else if (data[data_i] == 'n') next.content = '\n';
-      else if (data[data_i] == 't') next.content = '\t';
-      else if (data[data_i] == 'b') next.content = '\b';
-      else if (data[data_i] == 'f') next.content = '\f';
-      else if (data[data_i] == 'r') next.content = '\r';
-      else if (data[data_i] == '\'') next.content = '\'';
-      else if (data[data_i] == '\"') next.content = '\"';
-      else if (data[data_i] == '\\') next.content = '\\';
-      else {
-        // ERROR
-        print('Malformed character literal.');
-        return false;
-      }
-
-      next.line = line_i;
-      next.col = col_i;
-      next.length = buffer.length;
-      col_i = col_i + buffer.lenght;
-      return true;
-    };
-
-    // qualified name
-    if (ch == '46') {
-      next.type = TOKEN_PERIOD;
-      next.content = '.'
-      data_i++;
-      next.line = line_i;
-      next.col = col_i;
-      next.length = 1;
-      col_i++;
-      return true;
-    }
-
-    // Parse Operators
-    for (var i = 4; i > 0; i--) {
-      if (data_i + i > data.length) continue;
-      var buffer = data.substring(data_i, data_i + i);
-      if (malformed_operators[buffer] != null) {
-        print('Malformed operator: ' + buffer);
-        next.type = TOKEN_ERROR;
-        return false;
-      }
-      if (operators[buffer] != undefined) {
-        next.type = operators[buffer];
-        next.content = buffer;
-        data_i += buffer.length;
-        next.line = line_i;
-        next.col = col_i;
-        next.length = buffer.length;
-        col_i = col_i + buffer.length;
-        return true;
-      }
-    }
-
-    if (structure[data[data_i]] != undefined) {
-      next.type = structure[data[data_i]];
-      data_i++;
-      next.line = line_i;
-      next.col = col_i;
-      next.length = 1;
-      col_i++;
-      return true;
-    }
-
-    // 'a'
-    if (ch == 39) {
-      data_i++;
-      if (data_i == data.length) {
-        // ERROR
-        print('Incomplete character literal.');
-        return false;
-      }
-      if (data[data_i] == '\\') {
-        data_i++;
-        if (data_i == data.length) {
-          // ERROR
-          print('Incomplete character literal.');
-          return false;
-        }
-
-        if (!handle_character_code()) return false;
-
-      } else {
-        next.content = data[data_i];
-      }
-      data_i++;
-      if (data_i == data.length) {
-        // ERROR
-        print('Incomplete character literal.');
-        return false;
-      }
-      ch = data.charCodeAt(data_i);
-      if (ch != 39) {
-        // ERROR
-        print('Malformed character literal.');
-        return false;
-      }
-      data_i++;
-      next.type = LITERAL_CHAR;
-      if (data_i != data.length) {
-        if (token_seperator[data[data_i]] == null) {
-          print('Improper token termination: ' + data[data_i]);
-          next.type = TOKEN_ERROR;
-          return false;
-        }
-      }
-      next.line = line_i;
-      next.col = col_i;
-      next.length = 1;
-      col_i++;
-      return true;
-    }
-
-    // 'str'
-    if (ch == 34) {
-      var buffer = '';
-      data_i++;
-      while (true) {
-        if (data[data_i] == '\\') {
-          data_i++;
-          if (data_i == data.length) {
-            print('Malformed string literal.');
-            return false;
-            // ERROR
+          this.data_ii++;
+          next.type = LITERAL_CHAR;
+          if (this.data_ii != data.length) {
+            if (token_seperator[data[this.data_ii]] == null) {
+              print('Improper token termination: ' + data[this.data_ii]);
+              next.type = TOKEN_ERROR;
+              return false;
+            }
           }
+          next.line = this.line_i;
+          next.col = this.col_i;
+          next.length = 1;
+          this.col_i++;
+          return true;
+        }
 
-          if (!handle_character_code()) return false;
-          buffer += next.content;
+        // 'str'
+        if (ch == 34) {
+          var buffer = '';
+          this.data_ii++;
+          while (true) {
+            if (data[this.data_ii] == '\\') {
+              this.data_ii++;
+              if (this.data_ii == data.length) {
+                print('Malformed string literal.');
+                return false;
+                // ERROR
+              }
 
+              if (!handle_character_code()) return false;
+              buffer += next.content;
+
+            }
+            else if (data[this.data_ii] == '"') {
+              this.data_ii++;
+              break;
+            } else {
+              buffer += data[this.data_ii];
+            }
+            this.data_ii++;
+            if (this.data_ii == data.length) {
+              print('Malformed string literal.');
+              return false;
+              // ERROR
+            }
+          }
+          next.content = buffer;
+          next.type = LITERAL_STRING;
+          if (this.data_ii != data.length) {
+            if (token_seperator[data[this.data_ii]] == null) {
+              print('Improper token termination: ' + data[this.data_ii]);
+              next.type = TOKEN_ERROR;
+              return false;
+            }
+          }
+          next.line = this.line_i;
+          next.col = this.col_i;
+          next.length = buffer.length;
+          this.col_i = this.col_i + buffer.length;
+          return true;
         }
-        else if (data[data_i] == '"') {
-          data_i++;
-          break;
-        } else {
-          buffer += data[data_i];
-        }
-        data_i++;
-        if (data_i == data.length) {
-          print('Malformed string literal.');
-          return false;
-          // ERROR
-        }
+
+        return false;
       }
-      next.content = buffer;
-      next.type = LITERAL_STRING;
-      if (data_i != data.length) {
-        if (token_seperator[data[data_i]] == null) {
-          print('Improper token termination: ' + data[data_i]);
-          next.type = TOKEN_ERROR;
-          return false;
-        }
-      }
-      next.line = line_i;
-      next.col = col_i;
-      next.length = buffer.length;
-      col_i = col_i + buffer.length;
-      return true;
     }
-
-    return false;
-  }
-};
+  };
+}();

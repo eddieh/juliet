@@ -32,20 +32,20 @@ Juliet.util = function() {
     },
 
     print_pending: function() {
-      for (var i in pending) {
+      for (var i in Juliet.lexer.pending) {
         print(i + ' ' +
-              this.token_str(pending[i].type) + ' ' +
-              pending[i].type + ' ' +
-              pending[i].content);
+              this.token_str(Juliet.lexer.pending[i].type) + ' ' +
+              Juliet.lexer.pending[i].type + ' ' +
+              Juliet.lexer.pending[i].content);
       }
     },
 
     print_processed: function() {
-      for (var i in processed) {
+      for (var i in Juliet.lexer.processed) {
         print(i + ' ' +
-              this.token_str(processed[i].type) + ' ' +
-              processed[i].type + ' ' +
-              processed[i].content);
+              this.token_str(Juliet.lexer.processed[i].type) + ' ' +
+              Juliet.lexer.processed[i].type + ' ' +
+              Juliet.lexer.processed[i].content);
       }
     },
 

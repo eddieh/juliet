@@ -721,7 +721,7 @@ load('juliet.js');
   for (var i = 0; i < tests.length; i++) {
     result = '';
     try {
-      init();
+      Juliet.lexer.init();
       init_parser();
       init_compiler();
       data = readFile(tests[i].path);
