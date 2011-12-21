@@ -97,8 +97,9 @@ Juliet.util = function() {
     // TODO: Built in lint.
 
     has: function(a, o) {
+      var self = this;
       return a.some(function(e) {
-        return this.equal(e, o);
+        return self.equal(e, o);
       });
     },
 
