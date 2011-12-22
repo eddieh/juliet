@@ -159,6 +159,24 @@ Juliet = function() {
       'LITERAL_BOOLEAN',
     ],
 
+    QUALIFIER_PUBLIC:          1,
+    QUALIFIER_PROTECTED:       2,
+    QUALIFIER_PRIVATE:         4,
+    QUALIFIER_STATIC:          8,
+    QUALIFIER_NATIVE:         16,
+    QUALIFIER_CLASS:          32,
+    QUALIFIER_INTERFACE:      64,
+    QUALIFIER_PRIMITIVE:     128,
+    QUALIFIER_CONSTRUCTOR:   256,
+    QUALIFIER_ABSTRACT:      512,
+    QUALIFIER_FINAL:        1024,
+    QUALIFIER_STRICTFP:     2048,
+    QUALIFIER_TRANSIENT:    4096,
+    QUALIFIER_VOLATILE:     8192,
+    QUALIFIER_SYNCRONIZED: 16384,
+
+    QUALIFIER_REFERENCE: (this.QUALIFIER_CLASS | this.QUALIFIER_INTERFACE),
+
     init: function() {
       for (var i = 0; i < this.tokens.length; i++) {
         this[this.tokens[i]] = i;

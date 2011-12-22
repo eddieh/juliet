@@ -88,11 +88,15 @@
         Runner.result = '';
         try {
           Juliet.lexer.init();
-          init_parser();
+          Juliet.parser.init();
           init_compiler();
+
           Juliet.source = source;
-          parse();
-          compile(Parser);
+
+          Juliet.parser.parse();
+
+          compile(Juliet.AST);
+
           execute(principal.value);
         } catch (e) {
           if (e.message == 'QUIT') e.message = '';

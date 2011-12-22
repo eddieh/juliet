@@ -22,16 +22,22 @@ if (argc) {
   }
 
   if (verbose) print('Compiling :' + filepath);
-  Juliet.lexer.init();
-  init_parser();
-  init_compiler();
-  Juliet.source = readFile(filepath);
-  if (Juliet.options.trace) print(data);
-  parse();
-  delete Parser.this_method;
-  if (Juliet.options.trace || showAST) Juliet.util.print_ast(Parser);
 
-  compile(Parser);
+  Juliet.lexer.init();
+  Juliet.parser.init();
+  init_compiler();
+
+  Juliet.source = readFile(filepath);
+  if (Juliet.options.trace) {
+    print(Juliet.source);
+  }
+
+  Juliet.parser.parse();
+  if (Juliet.options.trace || showAST) {
+    Juliet.util.print_ast(Juliet.AST);
+  }
+
+  compile(Juliet.AST);
   if (verbose) Juliet.util.print_ast(Result);
 
   if (run) {

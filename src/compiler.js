@@ -7,25 +7,25 @@ var init_compiler = function ()  {
   Result = {};
 };
 
-var qualifiers_str = function(quals) {
-  var ret = '';
-  if (quals & JOG_QUALIFIER_PUBLIC) ret = ret + 'public_';
-  if (quals & JOG_QUALIFIER_PROTECTED) ret = ret + 'protected_';
-  if (quals & JOG_QUALIFIER_PRIVATE) ret = ret + 'private_';
-  if (quals & JOG_QUALIFIER_STATIC) ret = ret + 'static_';
-  if (quals & JOG_QUALIFIER_NATIVE) ret = ret + 'native_';
-  //if (quals & JOG_QUALIFIER_CLASS) ret = ret + 'class_';
-  if (quals & JOG_QUALIFIER_INTERFACE) ret = ret + 'interface_';
-  if (quals & JOG_QUALIFIER_PRIMITIVE) ret = ret + 'primitive_';
-  if (quals & JOG_QUALIFIER_CONSTRUCTOR) ret = ret + 'constructor_';
-  if (quals & JOG_QUALIFIER_ABSTRACT) ret = ret + 'abstract_';
-  if (quals & JOG_QUALIFIER_FINAL) ret = ret + 'final_';
-  if (quals & JOG_QUALIFIER_STRICTFP) ret = ret + 'strictfp_';
-  if (quals & JOG_QUALIFIER_TRANSIENT) ret = ret + 'transient_';
-  if (quals & JOG_QUALIFIER_VOLATILE) ret = ret + 'volatile_';
-  if (quals & JOG_QUALIFIER_SYNCRONIZED) ret = ret + 'syncronized_';
-  return ret;
-};
+// var qualifiers_str = function(quals) {
+//   var ret = '';
+//   if (quals & JOG_QUALIFIER_PUBLIC) ret = ret + 'public_';
+//   if (quals & JOG_QUALIFIER_PROTECTED) ret = ret + 'protected_';
+//   if (quals & JOG_QUALIFIER_PRIVATE) ret = ret + 'private_';
+//   if (quals & JOG_QUALIFIER_STATIC) ret = ret + 'static_';
+//   if (quals & JOG_QUALIFIER_NATIVE) ret = ret + 'native_';
+//   //if (quals & JOG_QUALIFIER_CLASS) ret = ret + 'class_';
+//   if (quals & JOG_QUALIFIER_INTERFACE) ret = ret + 'interface_';
+//   if (quals & JOG_QUALIFIER_PRIMITIVE) ret = ret + 'primitive_';
+//   if (quals & JOG_QUALIFIER_CONSTRUCTOR) ret = ret + 'constructor_';
+//   if (quals & JOG_QUALIFIER_ABSTRACT) ret = ret + 'abstract_';
+//   if (quals & JOG_QUALIFIER_FINAL) ret = ret + 'final_';
+//   if (quals & JOG_QUALIFIER_STRICTFP) ret = ret + 'strictfp_';
+//   if (quals & JOG_QUALIFIER_TRANSIENT) ret = ret + 'transient_';
+//   if (quals & JOG_QUALIFIER_VOLATILE) ret = ret + 'volatile_';
+//   if (quals & JOG_QUALIFIER_SYNCRONIZED) ret = ret + 'syncronized_';
+//   return ret;
+// };
 
 var typeName = function(type) {
   var ret = '';
@@ -1899,7 +1899,7 @@ var addClassProperty = function(type, cp) {
 
 var addProperty = function(type, p, processPriv) {
   if (Juliet.options.trace) print('addPropery');
-  if ((p.qualifiers & JOG_QUALIFIER_PRIVATE) && !processPriv) {
+  if ((p.qualifiers & Juliet.QUALIFIER_PRIVATE) && !processPriv) {
     if (!type.private_properies) type.private_properties = {};
     type.private_properties[p.name] = p;
   } else {
@@ -1931,7 +1931,7 @@ var addMethod = function(type, m, processPriv) {
   if (Juliet.options.trace) print('addMehtod: ' + m.name);
   var name = methodSignature(m);
   //print('Signature: ' + name);
-  if ((m.qualifiers & JOG_QUALIFIER_PRIVATE) && !processPriv) {
+  if ((m.qualifiers & Juliet.QUALIFIER_PRIVATE) && !processPriv) {
     if (!type.private_methods) type.private_methods = {};
     type.private_methods[m.name] = m;
   } else {
@@ -1986,7 +1986,7 @@ var addClass = function(type) {
       if (Juliet.options.trace) print('have super class_properties');
       for (var j = 0; j < base_class.class_properties.length; j++) {
         var cp = base_class.class_properties[j];
-        if (!(cp.qualifiers & JOG_QUALIFIER_PRIVATE)) {
+        if (!(cp.qualifiers & Juliet.QUALIFIER_PRIVATE)) {
           if (!type.class_properties) type.class_properties = [];
           type.class_properties.unshift(cp);
           //addClassProperty(ctype, cp);
@@ -1997,7 +1997,7 @@ var addClass = function(type) {
       if (Juliet.options.trace) print('have super properties');
       for (var j = 0; j < base_class.properties.length; j++) {
         var p = base_class.properties[j];
-        if (!(p.qualifiers & JOG_QUALIFIER_PRIVATE)) {
+        if (!(p.qualifiers & Juliet.QUALIFIER_PRIVATE)) {
           if (!type.properties) type.properties = [];
           type.properties.unshift(p);
           //addProperty(ctype, p);
@@ -2008,7 +2008,7 @@ var addClass = function(type) {
       if (Juliet.options.trace) print('have super class_methods');
       for (var j = 0; j < base_class.class_methods.length; j++) {
         var cm = base_class.class_methods[j];
-        if (!(cm.qualifiers & JOG_QUALIFIER_PRIVATE)) {
+        if (!(cm.qualifiers & Juliet.QUALIFIER_PRIVATE)) {
           if (!type.class_methods) type.class_methods = [];
           type.class_methods.unshift(cm);
           //addClassMethod(ctype, cm);
@@ -2048,7 +2048,7 @@ var addClass = function(type) {
     if (Juliet.options.trace) print('have super methods');
     for (var j = 0; j < base_class.methods.length; j++) {
       var m = base_class.methods[j];
-      if (!(m.qualifiers & JOG_QUALIFIER_PRIVATE))
+      if (!(m.qualifiers & Juliet.QUALIFIER_PRIVATE))
         if (m.kind != 'constructor') {
           if (!type.methods) type.methods = [];
           type.methods.unshift(m);
@@ -2126,10 +2126,9 @@ var addClass = function(type) {
 };
 
 var classByName = function(name) {
-  var ast = Parser;
   var type = null;
-  for (var i = 0; i < ast.parsed_types.length; i++) {
-    type = ast.parsed_types[i];
+  for (var i = 0; i < Juliet.AST.parsed_types.length; i++) {
+    type = Juliet.AST.parsed_types[i];
     if (type.name == name) return type;
   }
   return null;
