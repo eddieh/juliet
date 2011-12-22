@@ -64,18 +64,6 @@
 
   <script>
     main = function() {
-      Runner = {
-        result: '',
-      }
-      System.out.println = function (a) {
-        Runner.result = Runner.result + a + '\n';
-      };
-      // Runner.quit = quit;
-      quit = function () {
-        throw new Error('QUIT');
-      };
-      Runner.print = print;
-      print = System.out.println;
 
       var button = document.getElementById('run');
       button.addEventListener('click', function (evt) {
@@ -83,16 +71,10 @@
         var stdoutElm = document.getElementById('stdout');
         var principal = document.getElementById('principal');
 
-        Runner.result = '';
-        try {
-          Juliet.compileAndRun(principal.value, sourceElm.value);
-        } catch (e) {
-          if (e.message == 'QUIT') e.message = '';
-          System.out.println(e.message);
-        }
-
-        stdoutElm.value = Runner.result;
+        var output = Juliet.compileAndRun(sourceElm.value, principal.value);
+        stdoutElm.value = output;
       });
+
     }
   </script>
 

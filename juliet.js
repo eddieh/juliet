@@ -237,8 +237,8 @@ Juliet = function() {
 }().init();
 
 if (typeof(load) !== 'undefined') {
-  load('src/util.js');
   load('src/platform.js');
+  load('src/util.js');
   load('src/lexer.js');
   load('src/parser.js');
   load('src/compiler.js');
@@ -255,4 +255,5 @@ if (typeof(load) !== 'undefined') {
   include('src/compiler.js');
   include('src/runtime.js');
   include('src/stdlib.js');
+  include('src/browser.js');
 }
