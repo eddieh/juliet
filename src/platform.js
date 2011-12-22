@@ -32,6 +32,14 @@ if (typeof(readFile) === 'undefined') {
       var fs = nodeRequire('fs');
       return fs.readFileSync(filename, 'utf8');
     }
+  } else {
+    try {
+      readFile = function (filename) {
+        var fs = require('fs');
+        return fs.readFileSync(filename, 'utf8');
+      }
+    } catch (e) {
+    }
   }
 }
 

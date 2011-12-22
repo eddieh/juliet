@@ -721,7 +721,7 @@ Juliet.compiler = function() {
     // TODO: should we return a special value type?
     return {
       token:Juliet.TOKEN_INT,
-      kind:'value',
+      kind:'value'
     };
   };
 

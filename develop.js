@@ -20,7 +20,6 @@ if (typeof(load) !== 'undefined') {
   load('src/runtime.js');
   load('src/stdlib.js');
   load('src/cli.js');
-  Juliet.CLI.main();
 } else {
   include('src/juliet.js');
   include('src/util.js');

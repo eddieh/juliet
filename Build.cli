@@ -1,0 +1,13 @@
+--compilation_level WHITESPACE_ONLY
+
+--js src/platform.js
+     src/juliet.js
+     src/util.js
+     src/lexer.js
+     src/parser.js
+     src/compiler.js
+     src/runtime.js
+     src/stdlib.js
+     src/cli.js
+
+--js_output_file juliet-cli.js

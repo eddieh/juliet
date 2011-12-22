@@ -38,7 +38,8 @@
     }
   </style>
 
-  <script src="juliet-browser.js"></script>
+  <script src="lib/libretto.js"></script>
+  <script src="develop.js"></script>
 
 </head>
 
@@ -62,15 +63,19 @@
   </div> <!--! end of #container -->
 
   <script>
-    var button = document.getElementById('run');
-		button.addEventListener('click', function (evt) {
-			var sourceElm = document.getElementById('source');
-			var stdoutElm = document.getElementById('stdout');
-			var principal = document.getElementById('principal');
+    main = function() {
 
-			var output = Juliet.compileAndRun(sourceElm.value, principal.value);
-			stdoutElm.value = output;
-		});
+      var button = document.getElementById('run');
+      button.addEventListener('click', function (evt) {
+        var sourceElm = document.getElementById('source');
+        var stdoutElm = document.getElementById('stdout');
+        var principal = document.getElementById('principal');
+
+        var output = Juliet.compileAndRun(sourceElm.value, principal.value);
+        stdoutElm.value = output;
+      });
+
+    }
   </script>
 
 </body>

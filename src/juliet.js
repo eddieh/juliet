@@ -128,7 +128,7 @@ Juliet = function() {
       'LITERAL_FLOAT',
       'LITERAL_DOUBLE',
       'LITERAL_STRING',
-      'LITERAL_BOOLEAN',
+      'LITERAL_BOOLEAN'
     ],
 
     QUALIFIER_PUBLIC:          1,

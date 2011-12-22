@@ -54,3 +54,5 @@ Juliet.CLI = function() {
     }
   };
 }();
+
+Juliet.CLI.main();
