@@ -89,13 +89,13 @@
         try {
           Juliet.lexer.init();
           Juliet.parser.init();
-          init_compiler();
+          Juliet.compiler.init();
 
           Juliet.source = source;
 
           Juliet.parser.parse();
 
-          compile(Juliet.AST);
+          Juliet.compiler.compile(Juliet.AST);
 
           execute(principal.value);
         } catch (e) {

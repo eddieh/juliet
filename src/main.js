@@ -25,7 +25,7 @@ if (argc) {
 
   Juliet.lexer.init();
   Juliet.parser.init();
-  init_compiler();
+  Juliet.compiler.init();
 
   Juliet.source = readFile(filepath);
   if (Juliet.options.trace) {
@@ -37,7 +37,7 @@ if (argc) {
     Juliet.util.print_ast(Juliet.AST);
   }
 
-  compile(Juliet.AST);
+  Juliet.compiler.compile(Juliet.AST);
   if (verbose) Juliet.util.print_ast(Result);
 
   if (run) {

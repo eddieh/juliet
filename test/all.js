@@ -723,13 +723,13 @@ load('juliet.js');
     try {
       Juliet.lexer.init();
       Juliet.parser.init();
-      init_compiler();
+      Juliet.compiler.init();
 
       Juliet.source = readFile(tests[i].path);
 
       Juliet.parser.parse();
 
-      compile(Juliet.AST);
+      Juliet.compiler.compile(Juliet.AST);
 
       if (tests[i].principal) {
         execute(tests[i].principal);
