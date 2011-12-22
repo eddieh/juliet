@@ -97,7 +97,7 @@
 
           Juliet.compiler.compile(Juliet.AST);
 
-          execute(principal.value);
+          Juliet.execute(principal.value);
         } catch (e) {
           if (e.message == 'QUIT') e.message = '';
           System.out.println(e.message);

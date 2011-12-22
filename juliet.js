@@ -182,6 +182,41 @@ Juliet = function() {
         this[this.tokens[i]] = i;
       }
       return this;
+    },
+
+    execute: function(className) {
+      // initialize classes
+      for (var c in Juliet.program) {
+        // TODO: remove this kludge
+        if (c == 'package') continue;
+        if (c == 'imports') continue;
+
+        var klass = Juliet.program[c];
+        if (klass['<static-initializers>']) {
+          var len = klass['<static-initializers>'].length;
+          for (var i = 0; i < len; i++) {
+            var si = klass['<static-initializers>'][i];
+            if (typeof(si) === 'function') si.call();
+          }
+        }
+      }
+
+      if (Juliet.program[className]) {
+        //var main = Juliet.program[className].public_static_void_main;
+        var main = Juliet.program[className]['main___String[]'];
+        if (!main) {
+          print(className + ' does not have a main mehtod.');
+          quit();
+        }
+        main.call();
+      } else {
+        if (className == '') {
+          print('You must specify which class to run.');
+        } else {
+          print(className + ' not found.');
+        }
+        quit();
+      }
     }
   };
 }().init();
@@ -194,7 +229,6 @@ if (typeof(load) !== 'undefined') {
   load('src/compiler.js');
   load('src/runtime.js');
   load('src/stdlib.js');
-  load('src/runner.js');
   if (typeof(noMain) === 'undefined') {
     load('src/main.js');
   }
@@ -205,5 +239,4 @@ if (typeof(load) !== 'undefined') {
   include('src/compiler.js');
   include('src/runtime.js');
   include('src/stdlib.js');
-  include('src/runner.js');
 }

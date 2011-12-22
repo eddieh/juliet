@@ -41,6 +41,6 @@ if (argc) {
   if (verbose) Juliet.util.print_ast(Juliet.program);
 
   if (run) {
-    execute(className);
+    Juliet.execute(className);
   }
 }

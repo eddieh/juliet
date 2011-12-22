@@ -732,7 +732,7 @@ load('juliet.js');
       Juliet.compiler.compile(Juliet.AST);
 
       if (tests[i].principal) {
-        execute(tests[i].principal);
+        Juliet.execute(tests[i].principal);
       }
     } catch (e) {
       // if (e.message != 'QUIT') System.out.println(e);
