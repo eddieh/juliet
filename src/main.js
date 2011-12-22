@@ -38,7 +38,7 @@ if (argc) {
   }
 
   Juliet.compiler.compile(Juliet.AST);
-  if (verbose) Juliet.util.print_ast(Result);
+  if (verbose) Juliet.util.print_ast(Juliet.program);
 
   if (run) {
     execute(className);

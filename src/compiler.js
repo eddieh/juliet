@@ -1,4 +1,7 @@
-Result = {}; // no var
+Juliet.program = function() {
+  return {
+  };
+}();
 
 Juliet.compiler = function() {
   /* Privates */
@@ -135,10 +138,10 @@ Juliet.compiler = function() {
 
     if (typeDescriptor && typeDescriptor.type) {
       typeName = typeDescriptor.type.name;
-      if (name in Result[typeName]) {
+      if (name in Juliet.program[typeName]) {
         // TODO: accessible?
         return name;
-      } else if ((name + argTypeSig) in Result[typeName]) {
+      } else if ((name + argTypeSig) in Juliet.program[typeName]) {
         // TODO: accessible?
         return name + argTypeSig;
       }
@@ -196,7 +199,7 @@ Juliet.compiler = function() {
         var context = 'this.';
 
         if (static_context) {
-          context = 'Result.' + static_context.name + '.';
+          context = 'Juliet.program.' + static_context.name + '.';
         }
 
         if (simple) {
@@ -231,7 +234,7 @@ Juliet.compiler = function() {
 
   var privateMemberName = function(typeName, name) {
     if (typeName) {
-      var type = Result[typeName];
+      var type = Juliet.program[typeName];
       if (type && type.private_methods) {
         var privMethods = type.private_methods;
         if (name in privMethods) {
@@ -1862,7 +1865,7 @@ Juliet.compiler = function() {
     if (Juliet.options.trace) print('addClassProperty');
     //var name = qualifiers_str(cp.qualifiers) + cp.name
     addIdentifier(cp.name,
-                  'Result.' + type.name + '.' + cp.name,
+                  'Juliet.program.' + type.name + '.' + cp.name,
                   cp.type,
                   true,
                   'field');
@@ -1926,10 +1929,10 @@ Juliet.compiler = function() {
   var addClass = function(type) {
     if (Juliet.options.trace) print('Class: ' + type.name);
 
-    var ctype = Result[type.name] = {name:type.name};
+    var ctype = Juliet.program[type.name] = {name:type.name};
 
     addIdentifier(type.name,
-                  'Result.' + type.name,
+                  'Juliet.program.' + type.name,
                   type,
                   true,
                   'class');
@@ -2116,7 +2119,7 @@ Juliet.compiler = function() {
     init: function()  {
       scope = [];
       static_context = null;
-      Result = {};
+      Juliet.program = {};
     },
 
     compile: function(ast) {
@@ -2126,7 +2129,7 @@ Juliet.compiler = function() {
       // TODO: there is a possible naming collision here if
       // someone defines a class named "package" or a class
       // named "imports"
-      if (ast['package']) Result['package'] = ast['package'];
+      if (ast['package']) Juliet.program['package'] = ast['package'];
       if (ast.imports) {
         // TODO: recursively add imports
       }

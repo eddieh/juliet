@@ -71,7 +71,7 @@ Java = {
     }
 
     if (typeof(context) === 'string') {
-      var t = Result[context][name + argTypeSig]
+      var t = Juliet.program[context][name + argTypeSig]
       t.apply(t, args);
     } else {
       context[name + argTypeSig].apply(context, args);

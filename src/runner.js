@@ -1,11 +1,11 @@
 var execute = function(className) {
   // initialize classes
-  for (var c in Result) {
+  for (var c in Juliet.program) {
     // TODO: remove this kludge
     if (c == 'package') continue;
     if (c == 'imports') continue;
 
-    var klass = Result[c];
+    var klass = Juliet.program[c];
     if (klass['<static-initializers>']) {
       var len = klass['<static-initializers>'].length;
       for (var i = 0; i < len; i++) {
@@ -15,9 +15,9 @@ var execute = function(className) {
     }
   }
 
-  if (Result[className]) {
-    //var main = Result[className].public_static_void_main;
-    var main = Result[className]['main___String[]'];
+  if (Juliet.program[className]) {
+    //var main = Juliet.program[className].public_static_void_main;
+    var main = Juliet.program[className]['main___String[]'];
     if (!main) {
       print(className + ' does not have a main mehtod.');
       quit();
