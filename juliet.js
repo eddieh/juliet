@@ -230,7 +230,8 @@ if (typeof(load) !== 'undefined') {
   load('src/runtime.js');
   load('src/stdlib.js');
   if (typeof(noMain) === 'undefined') {
-    load('src/main.js');
+    load('src/cli.js');
+    Juliet.CLI.main();
   }
 } else {
   include('src/util.js');
