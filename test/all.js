@@ -10,8 +10,14 @@ if (typeof(load) === 'undefined') {
   }
 }
 
-noMain = true;
-load('juliet.js');
+load('src/platform.js');
+load('src/juliet.js');
+load('src/util.js');
+load('src/lexer.js');
+load('src/parser.js');
+load('src/compiler.js');
+load('src/runtime.js');
+load('src/stdlib.js');
 
 Juliet.stdout = '';
 

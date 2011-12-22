@@ -94,8 +94,6 @@ Juliet.util = function() {
       print(this.ast_str(a));
     },
 
-    // TODO: Built in lint.
-
     has: function(a, o) {
       var self = this;
       return a.some(function(e) {
