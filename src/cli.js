@@ -43,10 +43,12 @@ Juliet.CLI = function() {
         }
 
         Juliet.compiler.compile(Juliet.AST);
-        if (verbose) Juliet.util.print_ast(Juliet.program);
+        if (verbose) {
+          Juliet.util.print_ast(Juliet.program);
+        }
 
         if (run) {
-          Juliet.execute(className);
+          Juliet.run(className);
         }
       }
     }

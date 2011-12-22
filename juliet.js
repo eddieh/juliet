@@ -184,7 +184,17 @@ Juliet = function() {
       return this;
     },
 
-    execute: function(className) {
+    compile: function(source) {
+      Juliet.lexer.init();
+      Juliet.parser.init();
+      Juliet.compiler.init();
+
+      Juliet.source = source;
+      Juliet.parser.parse();
+      Juliet.compiler.compile(Juliet.AST);
+    },
+
+    run: function(className) {
       // initialize classes
       for (var c in Juliet.program) {
         // TODO: remove this kludge
@@ -217,6 +227,11 @@ Juliet = function() {
         }
         quit();
       }
+    },
+
+    compileAndRun: function(source, className) {
+      this.compile(source);
+      this.run(className);
     }
   };
 }().init();

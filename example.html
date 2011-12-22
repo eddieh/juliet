@@ -83,21 +83,9 @@
         var stdoutElm = document.getElementById('stdout');
         var principal = document.getElementById('principal');
 
-        var source = sourceElm.value;
-
         Runner.result = '';
         try {
-          Juliet.lexer.init();
-          Juliet.parser.init();
-          Juliet.compiler.init();
-
-          Juliet.source = source;
-
-          Juliet.parser.parse();
-
-          Juliet.compiler.compile(Juliet.AST);
-
-          Juliet.execute(principal.value);
+          Juliet.compileAndRun(principal.value, sourceElm.value);
         } catch (e) {
           if (e.message == 'QUIT') e.message = '';
           System.out.println(e.message);
