@@ -127,7 +127,7 @@ Juliet.compiler = function() {
     if (args) {
       argTypeSig = typeListSignature(args);
       if (argTypeSig === '') {
-        return 'Java.dispatch(\'' + name + '\',\'' + context + '\',';
+        return 'Juliet.runtime.dispatch(\'' + name + '\',\'' + context + '\',';
       }
     }
 
@@ -183,7 +183,7 @@ Juliet.compiler = function() {
     if (args) {
       argTypeSig = typeListSignature(args);
       if (argTypeSig === '') {
-        return 'Java.dispatch(\'' + name + '\',this,';
+        return 'Juliet.runtime.dispatch(\'' + name + '\',this,';
       }
     }
 
@@ -1680,7 +1680,7 @@ Juliet.compiler = function() {
         break;
       case 'new':
         if (Juliet.options.trace) print('new');
-        ret = ret + 'Java.new(' + flatten(stm.type) + ',';
+        ret = ret + 'Juliet.runtime.new(' + flatten(stm.type) + ',';
         ret = ret + constructorForArguments(stm.args);
         if (stm.args && stm.args.length > 0) {
           ret = ret + ',';
