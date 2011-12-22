@@ -1797,9 +1797,14 @@ Juliet.compiler = function() {
       case 'construct':
         if (Juliet.options.trace) print('construct');
         var name = '';
+
         // TODO: remove this kludge
         if (stm.name == 'System' || stm.name == 'out' || stm.name == 'println')
-          name = stm.name;
+          if (stm.name == 'System') {
+            name = 'Juliet.stdlib.System';
+          } else {
+            name = stm.name;
+          }
         else {
           if (context) {
             name = nameInContext(context, stm);
@@ -1807,6 +1812,7 @@ Juliet.compiler = function() {
             name = nameInScope(stm);
           }
         }
+
         if (/<mutate>/.test(name)) {
           name = name + ')';
         }

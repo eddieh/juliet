@@ -1,9 +1,13 @@
-/* Standard Lib */
-// make sure this is global, so no var
-System = {
-  out: {
-    println: function(args) {
-      print(args);
+/* The Java Class Library */
+
+Juliet.stdlib = function() {
+  return {
+    System: {
+      out: {
+        println: function(args) {
+          print(args);
+        }
+      }
     }
-  }
-};
+  };
+}();

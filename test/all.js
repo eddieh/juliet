@@ -38,7 +38,7 @@ Juliet.test = function() {
 
 (function(args) {
 
-  System.out.println = function (a) {
+  Juliet.stdlib.System.out.println = function (a) {
     Juliet.stdout = Juliet.stdout + a + '\n';
   };
 
@@ -46,7 +46,7 @@ Juliet.test = function() {
     throw new Error('QUIT');
   };
 
-  print = System.out.println;
+  print = Juliet.stdlib.System.out.println;
 
 
   var tests = [
