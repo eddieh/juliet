@@ -5,7 +5,7 @@
   you may not use this file except in compliance with the License.
   You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+  http://www.apache.org/licenses/LICENSE-2.0
 
   Unless required by applicable law or agreed to in writing, software
   distributed under the License is distributed on an "AS IS" BASIS,
@@ -26,7 +26,147 @@ if (typeof(load) === 'undefined') {
   }
 }
 
-Juliet = {};
+Juliet = function() {
+  return {
+    source: '',
+
+    options: {
+      trace: false
+    },
+
+    tokens: [
+      'TOKEN_ID',
+      'TOKEN_ERROR',
+
+      'TOKEN_EOF',
+      'TOKEN_EOL',
+
+      'TOKEN_IDENTIFIER',
+      'TOKEN_UNKNOWN',
+      'TOKEN_BANG',
+      'TOKEN_PERCENT',
+      'TOKEN_AMPERSAND',
+      'TOKEN_LPAREN',
+      'TOKEN_RPAREN',
+      'TOKEN_STAR',
+      'TOKEN_PLUS',
+      'TOKEN_COMMA',
+      'TOKEN_MINUS',
+      'TOKEN_PERIOD',
+      'TOKEN_SLASH',
+      'TOKEN_COLON',
+      'TOKEN_SEMICOLON',
+      'TOKEN_LT',
+      'TOKEN_ASSIGN',
+      'TOKEN_GT',
+      'TOKEN_QUESTIONMARK',
+      'TOKEN_LBRACKET',
+      'TOKEN_BACKSLASH',
+      'TOKEN_RBRACKET',
+      'TOKEN_CARET',
+      'TOKEN_LCURLY',
+      'TOKEN_PIPE',
+      'TOKEN_RCURLY',
+      'TOKEN_TILDE',
+
+      'TOKEN_NE',
+      'TOKEN_MOD_ASSIGN',
+      'TOKEN_LOGICAL_AND',
+      'TOKEN_AND_ASSIGN',
+      'TOKEN_MUL_ASSIGN',
+      'TOKEN_ADD_ASSIGN',
+      'TOKEN_INCREMENT',
+      'TOKEN_DECREMENT',
+      'TOKEN_SUB_ASSIGN',
+      'TOKEN_DIV_ASSIGN',
+
+      'TOKEN_SHL',
+      'TOKEN_SHL_ASSIGN',
+      'TOKEN_LE',
+      'TOKEN_EQ',
+      'TOKEN_GE',
+      'TOKEN_SHRX',
+      'TOKEN_SHRX_ASSIGN',
+      'TOKEN_SHR',
+      'TOKEN_SHR_ASSIGN',
+
+      'TOKEN_XOR_ASSIGN',
+      'TOKEN_OR_ASSIGN',
+      'TOKEN_LOGICAL_OR',
+
+      'TOKEN_ABSTRACT',
+      'TOKEN_ASSERT',
+      'TOKEN_BREAK',
+      'TOKEN_CASE',
+      'TOKEN_CATCH',
+      'TOKEN_CLASS',
+      'TOKEN_CONST',
+      'TOKEN_CONTINUE',
+      'TOKEN_DEFAULT',
+      'TOKEN_DO',
+      'TOKEN_ELSE',
+      'TOKEN_ENUM',
+      'TOKEN_EXTENDS',
+      'TOKEN_FALSE',
+      'TOKEN_FINAL',
+      'TOKEN_FINALLY',
+      'TOKEN_FOR',
+      'TOKEN_GOTO',
+      'TOKEN_IF',
+      'TOKEN_IMPLEMENTS',
+      'TOKEN_IMPORT',
+      'TOKEN_INSTANCEOF',
+      'TOKEN_INTERFACE',
+      'TOKEN_NATIVE',
+      'TOKEN_NEW',
+      'TOKEN_NULL',
+      'TOKEN_PACKAGE',
+      'TOKEN_PRIVATE',
+      'TOKEN_PROTECTED',
+      'TOKEN_PUBLIC',
+      'TOKEN_RETURN',
+      'TOKEN_STATIC',
+      'TOKEN_STRICTFP',
+      'TOKEN_SUPER',
+      'TOKEN_SWITCH',
+      'TOKEN_SYNCHRONIZED',
+      'TOKEN_THROW',
+      'TOKEN_THROWS',
+      'TOKEN_TRANSIENT',
+      'TOKEN_TRUE',
+      'TOKEN_TRY',
+      'TOKEN_VOLATILE',
+      'TOKEN_WHILE',
+
+      'TOKEN_CHAR',
+      'TOKEN_BYTE',
+      'TOKEN_SHORT',
+      'TOKEN_INT',
+      'TOKEN_LONG',
+      'TOKEN_FLOAT',
+      'TOKEN_DOUBLE',
+      'TOKEN_STRING',
+      'TOKEN_BOOLEAN',
+
+      'LITERAL_CHAR',
+      'LITERAL_BYTE',
+      'LITERAL_SHORT',
+      'LITERAL_INT',
+      'LITERAL_LONG',
+      'LITERAL_FLOAT',
+      'LITERAL_DOUBLE',
+      'LITERAL_STRING',
+      'LITERAL_BOOLEAN',
+    ],
+
+    init: function() {
+      for (var i = 0; i < this.tokens.length; i++) {
+        this[this.tokens[i]] = i;
+      }
+      return this;
+    }
+  };
+}().init();
 
 if (typeof(load) !== 'undefined') {
   load('src/util.js');

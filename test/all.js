@@ -724,7 +724,7 @@ load('juliet.js');
       Juliet.lexer.init();
       init_parser();
       init_compiler();
-      data = readFile(tests[i].path);
+      Juliet.source = readFile(tests[i].path);
       parse();
       compile(Parser);
       if (tests[i].principal) {
@@ -749,7 +749,7 @@ load('juliet.js');
       putln('Actual:');
       put(result);
       putln('Code:');
-      putln(data);
+      putln(Juliet.source);
     }
     if (!summarize) tprint(test_info);
   }

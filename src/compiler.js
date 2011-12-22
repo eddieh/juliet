@@ -51,7 +51,7 @@ var escapeQuotes = function(str) {
 }
 
 var parameterList = function(params) {
-  if (trace) print('parameterList');
+  if (Juliet.options.trace) print('parameterList');
   if (!params) return [];
   var lst = [];
   for (var i = 0; i < params.length; i++) {
@@ -64,17 +64,9 @@ var parameterList = function(params) {
   return lst;
 };
 
-var operatorStr = function(a) {
-  for (op in operators) {
-    if (a == operators[op]) return op;
-  }
-  print(Juliet.util.token_str(a) + ' not an operator or assignment.');
-  quit();
-};
-
 var typeDescriptorForName = function(id) {
   var name = (typeof(id) === 'object') ? id.name : id;
-  if (trace) print('typeDescriptorForName: ' + name);
+  if (Juliet.options.trace) print('typeDescriptorForName: ' + name);
   var curScope = scope.length - 1;
   for (var i = curScope; i >= 0; i--) {
     if (name in scope[i]) {
@@ -98,22 +90,22 @@ var typeListSignature = function(typeList) {
       break;
     case 'literal':
       switch (typeList[i].token) {
-      case LITERAL_CHAR:
+      case Juliet.LITERAL_CHAR:
         ret = ret + 'char';
         break;
-      case LITERAL_STRING:
+      case Juliet.LITERAL_STRING:
         ret = ret + 'String';
         break;
-      case LITERAL_DOUBLE:
+      case Juliet.LITERAL_DOUBLE:
         ret = ret + 'double';
         break
-      case LITERAL_INT:
+      case Juliet.LITERAL_INT:
         ret = ret + 'int';
         break;
-      case LITERAL_BOOLEAN:
+      case Juliet.LITERAL_BOOLEAN:
         ret = ret + 'boolean';
         break;
-      case TOKEN_NULL:
+      case Juliet.TOKEN_NULL:
         ret = ret + 'Object';
         break;
       }
@@ -146,8 +138,8 @@ var mostApplicableMethod = function () {
 
 var nameInContext = function(context, id) {
   var name = (typeof(id) === 'object') ? id.name : id;
-  if (trace) print('nameInContext: ' + context);
-  if (trace) print('  name: ' + name);
+  if (Juliet.options.trace) print('nameInContext: ' + context);
+  if (Juliet.options.trace) print('  name: ' + name);
 
   var args = id.args;
   var argTypeSig = '';
@@ -203,7 +195,7 @@ var nameInContext = function(context, id) {
 
 var nameInScope = function(id, simple) {
   var name = (typeof(id) === 'object') ? id.name : id;
-  if (trace) print('nameInScope: ' + name);
+  if (Juliet.options.trace) print('nameInScope: ' + name);
 
   var args = id.args;
   var argTypeSig = '';
@@ -283,7 +275,7 @@ var privateMemberName = function(typeName, name) {
 }
 
 var addIdentifier = function(name, cononicalName, type, shadowable, kind) {
-  if (trace) print('addIdentifier');
+  if (Juliet.options.trace) print('addIdentifier');
 
   var curScope = scope.length - 1;
   for (var i = curScope; i >= 0; i--) {
@@ -306,12 +298,12 @@ var constructorForArguments = function(args) {
 };
 
 var pushScope = function() {
-  if (trace) print('pushScope');
+  if (Juliet.options.trace) print('pushScope');
   scope.push({});
 };
 
 var popScope = function() {
-  if (trace) print('popScope');
+  if (Juliet.options.trace) print('popScope');
   scope.pop();
 };
 
@@ -421,25 +413,25 @@ var arrayDimension = function(name) {
 
 var primitiveStr = function(t) {
   switch (t) {
-  case LITERAL_DOUBLE:
+  case Juliet.LITERAL_DOUBLE:
     return 'double';
-  case LITERAL_FLOAT:
+  case Juliet.LITERAL_FLOAT:
     return 'float';
-  case LITERAL_LONG:
+  case Juliet.LITERAL_LONG:
     return 'long';
-  case LITERAL_INT:
+  case Juliet.LITERAL_INT:
     return 'int';
-  case LITERAL_CHAR:
+  case Juliet.LITERAL_CHAR:
     return 'char';
-  case LITERAL_SHORT:
+  case Juliet.LITERAL_SHORT:
     return 'short';
-  case LITERAL_BYTE:
+  case Juliet.LITERAL_BYTE:
     return 'byte';
-  case LITERAL_BOOLEAN:
+  case Juliet.LITERAL_BOOLEAN:
     return 'boolean';
-  case LITERAL_STRING:
+  case Juliet.LITERAL_STRING:
     return 'java.lang.String';
-  case TOKEN_NULL:
+  case Juliet.TOKEN_NULL:
     return 'null';
   }
 }
@@ -450,7 +442,7 @@ var getType = function(a) {
   }
 
   if (a.kind == 'construct') {
-    if (a.token == TOKEN_ID) {
+    if (a.token == Juliet.TOKEN_ID) {
       var typeDescriptor = typeDescriptorForName(a.name);
       if (typeDescriptor.type) {
         return typeDescriptor.type;
@@ -474,7 +466,7 @@ var getTypeName = function(a) {
   } else if (a.kind == 'type') {
     return a.name;
   } else if (a.kind == 'construct') {
-    if (a.token == TOKEN_ID) {
+    if (a.token == Juliet.TOKEN_ID) {
       var typeDescriptor = typeDescriptorForName(a.name);
 
       if (!typeDescriptor) {
@@ -637,7 +629,7 @@ var compatibleTypes = function(leftType, rightType) {
   } else {
 
     if (leftTypeName[leftTypeName.length - 1] == ']') {
-      if (trace) print('  ARRAY');
+      if (Juliet.options.trace) print('  ARRAY');
 
       // Juliet.util.print_ast(leftType);
       // Juliet.util.print_ast(rightType);
@@ -709,7 +701,7 @@ var arrayAccessExpressionType = function(expr) {
 
 var typeCheckArray = function(array) {
   var name = array.type.name;
-  if (array.token == TOKEN_LCURLY && array.terms) {
+  if (array.token == Juliet.TOKEN_LCURLY && array.terms) {
     var arrayElements = array.terms;
     for (elementKey in arrayElements) {
       if (!arrayElements.hasOwnProperty(elementKey)) continue;
@@ -747,7 +739,7 @@ var typeCheckWiderNumericType = function(leftType, rightType) {
 
   // TODO: should we return a special value type?
   return {
-    token:TOKEN_INT,
+    token:Juliet.TOKEN_INT,
     kind:'value',
   };
 };
@@ -780,7 +772,7 @@ var typeCheckIncDecExpr = function(expr) {
 
   if (!numericType(operandTypeName)) {
     print('operator ' +
-          operatorStr(expr.token) +
+          Juliet.lexer.operatorStr(expr.token) +
           ' cannot be applied to ' +
           operandTypeName);
     quit();
@@ -793,11 +785,11 @@ var typeCheckPostfixExpr = function(expr) {
   var operand = typeCheckExpr(expr.operand);
 
   // ++, -- must be applied to variables with numeric types
-  if ((expr.token == TOKEN_INCREMENT) || (expr.token == TOKEN_DECREMENT)) {
+  if ((expr.token == Juliet.TOKEN_INCREMENT) || (expr.token == Juliet.TOKEN_DECREMENT)) {
     return typeCheckIncDecExpr(expr);
   }
 
-  if (expr.token == TOKEN_LBRACKET) {
+  if (expr.token == Juliet.TOKEN_LBRACKET) {
     return arrayAccessExpressionType(expr);
   }
 
@@ -807,7 +799,7 @@ var typeCheckPrefixExpr = function(expr) {
   var operand = typeCheckExpr(expr.operand);
 
   // ++, -- must be applied to variables with numeric types
-  if ((expr.token == TOKEN_INCREMENT) || (expr.token == TOKEN_DECREMENT)) {
+  if ((expr.token == Juliet.TOKEN_INCREMENT) || (expr.token == Juliet.TOKEN_DECREMENT)) {
     return typeCheckIncDecExpr(expr);
   }
 
@@ -816,10 +808,10 @@ var typeCheckPrefixExpr = function(expr) {
 
   // +, - must be applied to a type that can be converted to a
   // numeric (primitive?) type
-  if ((expr.token == TOKEN_PLUS) || (expr.token == TOKEN_MINUS)) {
+  if ((expr.token == Juliet.TOKEN_PLUS) || (expr.token == Juliet.TOKEN_MINUS)) {
     if (!numericType(operandTypeName)) {
       print('operator ' +
-            operatorStr(expr.token) +
+            Juliet.lexer.operatorStr(expr.token) +
             ' cannot be applied to ' +
             operandTypeName);
       quit();
@@ -833,10 +825,10 @@ var typeCheckPrefixExpr = function(expr) {
 
   // ~ must be applied to a type that can be converted to a
   // primitive integral type
-  if (expr.token == TOKEN_TILDE) {
+  if (expr.token == Juliet.TOKEN_TILDE) {
     if (!integralType(operandTypeName)) {
       print('operator ' +
-            operatorStr(expr.token) +
+            Juliet.lexer.operatorStr(expr.token) +
             ' cannot be applied to ' +
             operandTypeName);
       quit();
@@ -847,10 +839,10 @@ var typeCheckPrefixExpr = function(expr) {
   }
 
   // ! must be applied to boolean or Boolean
-  if (expr.token == TOKEN_BANG) {
+  if (expr.token == Juliet.TOKEN_BANG) {
     if (operandTypeName != 'boolean' || operandTypeName != 'Boolean') {
       print('operator ' +
-            operatorStr(expr.token) +
+            Juliet.lexer.operatorStr(expr.token) +
             ' cannot be applied to ' +
             operandTypeName);
       quit();
@@ -865,9 +857,9 @@ var typeCheckBinaryExpr = function(expr) {
 
   var multiplicative = function(a) {
     switch (a) {
-    case TOKEN_STAR:
-    case TOKEN_SLASH:
-    case TOKEN_PERCENT:
+    case Juliet.TOKEN_STAR:
+    case Juliet.TOKEN_SLASH:
+    case Juliet.TOKEN_PERCENT:
       return true;
     }
     return false;
@@ -875,9 +867,9 @@ var typeCheckBinaryExpr = function(expr) {
 
   var shift = function(a) {
     switch (a) {
-    case TOKEN_SHL:
-    case TOKEN_SHR:
-    case TOKEN_SHRX:
+    case Juliet.TOKEN_SHL:
+    case Juliet.TOKEN_SHR:
+    case Juliet.TOKEN_SHRX:
       return true;
     }
     return false;
@@ -885,10 +877,10 @@ var typeCheckBinaryExpr = function(expr) {
 
   var relational = function(a) {
     switch (a) {
-    case TOKEN_LT:
-    case TOKEN_LE:
-    case TOKEN_GT:
-    case TOKEN_GE:
+    case Juliet.TOKEN_LT:
+    case Juliet.TOKEN_LE:
+    case Juliet.TOKEN_GT:
+    case Juliet.TOKEN_GE:
       return true;
     }
     return false;
@@ -896,8 +888,8 @@ var typeCheckBinaryExpr = function(expr) {
 
   var equality = function (a) {
     switch (a) {
-    case TOKEN_EQ:
-    case TOKEN_NE:
+    case Juliet.TOKEN_EQ:
+    case Juliet.TOKEN_NE:
       return true;
     }
     return false;
@@ -905,9 +897,9 @@ var typeCheckBinaryExpr = function(expr) {
 
   var bitwiseAndLogical = function(a) {
     switch (a) {
-    case TOKEN_AMPERSAND:
-    case TOKEN_PIPE:
-    case TOKEN_CARET:
+    case Juliet.TOKEN_AMPERSAND:
+    case Juliet.TOKEN_PIPE:
+    case Juliet.TOKEN_CARET:
       return true;
     }
     return false;
@@ -915,8 +907,8 @@ var typeCheckBinaryExpr = function(expr) {
 
   var conditional = function(a) {
     switch (a) {
-    case TOKEN_LOGICAL_AND:
-    case TOKEN_LOGICAL_OR:
+    case Juliet.TOKEN_LOGICAL_AND:
+    case Juliet.TOKEN_LOGICAL_OR:
       return true;
     }
     return false;
@@ -935,7 +927,7 @@ var typeCheckBinaryExpr = function(expr) {
   if (multiplicative(expr.token)) {
     if (!numericType(leftTypeName) || !numericType(rightTypeName)) {
       print('operator ' +
-            operatorStr(expr.token) +
+            Juliet.lexer.operatorStr(expr.token) +
             ' cannot be applied to ' +
             leftTypeName + ', ' + rightTypeName);
       quit();
@@ -947,12 +939,12 @@ var typeCheckBinaryExpr = function(expr) {
   }
 
   // Additive Operators
-  if (expr.token == TOKEN_PLUS) {
+  if (expr.token == Juliet.TOKEN_PLUS) {
     // if either operand of + is String the operation is string
     // concatenation
     if (stringType(leftTypeName) || stringType(rightTypeName)) {
       return {
-        token:TOKEN_ID,
+        token:Juliet.TOKEN_ID,
         kind:'type',
         name:'java.lang.String'
       };
@@ -961,7 +953,7 @@ var typeCheckBinaryExpr = function(expr) {
     // otherwise each operand must be a numeric type
     if (!numericType(leftTypeName) || !numericType(rightTypeName)) {
       print('operator ' +
-            operatorStr(expr.token) +
+            Juliet.lexer.operatorStr(expr.token) +
             ' cannot be applied to ' +
             leftTypeName + ', ' + rightTypeName);
       quit();
@@ -976,10 +968,10 @@ var typeCheckBinaryExpr = function(expr) {
     return typeCheckWiderNumericType(leftType, rightType);
   }
 
-  if (expr.token == TOKEN_MINUS) {
+  if (expr.token == Juliet.TOKEN_MINUS) {
     if (!numericType(leftTypeName) || !numericType(rightTypeName)) {
       print('operator ' +
-            operatorStr(expr.token) +
+            Juliet.lexer.operatorStr(expr.token) +
             ' cannot be applied to ' +
             leftTypeName + ', ' + rightTypeName);
       quit();
@@ -994,7 +986,7 @@ var typeCheckBinaryExpr = function(expr) {
   if (shift(expr.token)) {
     if (!integralType(leftTypeName) || !integralType(rightTypeName)) {
       print('operator ' +
-            operatorStr(expr.token) +
+            Juliet.lexer.operatorStr(expr.token) +
             ' cannot be applied to ' +
             leftTypeName + ', ' + rightTypeName);
       quit();
@@ -1009,7 +1001,7 @@ var typeCheckBinaryExpr = function(expr) {
   if (relational(expr.token)) {
     if (!numericType(leftTypeName) || !numericType(rightTypeName)) {
       print('operator ' +
-            operatorStr(expr.token) +
+            Juliet.lexer.operatorStr(expr.token) +
             ' cannot be applied to ' +
             leftTypeName + ', ' + rightTypeName);
       quit();
@@ -1020,7 +1012,7 @@ var typeCheckBinaryExpr = function(expr) {
     return typeCheckWiderNumericType(leftType, rightType);
   }
 
-  if (expr.token == TOKEN_INSTANCEOF) {
+  if (expr.token == Juliet.TOKEN_INSTANCEOF) {
     // see langspec-3.0 15.20.2
 
     print('instanceof type checking not implemented');
@@ -1042,7 +1034,7 @@ var typeCheckBinaryExpr = function(expr) {
     if (integralType(leftTypeName)) {
       if (!integralType(rightTypeName)) {
         print('operator ' +
-              operatorStr(expr.token) +
+              Juliet.lexer.operatorStr(expr.token) +
               ' cannot be applied to ' +
               leftTypeName + ', ' + rightTypeName);
         quit();
@@ -1051,7 +1043,7 @@ var typeCheckBinaryExpr = function(expr) {
     if (integralType(rightTypeName)) {
       if (!integralType(leftTypeName)) {
         print('operator ' +
-              operatorStr(expr.token) +
+              Juliet.lexer.operatorStr(expr.token) +
               ' cannot be applied to ' +
               leftTypeName + ', ' + rightTypeName);
         quit();
@@ -1062,7 +1054,7 @@ var typeCheckBinaryExpr = function(expr) {
     if (booleanType(leftTypeName)) {
       if (!booleanType(rightTypeName)) {
         print('operator ' +
-              operatorStr(expr.token) +
+              Juliet.lexer.operatorStr(expr.token) +
               ' cannot be applied to ' +
               leftTypeName + ', ' + rightTypeName);
         quit();
@@ -1071,7 +1063,7 @@ var typeCheckBinaryExpr = function(expr) {
     if (booleanType(rightTypeName)) {
       if (!booleanType(leftTypeName)) {
         print('operator ' +
-              operatorStr(expr.token) +
+              Juliet.lexer.operatorStr(expr.token) +
               ' cannot be applied to ' +
               leftTypeName + ', ' + rightTypeName);
         quit();
@@ -1086,7 +1078,7 @@ var typeCheckBinaryExpr = function(expr) {
   if (conditional(expr.token)) {
     if (booleanType(leftTypeName) || booleanType(rightTypeName)) {
       print('operator ' +
-            operatorStr(expr.token) +
+            Juliet.lexer.operatorStr(expr.token) +
             ' cannot be applied to ' +
             leftTypeName + ', ' + rightTypeName);
       quit();
@@ -1166,7 +1158,7 @@ var typeCheckTernary = function(expr) {
     if (trueValueTypeName == 'byte' || trueValueTypeName == 'Byte') {
       if (falseValueTypeName == 'short' || falseValueTypeName == 'Short') {
         return {
-          token:TOKEN_SHORT,
+          token:Juliet.TOKEN_SHORT,
           kind:'type',
           name:'short'
         };
@@ -1174,12 +1166,12 @@ var typeCheckTernary = function(expr) {
     }
 
     if (Juliet.util.has(['byte', 'short', 'char'], trueValueTypeName)) {
-      if (falseValueType.token == LITERAL_INT) {
+      if (falseValueType.token == Juliet.LITERAL_INT) {
         switch (trueValueTypeName) {
         case 'byte':
           if (falseValue.value >= -128 && falseValue.value <= 127) {
             return {
-              token:TOKEN_BYTE,
+              token:Juliet.TOKEN_BYTE,
               kind:'type',
               name:'byte'
             };
@@ -1187,7 +1179,7 @@ var typeCheckTernary = function(expr) {
         case 'short':
           if (falseValue.value >= -32768 && falseValue.value <= 32767) {
             return {
-              token:TOKEN_SHORT,
+              token:Juliet.TOKEN_SHORT,
               kind:'type',
               name:'short'
             };
@@ -1195,7 +1187,7 @@ var typeCheckTernary = function(expr) {
         case 'char':
           if (falseValue.value >= -32768 && falseValue.value <= 32767) {
             return {
-              token:TOKEN_CHAR,
+              token:Juliet.TOKEN_CHAR,
               kind:'type',
               name:'char'
             };
@@ -1205,12 +1197,12 @@ var typeCheckTernary = function(expr) {
     }
 
     if (Juliet.util.has(['byte', 'short', 'char'], falseValueTypeName)) {
-      if (trueValueType.token == LITERAL_INT) {
+      if (trueValueType.token == Juliet.LITERAL_INT) {
         switch (falseValueTypeName) {
         case 'byte':
           if (trueValue.value >= -128 && trueValue.value <= 127) {
             return {
-              token:TOKEN_BYTE,
+              token:Juliet.TOKEN_BYTE,
               kind:'type',
               name:'byte'
             };
@@ -1218,7 +1210,7 @@ var typeCheckTernary = function(expr) {
         case 'short':
           if (trueValue.value >= -32768 && trueValue.value <= 32767) {
             return {
-              token:TOKEN_SHORT,
+              token:Juliet.TOKEN_SHORT,
               kind:'type',
               name:'short'
             };
@@ -1226,7 +1218,7 @@ var typeCheckTernary = function(expr) {
         case 'char':
           if (trueValue.value >= -32768 && trueValue.value <= 32767) {
             return {
-              token:TOKEN_CHAR,
+              token:Juliet.TOKEN_CHAR,
               kind:'type',
               name:'char'
             };
@@ -1236,12 +1228,12 @@ var typeCheckTernary = function(expr) {
     }
 
     if (Juliet.util.has(['Byte', 'Short', 'Character'], trueValueTypeName)) {
-      if (falseValueType.token == LITERAL_INT) {
+      if (falseValueType.token == Juliet.LITERAL_INT) {
         switch (trueValueTypeName) {
         case 'Byte':
           if (falseValue.value >= -128 && falseValue.value <= 127) {
             return {
-              token:TOKEN_BYTE,
+              token:Juliet.TOKEN_BYTE,
               kind:'type',
               name:'byte'
             };
@@ -1249,7 +1241,7 @@ var typeCheckTernary = function(expr) {
         case 'Short':
           if (falseValue.value >= -32768 && falseValue.value <= 32767) {
             return {
-              token:TOKEN_SHORT,
+              token:Juliet.TOKEN_SHORT,
               kind:'type',
               name:'short'
             };
@@ -1257,7 +1249,7 @@ var typeCheckTernary = function(expr) {
         case 'Character':
           if (falseValue.value >= -32768 && falseValue.value <= 32767) {
             return {
-              token:TOKEN_CHAR,
+              token:Juliet.TOKEN_CHAR,
               kind:'type',
               name:'char'
             };
@@ -1267,12 +1259,12 @@ var typeCheckTernary = function(expr) {
     }
 
     if (Juliet.util.has(['Byte', 'Short', 'Character'], falseValueTypeName)) {
-      if (trueValueType.token == LITERAL_INT) {
+      if (trueValueType.token == Juliet.LITERAL_INT) {
         switch (falseValueTypeName) {
         case 'Byte':
           if (trueValue.value >= -128 && trueValue.value <= 127) {
             return {
-              token:TOKEN_BYTE,
+              token:Juliet.TOKEN_BYTE,
               kind:'type',
               name:'byte'
             };
@@ -1280,7 +1272,7 @@ var typeCheckTernary = function(expr) {
         case 'Short':
           if (trueValue.value >= -32768 && trueValue.value <= 32767) {
             return {
-              token:TOKEN_SHORT,
+              token:Juliet.TOKEN_SHORT,
               kind:'type',
               name:'short'
             };
@@ -1288,7 +1280,7 @@ var typeCheckTernary = function(expr) {
         case 'Character':
           if (trueValue.value >= -32768 && trueValue.value <= 32767) {
             return {
-              token:TOKEN_CHAR,
+              token:Juliet.TOKEN_CHAR,
               kind:'type',
               name:'char'
             };
@@ -1462,11 +1454,11 @@ function propertyInContext(context, name) {
 };
 
 var typeCheckContextualAccess = function(expr) {
-  if (expr.kind == 'postfix' && expr.token == TOKEN_PERIOD) {
+  if (expr.kind == 'postfix' && expr.token == Juliet.TOKEN_PERIOD) {
     return typeCheckFieldAccessExpression(expr);
   }
 
-  if (expr.kind == 'postfix' && expr.token == TOKEN_LBRACKET) {
+  if (expr.kind == 'postfix' && expr.token == Juliet.TOKEN_LBRACKET) {
     return typeCheckArrayAccessExpression(expr);
   }
 
@@ -1548,7 +1540,7 @@ var typeCheckLeftHandSide = function(lhs) {
   }
 
   // simple name in scope
-  if (lhs.kind == 'construct' && lhs.token == TOKEN_ID) {
+  if (lhs.kind == 'construct' && lhs.token == Juliet.TOKEN_ID) {
     var curScope = scope.length - 1;
     for (var i = curScope; i >= 0; i--) {
       if (name in scope[i]) {
@@ -1583,7 +1575,7 @@ var typeCheckAssignmentExpr = function(assign) {
   // print(leftHandSideTypeName);
   // print(newValueTypeName);
 
-  if (assign.token == TOKEN_ASSIGN) {
+  if (assign.token == Juliet.TOKEN_ASSIGN) {
     compatibleTypes(leftHandSideType, newValueType);
   } else {
     // TODO: 15.26.2
@@ -1592,11 +1584,11 @@ var typeCheckAssignmentExpr = function(assign) {
 };
 
 var flatten = function(stm, sep, context) {
-  if (trace) print('flatten');
+  if (Juliet.options.trace) print('flatten');
   if (!stm) return '';
   var ret = '';
   var flatten_for_body = function(body) {
-    if (trace) print('flatten_for_body');
+    if (Juliet.options.trace) print('flatten_for_body');
     if (body.kind == 'block') {
       // since a for loop introduces a scope
       // we don't introduce a new scope here
@@ -1609,7 +1601,7 @@ var flatten = function(stm, sep, context) {
     return ret;
   };
   var flatten_in_context = function(cntx, stm, sep) {
-    if (trace) print('flatten_in_context: ' + cntx);
+    if (Juliet.options.trace) print('flatten_in_context: ' + cntx);
     return flatten(stm, sep, cntx);
   };
   if (Juliet.util.isArray(stm)) {
@@ -1619,10 +1611,10 @@ var flatten = function(stm, sep, context) {
       ret = ret + flatten(stm[i]);
 
       // insert semicolon or other separators
-      if ((stm[i].token != TOKEN_LCURLY) &&
-          (stm[i].token != TOKEN_IF) &&
-          (stm[i].token != TOKEN_WHILE) &&
-          (stm[i].token != TOKEN_FOR)) {
+      if ((stm[i].token != Juliet.TOKEN_LCURLY) &&
+          (stm[i].token != Juliet.TOKEN_IF) &&
+          (stm[i].token != Juliet.TOKEN_WHILE) &&
+          (stm[i].token != Juliet.TOKEN_FOR)) {
         if ((sep == ',') && (i == stm.length - 1)) {
           sep = '';
         }
@@ -1635,7 +1627,7 @@ var flatten = function(stm, sep, context) {
     var kind = stm.kind;
     switch (kind) {
     case 'block':
-      if (trace) print('block');
+      if (Juliet.options.trace) print('block');
       sep = '';
       pushScope();
       ret = ret + '{';
@@ -1644,7 +1636,7 @@ var flatten = function(stm, sep, context) {
       popScope();
       break;
     case 'local':
-      if (trace) print('local');
+      if (Juliet.options.trace) print('local');
       var name = stm.name;
       // TODO: qualified type names?
       var type = typeName(stm.type.name);
@@ -1659,7 +1651,7 @@ var flatten = function(stm, sep, context) {
       }
       break;
     case 'assignment':
-      if (trace) print('assignment');
+      if (Juliet.options.trace) print('assignment');
       //compatibleTypes(stm.location, stm.new_value);
       typeCheckAssignmentExpr(stm);
       var loc = flatten(stm.location, sep, context);
@@ -1667,23 +1659,23 @@ var flatten = function(stm, sep, context) {
         // must use private access method
         ret = ret + loc.replace('this.', 'this').slice(0, -1);
         var new_value = flatten(stm.new_value);
-        if (token == TOKEN_ASSIGN) {
+        if (token == Juliet.TOKEN_ASSIGN) {
           ret = ret + ',' + new_value + ')';
         } else {
           var val = flatten(stm.location, sep, context);
           // TODO: we want the non-compound operator string
-          var op = operatorStr(token);
+          var op = Juliet.lexer.operatorStr(token);
           ret = ret + ',' + val + op + new_value + ')';
         }
       } else {
         // directly assignable
         ret = ret + loc;
-        ret = ret + operatorStr(token);
+        ret = ret + Juliet.lexer.operatorStr(token);
         ret = ret + flatten(stm.new_value);
       }
       break;
     case 'ternary':
-      if (trace) print('ternary');
+      if (Juliet.options.trace) print('ternary');
       ret = ret + flatten(stm.expression);
       ret = ret + '?';
       ret = ret + flatten(stm.true_value);
@@ -1691,22 +1683,22 @@ var flatten = function(stm, sep, context) {
       ret = ret + flatten(stm.false_value);
       break;
     case 'binary':
-      if (trace) print('binary');
+      if (Juliet.options.trace) print('binary');
       //binaryTypeCheck(stm);
       typeCheckBinaryExpr(stm);
       ret = ret + '(';
       ret = ret + flatten(stm.lhs);
-      ret = ret + operatorStr(token);
+      ret = ret + Juliet.lexer.operatorStr(token);
       ret = ret + flatten(stm.rhs);
       ret = ret + ')';
       break;
     case 'cast':
-      if (trace) print('cast');
+      if (Juliet.options.trace) print('cast');
       throw new Error('casting is not implemented');
       quit();
       break;
     case 'new':
-      if (trace) print('new');
+      if (Juliet.options.trace) print('new');
       ret = ret + 'Java.new(' + flatten(stm.type) + ',';
       ret = ret + constructorForArguments(stm.args);
       if (stm.args && stm.args.length > 0) {
@@ -1716,14 +1708,14 @@ var flatten = function(stm, sep, context) {
       ret = ret + ');'
       break;
     case 'prefix':
-      if (trace) print('prefix');
+      if (Juliet.options.trace) print('prefix');
       //prefixTypeCheck(stm);
       typeCheckPrefixExpr(stm);
-      ret = ret + operatorStr(token);
+      ret = ret + Juliet.lexer.operatorStr(token);
       ret = ret + flatten(stm.operand);
       break;
     case 'postfix':
-      if (trace) print('postfix');
+      if (Juliet.options.trace) print('postfix');
       //postfixTypeCheck(stm);
       ret = ret + flatten(stm.operand);
       if (stm.term) {
@@ -1738,31 +1730,31 @@ var flatten = function(stm, sep, context) {
         ret = ret + flatten(stm.expression);
         ret = ret + ']';
       } else {
-        ret = ret + operatorStr(token);
+        ret = ret + Juliet.lexer.operatorStr(token);
       }
       break;
     case 'return':
-      if (trace) print('return');
+      if (Juliet.options.trace) print('return');
       ret = ret + 'return';
       if (stm.expression)
         ret = ret + ' ' + flatten(stm.expression);
       break;
     case 'abrupt':
-      if (trace) print('abrupt');
-      if (token == TOKEN_BREAK)
+      if (Juliet.options.trace) print('abrupt');
+      if (token == Juliet.TOKEN_BREAK)
         ret = ret + 'break';
-      if (token == TOKEN_CONTINUE)
+      if (token == Juliet.TOKEN_CONTINUE)
         ret = ret + 'continue';
       if (stm.identifier)
         ret = ret + ' ' + flatten(stm.identifier);
       break;
     case 'assert':
-      if (trace) print('assert');
+      if (Juliet.options.trace) print('assert');
       throw new Errot('assert not implemented');
       quit();
       break;
     case 'if':
-      if (trace) print('if');
+      if (Juliet.options.trace) print('if');
       ret = ret + 'if (' + flatten(stm.expression) + ')';
       ret = ret + flatten(stm.body, ';');
       if (stm.else_body) {
@@ -1771,12 +1763,12 @@ var flatten = function(stm, sep, context) {
       }
       break;
     case 'while':
-      if (trace) print('while');
+      if (Juliet.options.trace) print('while');
       ret = ret + 'while (' + flatten(stm.expression) + ')';
       ret = ret + flatten(stm.body);
       break;
     case 'for':
-      if (trace) print('for');
+      if (Juliet.options.trace) print('for');
       pushScope();
       ret = ret + 'for (' + flatten(stm.initialization, ',') + ';';
       ret = ret + flatten(stm.condition) + ';';
@@ -1785,7 +1777,7 @@ var flatten = function(stm, sep, context) {
       popScope();
       break;
     case 'for-each':
-      if (trace) print('for-each');
+      if (Juliet.options.trace) print('for-each');
       pushScope();
       var name = stm.name;
       var type = typeName(stm.type.name);
@@ -1809,20 +1801,20 @@ var flatten = function(stm, sep, context) {
       popScope();
       break;
     case 'array':
-      if (trace) print('array');
+      if (Juliet.options.trace) print('array');
       ret = ret + '[';
       ret = ret + flatten(stm.terms, ',');
       ret = ret + ']';
       break;
     case 'super':
-      if (trace) print('super');
+      if (Juliet.options.trace) print('super');
       throw new Error('super is not implemented');
       quit();
       break;
     case 'type':
-      if (trace) print('type');
+      if (Juliet.options.trace) print('type');
     case 'construct':
-      if (trace) print('construct');
+      if (Juliet.options.trace) print('construct');
       var name = '';
       // TODO: remove this kludge
       if (stm.name == 'System' || stm.name == 'out' || stm.name == 'println')
@@ -1851,18 +1843,18 @@ var flatten = function(stm, sep, context) {
       }
       break;
     case 'literal':
-      if (trace) print('literal');
+      if (Juliet.options.trace) print('literal');
       switch(token) {
-      case LITERAL_CHAR:
-      case LITERAL_STRING:
+      case Juliet.LITERAL_CHAR:
+      case Juliet.LITERAL_STRING:
         ret = ret + '\'';
         ret = ret + escapeQuotes(stm.value);
         ret = ret + '\'';
         break;
-      case LITERAL_DOUBLE:
-      case LITERAL_INT:
-      case LITERAL_BOOLEAN:
-      case TOKEN_NULL:
+      case Juliet.LITERAL_DOUBLE:
+      case Juliet.LITERAL_INT:
+      case Juliet.LITERAL_BOOLEAN:
+      case Juliet.TOKEN_NULL:
         ret = ret + stm.value;
         break;
       }
@@ -1875,21 +1867,21 @@ var flatten = function(stm, sep, context) {
 };
 
 var addStaticInitializer = function(type, si) {
-  if (trace) print('addStaticInitializer');
+  if (Juliet.options.trace) print('addStaticInitializer');
   if (!type['<static-initializers>']) type['<static-initializers>'] = [];
   var body = flatten(si.statements);
   type['<static-initializers>'].push(new Function(body));
 };
 
 var addInstanceInitializer = function(type, ii) {
-  if (trace) print('addInstanceInitializer');
+  if (Juliet.options.trace) print('addInstanceInitializer');
   if (!type['<instance-initializers>']) type['<instance-initializers>'] = [];
   var body = flatten(ii.statements);
   type['<instance-initializers>'].push(new Function(body));
 };
 
 var addClassProperty = function(type, cp) {
-  if (trace) print('addClassProperty');
+  if (Juliet.options.trace) print('addClassProperty');
   //var name = qualifiers_str(cp.qualifiers) + cp.name
   addIdentifier(cp.name,
                 'Result.' + type.name + '.' + cp.name,
@@ -1906,7 +1898,7 @@ var addClassProperty = function(type, cp) {
 };
 
 var addProperty = function(type, p, processPriv) {
-  if (trace) print('addPropery');
+  if (Juliet.options.trace) print('addPropery');
   if ((p.qualifiers & JOG_QUALIFIER_PRIVATE) && !processPriv) {
     if (!type.private_properies) type.private_properties = {};
     type.private_properties[p.name] = p;
@@ -1923,7 +1915,7 @@ var addProperty = function(type, p, processPriv) {
 };
 
 var addClassMethod = function(type, cm) {
-  if (trace) print('addClassMethod: ' + cm.name);
+  if (Juliet.options.trace) print('addClassMethod: ' + cm.name);
   var name = methodSignature(cm);
   addIdentifier(name, name, cm.return_type, true, 'method');
   pushScope();
@@ -1936,7 +1928,7 @@ var addClassMethod = function(type, cm) {
 };
 
 var addMethod = function(type, m, processPriv) {
-  if (trace) print('addMehtod: ' + m.name);
+  if (Juliet.options.trace) print('addMehtod: ' + m.name);
   var name = methodSignature(m);
   //print('Signature: ' + name);
   if ((m.qualifiers & JOG_QUALIFIER_PRIVATE) && !processPriv) {
@@ -1954,7 +1946,7 @@ var addMethod = function(type, m, processPriv) {
 };
 
 var addClass = function(type) {
-  if (trace) print('Class: ' + type.name);
+  if (Juliet.options.trace) print('Class: ' + type.name);
 
   var ctype = Result[type.name] = {name:type.name};
 
@@ -1968,11 +1960,11 @@ var addClass = function(type) {
 
 
   if (type.interfaces) {
-    if (trace) print('have interfaces');
+    if (Juliet.options.trace) print('have interfaces');
     for (var j = 0; j < type.interfaces.length; j++) {
       var anInterface = classByName(type.interfaces[j].name);
       if (anInterface.class_properties) {
-        if (trace) print('have interface class_properties');
+        if (Juliet.options.trace) print('have interface class_properties');
         for (var j = 0; j < anInterface.class_properties.length; j++) {
           var cp = anInterface.class_properties[j];
           if (!type.class_properties) type.class_properties = [];
@@ -1981,7 +1973,7 @@ var addClass = function(type) {
         }
       }
       if (anInterface.methods) {
-        if (trace) print('have interface methods');
+        if (Juliet.options.trace) print('have interface methods');
         // TODO: ensure methods are implemented
       }
     }
@@ -1991,7 +1983,7 @@ var addClass = function(type) {
   if (type.base_class) {
     base_class = classByName(type.base_class.name);
     if (base_class.class_properties) {
-      if (trace) print('have super class_properties');
+      if (Juliet.options.trace) print('have super class_properties');
       for (var j = 0; j < base_class.class_properties.length; j++) {
         var cp = base_class.class_properties[j];
         if (!(cp.qualifiers & JOG_QUALIFIER_PRIVATE)) {
@@ -2002,7 +1994,7 @@ var addClass = function(type) {
       }
     }
     if (base_class.properties) {
-      if (trace) print('have super properties');
+      if (Juliet.options.trace) print('have super properties');
       for (var j = 0; j < base_class.properties.length; j++) {
         var p = base_class.properties[j];
         if (!(p.qualifiers & JOG_QUALIFIER_PRIVATE)) {
@@ -2013,7 +2005,7 @@ var addClass = function(type) {
       }
     }
     if (base_class.class_methods) {
-      if (trace) print('have super class_methods');
+      if (Juliet.options.trace) print('have super class_methods');
       for (var j = 0; j < base_class.class_methods.length; j++) {
         var cm = base_class.class_methods[j];
         if (!(cm.qualifiers & JOG_QUALIFIER_PRIVATE)) {
@@ -2026,21 +2018,21 @@ var addClass = function(type) {
   }
 
   if (type.class_properties) {
-    if (trace) print('have class_properties');
+    if (Juliet.options.trace) print('have class_properties');
     for (var j = 0; j < type.class_properties.length; j++) {
       var cp = type.class_properties[j];
       addClassProperty(ctype, cp);
     }
   }
   if (type.properties) {
-    if (trace) print('have properties');
+    if (Juliet.options.trace) print('have properties');
     for (var j = 0; j < type.properties.length; j++) {
       var p = type.properties[j];
       addProperty(ctype, p);
     }
   }
   if (type.class_methods) {
-    if (trace) print('have class_methods');
+    if (Juliet.options.trace) print('have class_methods');
     for (var j = 0; j < type.class_methods.length; j++) {
       var cm = type.class_methods[j];
       addClassMethod(ctype, cm);
@@ -2053,7 +2045,7 @@ var addClass = function(type) {
                 false,
                'this');
   if (base_class && base_class.methods) {
-    if (trace) print('have super methods');
+    if (Juliet.options.trace) print('have super methods');
     for (var j = 0; j < base_class.methods.length; j++) {
       var m = base_class.methods[j];
       if (!(m.qualifiers & JOG_QUALIFIER_PRIVATE))
@@ -2065,7 +2057,7 @@ var addClass = function(type) {
     }
   }
   if (type.methods) {
-    if (trace) print('have methods');
+    if (Juliet.options.trace) print('have methods');
     for (var j = 0; j < type.methods.length; j++) {
       var m = type.methods[j];
       addMethod(ctype, m);
@@ -2074,7 +2066,7 @@ var addClass = function(type) {
 
   var private_methods = '';
   if (ctype.private_methods) {
-    if (trace) print('have private methods');
+    if (Juliet.options.trace) print('have private methods');
     for (var mKey in ctype.private_methods) {
       var m = ctype.private_methods[mKey];
       pushScope();
@@ -2092,7 +2084,7 @@ var addClass = function(type) {
   }
   var private_properties = {};
   if (ctype.private_properties) {
-    if (trace) print('have private properties');
+    if (Juliet.options.trace) print('have private properties');
     for (var p in ctype.private_properties) {
       addProperty(private_properties, ctype.private_properties[p], true);
     }
@@ -2116,14 +2108,14 @@ var addClass = function(type) {
             + '}}}}(this);'));
 
   if (type.static_initializers) {
-    if (trace) print('have static_initializers');
+    if (Juliet.options.trace) print('have static_initializers');
     for (var j = 0; j < type.static_initializers.length; j++) {
       var si = type.static_initializers[j];
       addStaticInitializer(ctype, si);
     }
   }
   if (type.instance_initializers) {
-    if (trace) print('have instance_initializers');
+    if (Juliet.options.trace) print('have instance_initializers');
     for (var j = 0; j < type.instance_initializers.length; j++) {
       var si = type.instance_initializers[j];
       addInstanceInitializer(ctype, si);
@@ -2144,7 +2136,7 @@ var classByName = function(name) {
 };
 
 var compile = function(ast) {
-  if (trace) print('compile');
+  if (Juliet.options.trace) print('compile');
   if (!ast) { print('Nothing to compile.'); return; }
   // TODO: there is a possible naming collision here if
   // someone defines a class named "package" or a class

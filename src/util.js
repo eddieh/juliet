@@ -20,7 +20,7 @@ Juliet.util = function() {
     is_token: function(a) { return typeof(a) == 'number' },
 
     token_str: function(token) {
-      var ret = token_name_table[token];
+      var ret = Juliet.tokens[token];
       //ret = ret.replace('TOKEN_', '');
       //ret = ret.replace('LITERAL_', '');
       //if ('content' in token) ret = ret + ' ' + token.content;

@@ -49,7 +49,7 @@ var consume_ws = function() {
 };
 
 var has_another = function() {
-  return (peek().type != TOKEN_EOF);
+  return (peek().type != Juliet.Juliet.TOKEN_EOF);
 };
 
 var read = function() {
@@ -142,25 +142,25 @@ var consume = function(token_type) {
 };
 
 var must_consume = function(token_type, error_message) {
-  if (trace) print('must_consume ' + Juliet.util.token_str(token_type));
+  if (Juliet.options.trace) print('must_consume ' + Juliet.util.token_str(token_type));
   if (consume(token_type)) return;
   throw new Error(error_message);
 };
 
 var must_consume_semicolon = function(t) {
-  if (trace) print('must_consume_semicolon');
-  if (!consume(TOKEN_SEMICOLON)) {
+  if (Juliet.options.trace) print('must_consume_semicolon');
+  if (!consume(Juliet.TOKEN_SEMICOLON)) {
     throw t.error('Syntax error: expected ;.');
     // TODO: complete semicolon handling
   }
 };
 
 var must_read_id = function(error_message) {
-  if (trace) print('must_read_id');
+  if (Juliet.options.trace) print('must_read_id');
   var t = peek();
   var result = '';
 
-  if (t.type != TOKEN_ID) {
+  if (t.type != Juliet.TOKEN_ID) {
     throw t.error(error_message);
   }
 
@@ -200,17 +200,17 @@ var cmd = function(op, t, lhs, rhs) {
 };
 
 var parse = function() {
-  if (trace) print('parse');
+  if (Juliet.options.trace) print('parse');
   parse_compilation_unit();
 }
 
 var parse_compilation_unit = function(unit) {
-  if (trace) print('parse_compilation_unit');
+  if (Juliet.options.trace) print('parse_compilation_unit');
   var t = peek();
-  if (next_is(TOKEN_PACKAGE)) {
+  if (next_is(Juliet.TOKEN_PACKAGE)) {
     Parser['package'] = parse_package_decls();
   }
-  while (next_is(TOKEN_IMPORT)) {
+  while (next_is(Juliet.TOKEN_IMPORT)) {
     if (!Parser.imports) Parser.imports = [];
     Parser.imports.push(parse_import_decls());
   }
@@ -221,10 +221,10 @@ var parse_compilation_unit = function(unit) {
 };
 
 var parse_package_decls = function(){
-  if (trace) print('parse_package_decls');
+  if (Juliet.options.trace) print('parse_package_decls');
   var t = read();
   var name = must_read_id('Expected package name.');
-  while (consume(TOKEN_PERIOD)) {
+  while (consume(Juliet.TOKEN_PERIOD)) {
     name = name + '.' + must_read_id('Expected identifier.');
   }
   must_consume_semicolon(t);
@@ -234,14 +234,14 @@ var parse_package_decls = function(){
 };
 
 var parse_import_decls = function() {
-  if (trace) print('parse_import_decls');
+  if (Juliet.options.trace) print('parse_import_decls');
   var t = read();
   var name = '';
-  if (consume(TOKEN_STATIC)) name = 'static ';
+  if (consume(Juliet.TOKEN_STATIC)) name = 'static ';
   name = must_read_id('Expected package or type name.');
-  while (consume(TOKEN_PERIOD)) {
+  while (consume(Juliet.TOKEN_PERIOD)) {
     name = name + '.';
-    if (next_is(TOKEN_STAR)) {
+    if (next_is(Juliet.TOKEN_STAR)) {
       read();
       name = name + '*';
       break;
@@ -255,7 +255,7 @@ var parse_import_decls = function() {
 };
 
 var parse_type_def = function() {
-  if (trace) print('parse_type_def');
+  if (Juliet.options.trace) print('parse_type_def');
   var quals = null;
   var t = null;
   var mesg = '';
@@ -266,9 +266,9 @@ var parse_type_def = function() {
   if (arguments.length == 0) {
     quals = parse_type_qualifiers();
     t = peek();
-    if (consume(TOKEN_CLASS)) {
+    if (consume(Juliet.TOKEN_CLASS)) {
       return parse_type_def(t, quals | JOG_QUALIFIER_CLASS , 'Class name expected.');
-    } else if (consume(TOKEN_INTERFACE)) {
+    } else if (consume(Juliet.TOKEN_INTERFACE)) {
       return parse_type_def(t, quals | JOG_QUALIFIER_INTERFACE | JOG_QUALIFIER_ABSTRACT, 'Interface name expected.');
     } else {
       if (quals) throw t.error('Expected class or interface.');
@@ -296,12 +296,12 @@ var parse_type_def = function() {
 
     // parametrized types
     // template type (Jog implements templates instead of generics).
-    if (consume(TOKEN_LT)) {
+    if (consume(Juliet.TOKEN_LT)) {
       type.placeholder_types = [parse_placeholder_type()];
-      while(consume(TOKEN_COMMA)) {
+      while(consume(Juliet.TOKEN_COMMA)) {
         type.placeholder_types.push(parse_placeholder_type());
       }
-      must_consume(TOKEN_GT, 'Expected >.');
+      must_consume(Juliet.TOKEN_GT, 'Expected >.');
 
       // Set a mark to ensure that all the tokens are buffered, parse
       // in the class, and collect the buffered tokens to use for
@@ -330,13 +330,13 @@ var parse_type_def = function() {
     t = arguments[0];
     type = arguments[1];
 
-    if (consume(TOKEN_EXTENDS)) type.base_class = parse_data_type(true);
+    if (consume(Juliet.TOKEN_EXTENDS)) type.base_class = parse_data_type(true);
 
     t2 = peek();
-    if (consume(TOKEN_IMPLEMENTS)) {
+    if (consume(Juliet.TOKEN_IMPLEMENTS)) {
       if (is_interface(type)) throw t.error('Interface cannot implement another.');
       type.interfaces = [parse_data_type(true)];
-      while (consume(TOKEN_COMMA)) {
+      while (consume(Juliet.TOKEN_COMMA)) {
         type.interfaces.push(parse_data_type(true));
       }
     }
@@ -352,7 +352,7 @@ var parse_type_def = function() {
                                    name:'static'}];
     }
 
-    must_consume(TOKEN_LCURLY, 'Expected {.');
+    must_consume(Juliet.TOKEN_LCURLY, 'Expected {.');
 
     while (true) {
       set_mark();
@@ -368,25 +368,25 @@ var parse_type_def = function() {
       }
     }
 
-    must_consume(TOKEN_RCURLY, 'Expected }.');
+    must_consume(Juliet.TOKEN_RCURLY, 'Expected }.');
   }
 }
 
 var parse_placeholder_type = function() {
-  if (trace) print('parse_placeholder_type');
+  if (Juliet.options.trace) print('parse_placeholder_type');
   var placeholder_type = parse_data_type(true);
   return placeholder_type;
 }
 
 var parse_type_qualifiers = function() {
-  if (trace) print('parse_type_qualifiers');
+  if (Juliet.options.trace) print('parse_type_qualifiers');
   var quals = 0;
   var t = null;
 
   while (true) {
     t = peek();
 
-    if (consume(TOKEN_ABSTRACT)) {
+    if (consume(Juliet.TOKEN_ABSTRACT)) {
       quals |= JOG_QUALIFIER_ABSTRACT;
       if (quals & (JOG_QUALIFIER_FINAL)) {
         throw t.error('Cannot be abstract if final.');
@@ -394,7 +394,7 @@ var parse_type_qualifiers = function() {
       continue;
     }
 
-    if (consume(TOKEN_PUBLIC)) {
+    if (consume(Juliet.TOKEN_PUBLIC)) {
       quals |= JOG_QUALIFIER_PUBLIC;
       if (quals & (JOG_QUALIFIER_PROTECTED | JOG_QUALIFIER_PRIVATE)) {
         throw t.error('Cannot be public if protected or private.');
@@ -402,7 +402,7 @@ var parse_type_qualifiers = function() {
       continue;
     }
 
-    if (consume(TOKEN_PROTECTED)) {
+    if (consume(Juliet.TOKEN_PROTECTED)) {
       quals |= JOG_QUALIFIER_PROTECTED;
       if (quals & (JOG_QUALIFIER_PUBLIC | JOG_QUALIFIER_PRIVATE)) {
         throw t.error('Cannot be protected if public or private.');
@@ -410,7 +410,7 @@ var parse_type_qualifiers = function() {
       continue;
     }
 
-    if (consume(TOKEN_PRIVATE)) {
+    if (consume(Juliet.TOKEN_PRIVATE)) {
       quals |= JOG_QUALIFIER_PRIVATE;
       if (quals & (JOG_QUALIFIER_PUBLIC | JOG_QUALIFIER_PROTECTED)) {
         throw t.error('Cannot be private if public or protected.');
@@ -418,7 +418,7 @@ var parse_type_qualifiers = function() {
       continue;
     }
 
-    if (consume(TOKEN_FINAL)) {
+    if (consume(Juliet.TOKEN_FINAL)) {
       quals |= JOG_QUALIFIER_FINAL;
       if (quals & (JOG_QUALIFIER_ABSTRACT)) {
         throw t.error('Cannot be final if abstract.');
@@ -426,7 +426,7 @@ var parse_type_qualifiers = function() {
       continue;
     }
 
-    if (consume(TOKEN_STRICTFP)) {
+    if (consume(Juliet.TOKEN_STRICTFP)) {
       quals |= JOG_QUALIFIER_STRICTFP;
       continue;
     }
@@ -436,19 +436,19 @@ var parse_type_qualifiers = function() {
 }
 
 var parse_member_qualifiers = function() {
-  if (trace) print('parse_member_qualifiers');
+  if (Juliet.options.trace) print('parse_member_qualifiers');
   var quals = 0;
   var t = null;
 
   while(true) {
     t = peek();
 
-    if (consume(TOKEN_ABSTRACT)) {
+    if (consume(Juliet.TOKEN_ABSTRACT)) {
       quals |= JOG_QUALIFIER_ABSTRACT;
       continue;
     }
 
-    if (consume(TOKEN_PUBLIC)) {
+    if (consume(Juliet.TOKEN_PUBLIC)) {
       quals |= JOG_QUALIFIER_PUBLIC;
       if (quals & (JOG_QUALIFIER_PROTECTED | JOG_QUALIFIER_PRIVATE)) {
         throw t.error('Cannot be public if protected or private.');
@@ -456,7 +456,7 @@ var parse_member_qualifiers = function() {
       continue;
     }
 
-    if (consume(TOKEN_PROTECTED)) {
+    if (consume(Juliet.TOKEN_PROTECTED)) {
       quals |= JOG_QUALIFIER_PROTECTED;
       if (quals & (JOG_QUALIFIER_PUBLIC | JOG_QUALIFIER_PRIVATE)) {
         throw t.error('Cannot be protected if public or private.');
@@ -464,7 +464,7 @@ var parse_member_qualifiers = function() {
       continue;
     }
 
-    if (consume(TOKEN_PRIVATE)) {
+    if (consume(Juliet.TOKEN_PRIVATE)) {
       quals |= JOG_QUALIFIER_PRIVATE;
       if (quals & (JOG_QUALIFIER_PUBLIC | JOG_QUALIFIER_PROTECTED)) {
         throw t.error('Cannot be private if public or protected.');
@@ -472,37 +472,37 @@ var parse_member_qualifiers = function() {
       continue;
     }
 
-    if (consume(TOKEN_STATIC)) {
+    if (consume(Juliet.TOKEN_STATIC)) {
       quals |= JOG_QUALIFIER_STATIC;
       continue;
     }
 
-    if (consume(TOKEN_FINAL)) {
+    if (consume(Juliet.TOKEN_FINAL)) {
       quals |= JOG_QUALIFIER_FINAL;
       continue;
     }
 
-    if (consume(TOKEN_TRANSIENT)) {
+    if (consume(Juliet.TOKEN_TRANSIENT)) {
       quals |= JOG_QUALIFIER_TRANSIENT;
       continue;
     }
 
-    if (consume(TOKEN_VOLATILE)) {
+    if (consume(Juliet.TOKEN_VOLATILE)) {
       quals |= JOG_QUALIFIER_VOLATILE;
       continue;
     }
 
-    if (consume(TOKEN_SYNCHRONIZED)) {
+    if (consume(Juliet.TOKEN_SYNCHRONIZED)) {
       quals |= JOG_QUALIFIER_SYNCRONIZED;
       continue;
     }
 
-    if (consume(TOKEN_NATIVE)) {
+    if (consume(Juliet.TOKEN_NATIVE)) {
       quals |= JOG_QUALIFIER_NATIVE;
       continue;
     }
 
-    if (consume(TOKEN_STRICTFP)) {
+    if (consume(Juliet.TOKEN_STRICTFP)) {
       quals |= JOG_QUALIFIER_STRICTFP;
       continue;
     }
@@ -512,8 +512,8 @@ var parse_member_qualifiers = function() {
 }
 
 var parse_member = function(type) {
-  if (trace) print('parse_member');
-  if (next_is(TOKEN_RCURLY)) return false;
+  if (Juliet.options.trace) print('parse_member');
+  if (next_is(Juliet.TOKEN_RCURLY)) return false;
 
   var t = peek();
   var quals = parse_member_qualifiers();
@@ -525,8 +525,8 @@ var parse_member = function(type) {
   var first = true;
 
   // static initializer
-  if (quals == JOG_QUALIFIER_STATIC && next_is(TOKEN_LCURLY)) {
-    if (trace) print('static initiaizer');
+  if (quals == JOG_QUALIFIER_STATIC && next_is(Juliet.TOKEN_LCURLY)) {
+    if (Juliet.options.trace) print('static initiaizer');
     if (is_interface(type)) {
       throw t.error('Static initialization block not allowed here.');
     }
@@ -542,21 +542,21 @@ var parse_member = function(type) {
     type.static_initializers.push(m);
 
     read();
-    while (!next_is(TOKEN_RCURLY)) {
+    while (!next_is(Juliet.TOKEN_RCURLY)) {
       stm = parse_statement(true);
       if (stm) {
         if (!m.statements) m.statements = [];
         m.statements.push(stm);
       }
     }
-    must_consume(TOKEN_RCURLY, 'Expected }');
-    if (next_is(TOKEN_SEMICOLON)) read();
+    must_consume(Juliet.TOKEN_RCURLY, 'Expected }');
+    if (next_is(Juliet.TOKEN_SEMICOLON)) read();
     return true;
   }
 
   // instance initializer
-  if (quals == 0 && next_is(TOKEN_LCURLY)) {
-    if (trace) print('instance initializer');
+  if (quals == 0 && next_is(Juliet.TOKEN_LCURLY)) {
+    if (Juliet.options.trace) print('instance initializer');
     if (is_interface(type)) {
       throw t.error('Instance initialization block not allowed here.');
     }
@@ -572,23 +572,23 @@ var parse_member = function(type) {
     type.instance_initializers.push(m);
 
     read();
-    while (!next_is(TOKEN_RCURLY)) {
+    while (!next_is(Juliet.TOKEN_RCURLY)) {
       stm = parse_statement(true);
       if (stm) {
         if (!m.statements) m.statements = [];
         m.statements.push(stm);
       }
     }
-    must_consume(TOKEN_RCURLY, 'Expected }');
-    if (next_is(TOKEN_SEMICOLON)) read();
+    must_consume(Juliet.TOKEN_RCURLY, 'Expected }');
+    if (next_is(Juliet.TOKEN_SEMICOLON)) read();
     return true;
   }
 
   data_type = parse_data_type(true);
 
   // constructor
-  if (next_is(TOKEN_LPAREN)) {
-    if (trace) print('constructor');
+  if (next_is(Juliet.TOKEN_LPAREN)) {
+    if (Juliet.options.trace) print('constructor');
     if (data_type.name == type.name) {
       if (quals & JOG_QUALIFIER_STATIC) {
         throw t.error('Constructor cannot be static.');
@@ -609,15 +609,15 @@ var parse_member = function(type) {
       if (!type.methods) type.methods = [];
       type.methods.push(m);
 
-      must_consume(TOKEN_LCURLY, 'Expected {.');
-      while (!next_is(TOKEN_RCURLY)) {
+      must_consume(Juliet.TOKEN_LCURLY, 'Expected {.');
+      while (!next_is(Juliet.TOKEN_RCURLY)) {
         stm = parse_statement(true);
         if (stm) {
           if (!m.statements) m.statements = [];
           m.statements.push(stm);
         }
       }
-      must_consume(TOKEN_RCURLY, 'Expected }.');
+      must_consume(Juliet.TOKEN_RCURLY, 'Expected }.');
 
       return true;
     } else {
@@ -629,8 +629,8 @@ var parse_member = function(type) {
   name = must_read_id('Expected identifier after type.');
 
   // Method
-  if (next_is(TOKEN_LPAREN)) {
-    if (trace) print('method');
+  if (next_is(Juliet.TOKEN_LPAREN)) {
+    if (Juliet.options.trace) print('method');
     if (name == type.name) {
       throw t.error('Constructors cannot specify a return type.');
     }
@@ -662,8 +662,8 @@ var parse_member = function(type) {
       if (is_interface(m)) {
         throw t.error('Interface method cannot be native.');
       }
-      must_consume(TOKEN_SEMICOLON, 'Expected ;.');
-    } else if (consume(TOKEN_SEMICOLON)) {
+      must_consume(Juliet.TOKEN_SEMICOLON, 'Expected ;.');
+    } else if (consume(Juliet.TOKEN_SEMICOLON)) {
       if (!is_abstract(m)) {
         throw t.error('Method missing body.');
       }
@@ -675,19 +675,19 @@ var parse_member = function(type) {
         throw t.error('Abstract method cannot have body.');
       }
 
-      must_consume(TOKEN_LCURLY, 'Expected {.');
-      while (!next_is(TOKEN_RCURLY)) {
+      must_consume(Juliet.TOKEN_LCURLY, 'Expected {.');
+      while (!next_is(Juliet.TOKEN_RCURLY)) {
         stm = parse_statement(true);
         if (stm) {
           if (!m.statements) m.statements = [];
           m.statements.push(stm);
         }
       }
-      must_consume(TOKEN_RCURLY, 'Expected }.');
+      must_consume(Juliet.TOKEN_RCURLY, 'Expected }.');
     }
   } else {
     // property
-    if (trace) print('property');
+    if (Juliet.options.trace) print('property');
     if (data_type == null) {
       throw t.error('void cannot be use as property type.');
     }
@@ -725,7 +725,7 @@ var parse_member = function(type) {
         if (!type.properties) type.properties = [];
         type.properties.push(p);
       }
-    } while (consume(TOKEN_COMMA));
+    } while (consume(Juliet.TOKEN_COMMA));
 
     must_consume_semicolon(t);
   }
@@ -734,14 +734,14 @@ var parse_member = function(type) {
 };
 
 var parse_params = function(m) {
-  if (trace) print('parse_params');
+  if (Juliet.options.trace) print('parse_params');
   var t = null;
   var type = null;
   var name = '';
 
-  must_consume(TOKEN_LPAREN, 'Expected (.');
+  must_consume(Juliet.TOKEN_LPAREN, 'Expected (.');
 
-  if (!consume(TOKEN_RPAREN)) {
+  if (!consume(Juliet.TOKEN_RPAREN)) {
     do {
       t = peek();
       type = parse_data_type(true);
@@ -755,19 +755,19 @@ var parse_params = function(m) {
                          kind:'parameter',
                          type:type,
                          name:name});
-    } while (consume(TOKEN_COMMA));
-    must_consume(TOKEN_RPAREN, 'Expected ).');
+    } while (consume(Juliet.TOKEN_COMMA));
+    must_consume(Juliet.TOKEN_RPAREN, 'Expected ).');
   }
 };
 
 var generic_depth = [];
 var parse_data_type = function(parse_brackets, parse_wildcards) {
-  if (trace) print('parse_data_type');
+  if (Juliet.options.trace) print('parse_data_type');
   var t = peek();
   var name = '';
 
   // primitive
-  if (consume([TOKEN_CHAR, TOKEN_BYTE, TOKEN_SHORT, TOKEN_INT, TOKEN_LONG, TOKEN_FLOAT, TOKEN_DOUBLE, TOKEN_STRING, TOKEN_BOOLEAN])) {
+  if (consume([Juliet.TOKEN_CHAR, Juliet.TOKEN_BYTE, Juliet.TOKEN_SHORT, Juliet.TOKEN_INT, Juliet.TOKEN_LONG, Juliet.TOKEN_FLOAT, Juliet.TOKEN_DOUBLE, Juliet.TOKEN_STRING, Juliet.TOKEN_BOOLEAN])) {
     name = t.content;
   }
 
@@ -777,12 +777,12 @@ var parse_data_type = function(parse_brackets, parse_wildcards) {
       name = must_read_id('Expected type.');
     } catch (e) {
       if (!parse_wildcards) throw e;
-      must_consume(TOKEN_QUESTIONMARK, 'Expected ?.');
+      must_consume(Juliet.TOKEN_QUESTIONMARK, 'Expected ?.');
       name = name + '?';
-      if (consume(TOKEN_EXTENDS)) {
+      if (consume(Juliet.TOKEN_EXTENDS)) {
         name = name + ' extends ';
         name = name + must_read_id('Expected type.');
-      } else if (consume(TOKEN_SUPER)) {
+      } else if (consume(Juliet.TOKEN_SUPER)) {
         name = name + ' super ';
         name = name + must_read_id('Expected type.');
       }
@@ -790,14 +790,14 @@ var parse_data_type = function(parse_brackets, parse_wildcards) {
   }
 
   // templates for generics
-  if (consume(TOKEN_LT)) {
-    generic_depth.push(TOKEN_LT);
+  if (consume(Juliet.TOKEN_LT)) {
+    generic_depth.push(Juliet.TOKEN_LT);
 
     name = name + '<';
     var subst_type = parse_data_type(true, true);
     name = name + subst_type.name;
 
-    while (consume(TOKEN_COMMA)) {
+    while (consume(Juliet.TOKEN_COMMA)) {
       name = name + ',';
       subst_type = parse_data_type(true, true);
       name = name + subst_type.name;
@@ -805,26 +805,26 @@ var parse_data_type = function(parse_brackets, parse_wildcards) {
 
     if (generic_depth.length > 0) {
       try {
-        must_consume(TOKEN_GT, 'Expected >.');
-        if (generic_depth.pop() != TOKEN_LT)
+        must_consume(Juliet.TOKEN_GT, 'Expected >.');
+        if (generic_depth.pop() != Juliet.TOKEN_LT)
           throw t.error('Syntax error.');
         name = name + '>';
       } catch (e) {
         try {
-          must_consume(TOKEN_SHR, 'Expected >>.');
-          if (generic_depth.pop() != TOKEN_LT)
+          must_consume(Juliet.TOKEN_SHR, 'Expected >>.');
+          if (generic_depth.pop() != Juliet.TOKEN_LT)
             throw t.error('Syntax error.');
-          if (generic_depth.pop() != TOKEN_LT)
+          if (generic_depth.pop() != Juliet.TOKEN_LT)
             throw t.error('Syntax error.');
           name = name + '>>';
         } catch (e) {
           try {
-            must_consume(TOKEN_SHRX, 'Expected >>>.');
-            if (generic_depth.pop() != TOKEN_LT)
+            must_consume(Juliet.TOKEN_SHRX, 'Expected >>>.');
+            if (generic_depth.pop() != Juliet.TOKEN_LT)
               throw t.error('Syntax error.');
-            if (generic_depth.pop() != TOKEN_LT)
+            if (generic_depth.pop() != Juliet.TOKEN_LT)
               throw t.error('Syntax error.');
-            if (generic_depth.pop() != TOKEN_LT)
+            if (generic_depth.pop() != Juliet.TOKEN_LT)
               throw t.error('Syntax error.');
             name = name + '>>>';
           } catch (e) { throw e; }
@@ -835,9 +835,9 @@ var parse_data_type = function(parse_brackets, parse_wildcards) {
 
   // subscript
   if (parse_brackets) {
-    while (consume(TOKEN_LBRACKET)) {
+    while (consume(Juliet.TOKEN_LBRACKET)) {
       name = name + '[]';
-      must_consume(TOKEN_RBRACKET, 'Expected ] (Error#).');
+      must_consume(Juliet.TOKEN_RBRACKET, 'Expected ] (Error#).');
     }
   }
 
@@ -848,9 +848,9 @@ var parse_data_type = function(parse_brackets, parse_wildcards) {
 };
 
 var parse_initial_value = function(of_type) {
-  if (trace) print('parse_initial_value');
-  if (consume(TOKEN_ASSIGN)) {
-    if (next_is(TOKEN_LCURLY)) {
+  if (Juliet.options.trace) print('parse_initial_value');
+  if (consume(Juliet.TOKEN_ASSIGN)) {
+    if (next_is(Juliet.TOKEN_LCURLY)) {
       return parse_literal_array(of_type);
     } else {
       return parse_expression();
@@ -861,9 +861,9 @@ var parse_initial_value = function(of_type) {
 };
 
 var parse_statement = function(require_semicolon) {
-  if (trace) print('parse_statement');
-  if (require_semicolon && consume(TOKEN_SEMICOLON)) return null;
-  else if (next_is(TOKEN_RPAREN)) return null;
+  if (Juliet.options.trace) print('parse_statement');
+  if (require_semicolon && consume(Juliet.TOKEN_SEMICOLON)) return null;
+  else if (next_is(Juliet.TOKEN_RPAREN)) return null;
 
   var t = peek();
   var block = [];
@@ -880,8 +880,8 @@ var parse_statement = function(require_semicolon) {
   var expr = null;
   var var_type = null;
 
-  if (consume(TOKEN_LCURLY)) {
-    while (!consume(TOKEN_RCURLY)) {
+  if (consume(Juliet.TOKEN_LCURLY)) {
+    while (!consume(Juliet.TOKEN_RCURLY)) {
       stm = parse_statement(true);
       if (stm) {
         block.push(stm);
@@ -890,8 +890,8 @@ var parse_statement = function(require_semicolon) {
     return {kind:'block', statements:block};
   }
 
-  if (consume(TOKEN_RETURN)) {
-    if (consume(TOKEN_SEMICOLON)) {
+  if (consume(Juliet.TOKEN_RETURN)) {
+    if (consume(Juliet.TOKEN_SEMICOLON)) {
       if (Parser.this_method && Parser.this_method.return_type) {
         throw t.error('Missing return value.');
       }
@@ -907,8 +907,8 @@ var parse_statement = function(require_semicolon) {
     return cmd;
   }
 
-  if (consume(TOKEN_THROW)) {
-    if (consume(TOKEN_SEMICOLON)) {
+  if (consume(Juliet.TOKEN_THROW)) {
+    if (consume(Juliet.TOKEN_SEMICOLON)) {
       throw t.error('Missing expression.');
     }
     expr = parse_expression();
@@ -920,20 +920,20 @@ var parse_statement = function(require_semicolon) {
     return cmd;
   }
 
-  if (consume(TOKEN_IF)) {
-    must_consume(TOKEN_LPAREN, 'Expected (.');
+  if (consume(Juliet.TOKEN_IF)) {
+    must_consume(Juliet.TOKEN_LPAREN, 'Expected (.');
     conditional = {token:t.type,
                    kind:'if',
                    expression:parse_expression()};
-    must_consume(TOKEN_RPAREN, 'Expected ).');
+    must_consume(Juliet.TOKEN_RPAREN, 'Expected ).');
 
-    if (next_is(TOKEN_SEMICOLON)) {
+    if (next_is(Juliet.TOKEN_SEMICOLON)) {
       throw t.error('Unexpected ;.');
     }
 
     conditional.body = parse_statement(true);
-    if (consume(TOKEN_ELSE)) {
-      if (next_is(TOKEN_SEMICOLON)) {
+    if (consume(Juliet.TOKEN_ELSE)) {
+      if (next_is(Juliet.TOKEN_SEMICOLON)) {
         throw t.error('Unexpected ;.');
       }
       conditional.else_body = parse_statement(true);
@@ -941,73 +941,73 @@ var parse_statement = function(require_semicolon) {
     return conditional;
   }
 
-  // TODO: TOKEN_DO
+  // TODO: Juliet.TOKEN_DO
 
-  if (consume(TOKEN_WHILE)) {
-    must_consume(TOKEN_LPAREN, 'Expected (.');
+  if (consume(Juliet.TOKEN_WHILE)) {
+    must_consume(Juliet.TOKEN_LPAREN, 'Expected (.');
     loop = {token:t.type,
             kind:'while',
             expression:parse_expression()};
-    must_consume(TOKEN_RPAREN, 'Expected ).');
-    if (next_is(TOKEN_SEMICOLON)) {
+    must_consume(Juliet.TOKEN_RPAREN, 'Expected ).');
+    if (next_is(Juliet.TOKEN_SEMICOLON)) {
       throw t.error('Unexpected ;.');
     }
     loop.body = parse_statement(true);
     return loop;
   }
 
-  if (consume(TOKEN_FOR)) {
-    must_consume(TOKEN_LPAREN, 'Expected (.');
+  if (consume(Juliet.TOKEN_FOR)) {
+    must_consume(Juliet.TOKEN_LPAREN, 'Expected (.');
 
     set_mark();
     init_expr = parse_statement(false);
-    if (next_is(TOKEN_COLON)) {
+    if (next_is(Juliet.TOKEN_COLON)) {
       rewind_to_mark();
       local_type = parse_data_type(true);
       local_name = must_read_id('Expected identifier.');
 
-      must_consume(TOKEN_COLON, 'Expected :.');
+      must_consume(Juliet.TOKEN_COLON, 'Expected :.');
       iterable_expr = parse_expression();
-      must_consume(TOKEN_RPAREN, 'Expected ).');
+      must_consume(Juliet.TOKEN_RPAREN, 'Expected ).');
 
       loop = {token:t.type,
               kind:'for-each',
               type:local_type,
               name:local_name,
               iterable:iterable_expr};
-      if (next_is(TOKEN_SEMICOLON)) {
+      if (next_is(Juliet.TOKEN_SEMICOLON)) {
         throw t.error('Unexpected ;.');
       }
       loop.body = parse_statement(true);
       return loop;
     } else {
       clear_mark();
-      must_consume(TOKEN_SEMICOLON,  'Expected ;.');
+      must_consume(Juliet.TOKEN_SEMICOLON,  'Expected ;.');
     }
 
-    if (consume(TOKEN_SEMICOLON)) {
+    if (consume(Juliet.TOKEN_SEMICOLON)) {
       condition = {token:t.type,
                    kind:'conditional',
                    expression:true};
     } else {
       condition = parse_expression();
-      must_consume(TOKEN_SEMICOLON, 'Expected ;.');
+      must_consume(Juliet.TOKEN_SEMICOLON, 'Expected ;.');
     }
     var_mod = parse_statement(false);
-    must_consume(TOKEN_RPAREN, 'Expected ).');
+    must_consume(Juliet.TOKEN_RPAREN, 'Expected ).');
     loop = {token:t.type,
             kind:'for',
             initialization:init_expr,
             condition:condition,
             var_mod:var_mod};
-    if (next_is(TOKEN_SEMICOLON)) {
+    if (next_is(Juliet.TOKEN_SEMICOLON)) {
       throw t.error('Unexpected ;.');
     }
     loop.body = parse_statement(true);
     return loop;
   }
 
-  if (consume(TOKEN_BREAK)) {
+  if (consume(Juliet.TOKEN_BREAK)) {
     cmd = {token:t.type,
            kind:'abrupt'};
     // TODO: [Identifier]
@@ -1015,7 +1015,7 @@ var parse_statement = function(require_semicolon) {
     return cmd;
   }
 
-  if (consume(TOKEN_CONTINUE)) {
+  if (consume(Juliet.TOKEN_CONTINUE)) {
     cmd = {token:t.type,
            kind:'abrupt'};
     // TODO: [Identifier]
@@ -1023,18 +1023,18 @@ var parse_statement = function(require_semicolon) {
     return cmd;
   }
 
-  if (consume(TOKEN_ASSERT)) {
-    must_consume(TOKEN_LPAREN, 'Expected (.');
+  if (consume(Juliet.TOKEN_ASSERT)) {
+    must_consume(Juliet.TOKEN_LPAREN, 'Expected (.');
     cmd = {token:t.type,
            kind:'assert',
            expression:parse_expression()};
-    if (consume(TOKEN_COMMA)) {
-      if (peek().type != LITERAL_STRING) {
+    if (consume(Juliet.TOKEN_COMMA)) {
+      if (peek().type != Juliet.LITERAL_STRING) {
         throw t.error('Expected string literal.');
       }
       cmd.message = read().content;
     }
-    must_consume(TOKEN_RPAREN, 'Expected ).');
+    must_consume(Juliet.TOKEN_RPAREN, 'Expected ).');
     return cmd;
   }
 
@@ -1045,7 +1045,7 @@ var parse_statement = function(require_semicolon) {
   // TODO: labled statements
 
   expr = parse_expression();
-  if (next_is(TOKEN_ID)) {
+  if (next_is(Juliet.TOKEN_ID)) {
     var var_type = reinterpret_as_type(expr);
     return parse_local_var_decl(expr.token, var_type, require_semicolon);
   }
@@ -1056,7 +1056,7 @@ var parse_statement = function(require_semicolon) {
 };
 
 var parse_local_var_decl = function(t, var_type, req_semi) {
-  if (trace) print('parse_local_var_decl');
+  if (Juliet.options.trace) print('parse_local_var_decl');
   var locals = [];
   var t2 = null;
   var name = '';
@@ -1075,7 +1075,7 @@ var parse_local_var_decl = function(t, var_type, req_semi) {
             name:name,
             initial_value:parse_initial_value(var_type)};
     locals.push(decl);
-  } while (consume(TOKEN_COMMA));
+  } while (consume(Juliet.TOKEN_COMMA));
 
   if (req_semi) must_consume_semicolon(t);
 
@@ -1083,71 +1083,71 @@ var parse_local_var_decl = function(t, var_type, req_semi) {
 };
 
 var parse_expression = function() {
-  if (trace) print('parse_expression');
+  if (Juliet.options.trace) print('parse_expression');
   var cmd = parse_assignment();
   return cmd;
 };
 
 var parse_assignment = function() {
-  if (trace) print('parse_assignment');
+  if (Juliet.options.trace) print('parse_assignment');
   var expr = parse_conditional();
   var t = peek();
-  if (consume(TOKEN_ASSIGN)) {
+  if (consume(Juliet.TOKEN_ASSIGN)) {
     expr = {token:t.type,
             kind:'assignment',
             location:expr,
             new_value:parse_assignment()};
-  } else if (consume(TOKEN_ADD_ASSIGN)) {
+  } else if (consume(Juliet.TOKEN_ADD_ASSIGN)) {
     expr = {token:t.type,
             kind:'assignment',
             location:expr,
             new_value:parse_assignment()};
-  } else if (consume(TOKEN_SUB_ASSIGN)) {
+  } else if (consume(Juliet.TOKEN_SUB_ASSIGN)) {
     expr = {token:t.type,
             kind:'assignment',
             location:expr,
             new_value:parse_assignment()};
-  } else if (consume(TOKEN_MUL_ASSIGN)) {
+  } else if (consume(Juliet.TOKEN_MUL_ASSIGN)) {
     expr = {token:t.type,
             kind:'assignment',
             location:expr,
             new_value:parse_assignment()};
-  } else if (consume(TOKEN_DIV_ASSIGN)) {
+  } else if (consume(Juliet.TOKEN_DIV_ASSIGN)) {
     expr = {token:t.type,
             kind:'assignment',
             location:expr,
             new_value:parse_assignment()};
-  } else if (consume(TOKEN_MOD_ASSIGN)) {
+  } else if (consume(Juliet.TOKEN_MOD_ASSIGN)) {
     expr = {token:t.type,
             kind:'assignment',
             location:expr,
             new_value:parse_assignment()};
-  } else if (consume(TOKEN_AND_ASSIGN)) {
+  } else if (consume(Juliet.TOKEN_AND_ASSIGN)) {
     expr = {token:t.type,
             kind:'assignment',
             location:expr,
             new_value:parse_assignment()};
-  } else if (consume(TOKEN_OR_ASSIGN)) {
+  } else if (consume(Juliet.TOKEN_OR_ASSIGN)) {
     expr = {token:t.type,
             kind:'assignment',
             location:expr,
             new_value:parse_assignment()};
-  } else if (consume(TOKEN_XOR_ASSIGN)) {
+  } else if (consume(Juliet.TOKEN_XOR_ASSIGN)) {
     expr = {token:t.type,
             kind:'assignment',
             location:expr,
             new_value:parse_assignment()};
-  } else if (consume(TOKEN_SHL_ASSIGN)) {
+  } else if (consume(Juliet.TOKEN_SHL_ASSIGN)) {
     expr = {token:t.type,
             kind:'assignment',
             location:expr,
             new_value:parse_assignment()};
-  } else if (consume(TOKEN_SHRX_ASSIGN)) {
+  } else if (consume(Juliet.TOKEN_SHRX_ASSIGN)) {
     expr = {token:t.type,
             kind:'assignment',
             location:expr,
             new_value:parse_assignment()};
-  } else if (consume(TOKEN_SHR_ASSIGN)) {
+  } else if (consume(Juliet.TOKEN_SHR_ASSIGN)) {
     expr = {token:t.type,
             kind:'assignment',
             location:expr,
@@ -1157,14 +1157,14 @@ var parse_assignment = function() {
 };
 
 var parse_conditional = function() {
-  if (trace) print('parse_conditional');
+  if (Juliet.options.trace) print('parse_conditional');
   var expr = parse_logical_or();
   var t = peek();
   var true_value = null;
   var false_value = null;
-  if (consume(TOKEN_QUESTIONMARK)) {
+  if (consume(Juliet.TOKEN_QUESTIONMARK)) {
     true_value = parse_conditional();
-    must_consume(TOKEN_COLON, 'Expected :.');
+    must_consume(Juliet.TOKEN_COLON, 'Expected :.');
     false_value = parse_conditional();
     return {token:t.type,
             kind:'ternary',
@@ -1176,13 +1176,13 @@ var parse_conditional = function() {
 }
 
 var parse_logical_or = function(lhs) {
-  if (trace) print('parse_logical_or');
+  if (Juliet.options.trace) print('parse_logical_or');
   var t = null;
   if (lhs === undefined) {
     return parse_logical_or(parse_logical_and());
   } else {
     t = peek();
-    if (consume(TOKEN_LOGICAL_OR)) {
+    if (consume(Juliet.TOKEN_LOGICAL_OR)) {
       return parse_logical_or({token:t.type,
                                kind:'binary',
                                lhs:lhs,
@@ -1193,13 +1193,13 @@ var parse_logical_or = function(lhs) {
 }
 
 var parse_logical_and = function(lhs) {
-  if (trace) print('parse_logical_and');
+  if (Juliet.options.trace) print('parse_logical_and');
   var t = null;
   if (lhs === undefined) {
     return parse_logical_and(parse_bitwise_or());
   } else {
     t = peek();
-    if (consume(TOKEN_LOGICAL_AND)) {
+    if (consume(Juliet.TOKEN_LOGICAL_AND)) {
       return parse_logical_and({token:t.type,
                                 kind:'binary',
                                 lhs:lhs,
@@ -1210,13 +1210,13 @@ var parse_logical_and = function(lhs) {
 }
 
 var parse_bitwise_or = function(lhs) {
-  if (trace) print('parse_bitwise_or');
+  if (Juliet.options.trace) print('parse_bitwise_or');
   var t = null;
   if (lhs === undefined) {
     return parse_bitwise_or(parse_bitwise_xor());
   } else {
     t = peek();
-    if (consume(TOKEN_PIPE)) {
+    if (consume(Juliet.TOKEN_PIPE)) {
       return parse_bitwise_or({token:t.type,
                                kind:'binary',
                                lhs:lhs,
@@ -1227,13 +1227,13 @@ var parse_bitwise_or = function(lhs) {
 }
 
 var parse_bitwise_xor = function(lhs) {
-  if (trace) print('parse_bitwise_xor');
+  if (Juliet.options.trace) print('parse_bitwise_xor');
   var t = null;
   if (lhs === undefined) {
     return parse_bitwise_xor(parse_bitwise_and());
   } else {
     t = peek();
-    if (consume(TOKEN_CARET)) {
+    if (consume(Juliet.TOKEN_CARET)) {
       return parse_bitwise_xor({token:t.type,
                                 kind:'binary',
                                 lhs:lhs,
@@ -1244,13 +1244,13 @@ var parse_bitwise_xor = function(lhs) {
 }
 
 var parse_bitwise_and = function(lhs) {
-  if (trace) print('parse_bitwise_and');
+  if (Juliet.options.trace) print('parse_bitwise_and');
   var t = null;
   if (lhs === undefined) {
     return parse_bitwise_and(parse_equality());
   } else {
     t = peek();
-    if (consume(TOKEN_AMPERSAND)) {
+    if (consume(Juliet.TOKEN_AMPERSAND)) {
       return parse_bitwise_and({token:t.type,
                                 kind:'binary',
                                 lhs:lhs,
@@ -1262,20 +1262,20 @@ var parse_bitwise_and = function(lhs) {
 
 // <<, >>, >>>
 var parse_shift = function(lhs) {
-  if (trace) print('parse_shift');
+  if (Juliet.options.trace) print('parse_shift');
   if (lhs === undefined) return parse_shift(parse_translate());
   var t = peek();
-  if (consume(TOKEN_SHL))
+  if (consume(Juliet.TOKEN_SHL))
     return parse_shift({token:t.type,
                         kind:'binary',
                         lhs:lhs,
                         rhs:parse_translate()});
-  if (consume(TOKEN_SHR))
+  if (consume(Juliet.TOKEN_SHR))
     return parse_shift({token:t.type,
                         kind:'binary',
                         lhs:lhs,
                         rhs:parse_translate()});
-  if (consume(TOKEN_SHRX))
+  if (consume(Juliet.TOKEN_SHRX))
     return parse_shift({token:t.type,
                         kind:'binary',
                         lhs:lhs,
@@ -1285,31 +1285,31 @@ var parse_shift = function(lhs) {
 
 // <, <=, >, >=, instanceof
 var parse_relational = function(lhs) {
-  if (trace) print('parse_relational');
+  if (Juliet.options.trace) print('parse_relational');
   if (lhs === undefined)
     return parse_relational(parse_shift());
   var t = peek();
-  if (consume(TOKEN_LT))
+  if (consume(Juliet.TOKEN_LT))
     return parse_relational({token:t.type,
                              kind:'binary',
                              lhs:lhs,
                              rhs:parse_shift()});
-  if (consume(TOKEN_LE))
+  if (consume(Juliet.TOKEN_LE))
     return parse_relational({token:t.type,
                              kind:'binary',
                              lhs:lhs,
                              rhs:parse_shift()});
-  if (consume(TOKEN_GT))
+  if (consume(Juliet.TOKEN_GT))
     return parse_relational({token:t.type,
                              kind:'binary',
                              lhs:lhs,
                              rhs:parse_shift()});
-  if (consume(TOKEN_GE))
+  if (consume(Juliet.TOKEN_GE))
     return parse_relational({token:t.type,
                              kind:'binary',
                              lhs:lhs,
                              rhs:parse_shift()});
-  if (consume(TOKEN_INSTANCEOF))
+  if (consume(Juliet.TOKEN_INSTANCEOF))
     return parse_relational({token:t.type,
                              kind:'binary',
                              lhs:lhs,
@@ -1323,12 +1323,12 @@ var parse_equality = function(lhs) {
   if (lhs === undefined)
     return parse_equality(parse_relational());
   var t = peek();
-  if (consume(TOKEN_EQ))
+  if (consume(Juliet.TOKEN_EQ))
     return parse_equality({token:t.type,
                            kind:'binary',
                            lhs:lhs,
                            rhs:parse_relational()});
-  if (consume(TOKEN_NE))
+  if (consume(Juliet.TOKEN_NE))
     return parse_equality({token:t.type,
                            kind:'binary',
                            lhs:lhs,
@@ -1339,16 +1339,16 @@ var parse_equality = function(lhs) {
 
 // +, -
 var parse_translate = function(lhs) {
-  if (trace) print('parse_translate');
+  if (Juliet.options.trace) print('parse_translate');
   if (lhs === undefined)
     return parse_translate(parse_scale());
   var t = peek();
-  if (consume(TOKEN_PLUS))
+  if (consume(Juliet.TOKEN_PLUS))
     return parse_translate({token:t.type,
                             kind:'binary',
                             lhs:lhs,
                             rhs:parse_scale()});
-  if (consume(TOKEN_MINUS))
+  if (consume(Juliet.TOKEN_MINUS))
     return parse_translate({token:t.type,
                             kind:'binary',
                             lhs:lhs,
@@ -1359,21 +1359,21 @@ var parse_translate = function(lhs) {
 
 // *, /
 var parse_scale = function(lhs) {
-  if (trace) print('parse_scale');
+  if (Juliet.options.trace) print('parse_scale');
   if (lhs === undefined)
     return parse_scale(parse_prefix_unary());
   var t = peek();
-  if (consume(TOKEN_STAR))
+  if (consume(Juliet.TOKEN_STAR))
     return parse_scale({token:t.type,
                         kind:'binary',
                         lhs:lhs,
                         rhs:parse_prefix_unary()});
-  if (consume(TOKEN_SLASH))
+  if (consume(Juliet.TOKEN_SLASH))
     return parse_scale({token:t.type,
                         kind:'binary',
                         lhs:lhs,
                         rhs:parse_prefix_unary()});
-  if (consume(TOKEN_PERCENT))
+  if (consume(Juliet.TOKEN_PERCENT))
     return parse_scale({token:t.type,
                         kind:'binary',
                         lhs:lhs,
@@ -1383,22 +1383,22 @@ var parse_scale = function(lhs) {
 
 // (cast), new, ++, --, +, -, !, ~
 var parse_prefix_unary = function() {
-  if (trace) print('parse_prefix_unary');
+  if (Juliet.options.trace) print('parse_prefix_unary');
   var t = peek();
   var to_type = null;
   var result = null;
   var of_type = null;
   var args = null;
-  if (next_is(TOKEN_LPAREN)) {
+  if (next_is(Juliet.TOKEN_LPAREN)) {
     // MIGHT have a cast
     set_mark();
     read();
-    if (next_is([TOKEN_ID, TOKEN_CHAR, TOKEN_BYTE, TOKEN_SHORT, TOKEN_INT, TOKEN_LONG, TOKEN_FLOAT, TOKEN_DOUBLE, TOKEN_STRING, TOKEN_BOOLEAN])) {
+    if (next_is([Juliet.TOKEN_ID, Juliet.TOKEN_CHAR, Juliet.TOKEN_BYTE, Juliet.TOKEN_SHORT, Juliet.TOKEN_INT, Juliet.TOKEN_LONG, Juliet.TOKEN_FLOAT, Juliet.TOKEN_DOUBLE, Juliet.TOKEN_STRING, Juliet.TOKEN_BOOLEAN])) {
       // Casts are ambiguous syntax - assume this is indeed a cast and
       // just try it.
       try {
         to_type = parse_data_type(true);
-        must_consume(TOKEN_RPAREN, 'Expected ).');
+        must_consume(Juliet.TOKEN_RPAREN, 'Expected ).');
         result = {token:t.type,
                   kind:'cast',
                   operand:parse_prefix_unary(),
@@ -1411,9 +1411,9 @@ var parse_prefix_unary = function() {
     }
     rewind_to_mark();
   }
-  if (consume(TOKEN_NEW)) {
+  if (consume(Juliet.TOKEN_NEW)) {
     of_type = parse_data_type(false);
-    if (next_is(TOKEN_LBRACKET)) {
+    if (next_is(Juliet.TOKEN_LBRACKET)) {
       return parse_array_decl(t, of_type);
     } else {
       args = parse_args(true);
@@ -1423,26 +1423,26 @@ var parse_prefix_unary = function() {
               args:args};
     }
   }
-  if (consume(TOKEN_INCREMENT))
+  if (consume(Juliet.TOKEN_INCREMENT))
     return {token:t.type,
             kind:'prefix',
             operand:parse_prefix_unary()};
-  if (consume(TOKEN_DECREMENT))
+  if (consume(Juliet.TOKEN_DECREMENT))
     return {token:t.type,
             kind:'prefix',
             operand:parse_prefix_unary()};
   // discard '+a' and just keep 'a'.
-  if (consume(TOKEN_PLUS))
+  if (consume(Juliet.TOKEN_PLUS))
     return parse_prefix_unary();
-  if (consume(TOKEN_MINUS))
+  if (consume(Juliet.TOKEN_MINUS))
     return {token:t.type,
             kind:'prefix',
             operand:parse_prefix_unary()};
-  if (consume(TOKEN_BANG))
+  if (consume(Juliet.TOKEN_BANG))
     return {token:t.type,
             kind:'prefix',
             operand:parse_prefix_unary()};
-  if (consume(TOKEN_TILDE))
+  if (consume(Juliet.TOKEN_TILDE))
     return {token:t.type,
             kind:'prefix',
             operand:parse_prefix_unary()};
@@ -1463,8 +1463,8 @@ var parse_array_decl = function(t, array_type) {
   // following.
 
   // Read the dimensions - [] or [expr]
-  while (consume(TOKEN_LBRACKET)) {
-    if (consume(TOKEN_RBRACKET)) {
+  while (consume(Juliet.TOKEN_LBRACKET)) {
+    if (consume(Juliet.TOKEN_RBRACKET)) {
       saw_empty = true;
       dim_expr.push(null);
     } else {
@@ -1473,7 +1473,7 @@ var parse_array_decl = function(t, array_type) {
       }
       dim_specified = true;
       dim_expr.push(parse_expression());
-      must_consume(TOKEN_RBRACKET, 'Expected ].');
+      must_consume(Juliet.TOKEN_RBRACKET, 'Expected ].');
     }
   }
 
@@ -1484,7 +1484,7 @@ var parse_array_decl = function(t, array_type) {
                 length:dim_expr.length};
 
   if (!dim_specified) {
-    if (!next_is(TOKEN_LCURLY)) {
+    if (!next_is(Juliet.TOKEN_LCURLY)) {
       //throw t.error('Expected literal array.');
       print('array dimension missing');
       //print('or expected literal array');
@@ -1518,38 +1518,38 @@ var parse_array_decl = function(t, array_type) {
 
 // ++, --, ., (), []
 var parse_postfix_unary = function(operand) {
-  if (trace) print('parse_postfix_unary');
+  if (Juliet.options.trace) print('parse_postfix_unary');
   var op_type = null;
   var new_name = '';
   var index = null;
   if (operand === undefined)
     return parse_postfix_unary(parse_term());
   var t = peek();
-  if (consume(TOKEN_INCREMENT)) {
+  if (consume(Juliet.TOKEN_INCREMENT)) {
     return parse_postfix_unary({token:t.type,
                                 kind:'postfix',
                                 operand:operand});
-  } else if (consume(TOKEN_DECREMENT)) {
+  } else if (consume(Juliet.TOKEN_DECREMENT)) {
     return parse_postfix_unary({token:t.type,
                                 kind:'postfix',
                                 operand:operand});
-  } else if (consume(TOKEN_PERIOD)) {
+  } else if (consume(Juliet.TOKEN_PERIOD)) {
     cmd = parse_postfix_unary({token:t.type,
                                kind:'postfix',
                                operand:operand,
                                term:parse_term()});
     return cmd;
-  } else if (consume(TOKEN_LBRACKET)) {
-    if (next_is(TOKEN_RBRACKET)) {
+  } else if (consume(Juliet.TOKEN_LBRACKET)) {
+    if (next_is(Juliet.TOKEN_RBRACKET)) {
       op_type = reinterpret_as_type(operand);
       if (op_type == null) {
         throw t.error('Expected datatype.');
       }
       new_name = (op_type.name) ? op_type.name : op_type.value;
-      must_consume(TOKEN_RBRACKET, 'Expected ] (Error2).');
+      must_consume(Juliet.TOKEN_RBRACKET, 'Expected ] (Error2).');
       new_name = new_name + '[]';
-      while (consume(TOKEN_LBRACKET)) {
-        must_consume(TOKEN_RBRACKET, 'Expected ] (Error3).');
+      while (consume(Juliet.TOKEN_LBRACKET)) {
+        must_consume(Juliet.TOKEN_RBRACKET, 'Expected ] (Error3).');
         new_name = new_name + '[]';
       }
       return parse_local_var_decl(t,
@@ -1558,7 +1558,7 @@ var parse_postfix_unary = function(operand) {
                                   false);
     } else {
       index = parse_expression();
-      must_consume(TOKEN_RBRACKET, 'Expected ] (Error4).');
+      must_consume(Juliet.TOKEN_RBRACKET, 'Expected ] (Error4).');
       return parse_postfix_unary({token:t.type,
                                   kind:'postfix',
                                   operand:operand,
@@ -1570,7 +1570,7 @@ var parse_postfix_unary = function(operand) {
 };
 
 var parse_construct = function() {
-  if (trace) print('parse_construct');
+  if (Juliet.options.trace) print('parse_construct');
   var t = peek();
   var name = '';
   var type = null;
@@ -1599,40 +1599,40 @@ var parse_construct = function() {
 };
 
 var parse_args = function(required) {
-  if (trace) print('parse_args');
+  if (Juliet.options.trace) print('parse_args');
   var t = peek();
   var args = [];
 
-  if (!consume(TOKEN_LPAREN)) {
+  if (!consume(Juliet.TOKEN_LPAREN)) {
     if (required) {
       throw t.error('Expected (.');
     }
     return null;
   }
 
-  if (!consume(TOKEN_RPAREN)) {
+  if (!consume(Juliet.TOKEN_RPAREN)) {
     do {
       args.push(parse_expression());
-    } while(consume(TOKEN_COMMA));
-    must_consume(TOKEN_RPAREN, 'Expected ).');
+    } while(consume(Juliet.TOKEN_COMMA));
+    must_consume(Juliet.TOKEN_RPAREN, 'Expected ).');
   }
 
   return args;
 }
 
 var parse_literal_array = function(of_type) {
-  if (trace) print('parse_literal_array');
+  if (Juliet.options.trace) print('parse_literal_array');
   var t = read();
   var first = true;
   var terms = [];
   var element_type_name = '';
   var element_type = null;
 
-  if (!consume(TOKEN_RCURLY)) {
+  if (!consume(Juliet.TOKEN_RCURLY)) {
     first = true;
-    while (first || consume(TOKEN_COMMA)) {
+    while (first || consume(Juliet.TOKEN_COMMA)) {
       first = false;
-      if (next_is(TOKEN_LCURLY)) {
+      if (next_is(Juliet.TOKEN_LCURLY)) {
         // nexted literal array
         element_type_name = of_type.name.slice(0, -2);
 
@@ -1650,7 +1650,7 @@ var parse_literal_array = function(of_type) {
         terms.push(parse_expression());
       }
     }
-    must_consume(TOKEN_RCURLY, 'Expected , or }.');
+    must_consume(Juliet.TOKEN_RCURLY, 'Expected , or }.');
   }
 
   return {token:t.type,
@@ -1660,7 +1660,7 @@ var parse_literal_array = function(of_type) {
 }
 
 var parse_term = function() {
-  if (trace) print('parse_term');
+  if (Juliet.options.trace) print('parse_term');
   var p = null;
   var t = null;
   var expr = null;
@@ -1668,57 +1668,57 @@ var parse_term = function() {
   var name = '';
 
   p = peek();
-  if (trace) print_token(p.type);
+  if (Juliet.options.trace) Juliet.util.print_token(p.type);
 
   switch (p.type) {
-  case LITERAL_DOUBLE:
+  case Juliet.LITERAL_DOUBLE:
     t = read();
     return {token:t.type,
             kind:'literal',
             value:t.content};
-  case LITERAL_FLOAT:
+  case Juliet.LITERAL_FLOAT:
     t = read();
     return {token:t.type,
             kind:'literal',
             value:t.content};
-  case LITERAL_INT:
+  case Juliet.LITERAL_INT:
     t = read();
     return {token:t.type,
             kind:'literal',
             value:t.content};
-  case LITERAL_LONG:
+  case Juliet.LITERAL_LONG:
     t = read();
     return {token:t.type,
             kind:'literal',
             value:t.content};
-  case LITERAL_CHAR:
+  case Juliet.LITERAL_CHAR:
     t = read();
     return {token:t.type,
             kind:'literal',
             value:t.content};
-  case LITERAL_STRING:
+  case Juliet.LITERAL_STRING:
     t = read();
     return {token:t.type,
             kind:'literal',
             value:t.content};
-  // case TOKEN_FALSE:
+  // case Juliet.TOKEN_FALSE:
   //   t = read();
   //   return {token:t.type, value:t.content};
-  // case TOKEN_TRUE:
+  // case Juliet.TOKEN_TRUE:
   //   t = read();
   //   return {token:t.type, value:t.content};
-  case LITERAL_BOOLEAN:
+  case Juliet.LITERAL_BOOLEAN:
     t = read();
     return {token:t.type,
             kind:'literal',
             value:t.content};
-  case TOKEN_LPAREN:
+  case Juliet.TOKEN_LPAREN:
     read();
     expr = parse_expression();
-    must_consume(TOKEN_RPAREN, 'Expected ).');
+    must_consume(Juliet.TOKEN_RPAREN, 'Expected ).');
     return expr;
-  case TOKEN_SUPER:
-    if (peek(2).type == TOKEN_LPAREN) {
+  case Juliet.TOKEN_SUPER:
+    if (peek(2).type == Juliet.TOKEN_LPAREN) {
       t = read();
       if (Parser.this_method && !is_constructor(Parser.this_method)) {
         throw t.error('Use "super.methodname" to call superclass method.');
@@ -1736,7 +1736,7 @@ var parse_term = function() {
               args:args};
     } else {
       t = read();
-      must_consume(TOKEN_PERIOD, 'Expected ".".');
+      must_consume(Juliet.TOKEN_PERIOD, 'Expected ".".');
       name = must_read_id('Expected method or property name.');
       args = parse_args(false);
       return {token:t.type,
@@ -1744,19 +1744,19 @@ var parse_term = function() {
               name:name,
               args:args};
     }
-  case TOKEN_CHAR:
-  case TOKEN_BYTE:
-  case TOKEN_SHORT:
-  case TOKEN_INT:
-  case TOKEN_LONG:
-  case TOKEN_FLOAT:
-  case TOKEN_DOUBLE:
-  case TOKEN_STRING:
-  case TOKEN_BOOLEAN:
-  case TOKEN_ID:
-    if (trace) print(p.content);
+  case Juliet.TOKEN_CHAR:
+  case Juliet.TOKEN_BYTE:
+  case Juliet.TOKEN_SHORT:
+  case Juliet.TOKEN_INT:
+  case Juliet.TOKEN_LONG:
+  case Juliet.TOKEN_FLOAT:
+  case Juliet.TOKEN_DOUBLE:
+  case Juliet.TOKEN_STRING:
+  case Juliet.TOKEN_BOOLEAN:
+  case Juliet.TOKEN_ID:
+    if (Juliet.options.trace) print(p.content);
     return parse_construct();
-  case TOKEN_NULL:
+  case Juliet.TOKEN_NULL:
     t = read();
     return {token:t.type,
             kind:'literal',

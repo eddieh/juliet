@@ -87,10 +87,10 @@
 
         Runner.result = '';
         try {
-          init();
+          Juliet.lexer.init();
           init_parser();
           init_compiler();
-          data = source;
+          Juliet.source = source;
           parse();
           compile(Parser);
           execute(principal.value);

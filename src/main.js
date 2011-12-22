@@ -7,7 +7,7 @@ var className = '';
 var argc = scriptArgs.length;
 if (argc) {
   for (var i = 0; i < argc; i++) {
-    if (scriptArgs[i] == '--trace') trace = true;
+    if (scriptArgs[i] == '--trace') Juliet.options.trace = true;
     else if (scriptArgs[i] == '--ast') showAST = true;
     else if (scriptArgs[i] == '--verbose') verbose = true;
     else if (scriptArgs[i] == '--run') {
@@ -22,15 +22,14 @@ if (argc) {
   }
 
   if (verbose) print('Compiling :' + filepath);
-
   Juliet.lexer.init();
   init_parser();
   init_compiler();
-  data = readFile(filepath);
-  if (trace) print(data);
+  Juliet.source = readFile(filepath);
+  if (Juliet.options.trace) print(data);
   parse();
   delete Parser.this_method;
-  if (trace || showAST) Juliet.util.print_ast(Parser);
+  if (Juliet.options.trace || showAST) Juliet.util.print_ast(Parser);
 
   compile(Parser);
   if (verbose) Juliet.util.print_ast(Result);
