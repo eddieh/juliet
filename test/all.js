@@ -13,7 +13,42 @@ if (typeof(load) === 'undefined') {
 noMain = true;
 load('juliet.js');
 
+Juliet.stdout = '';
+
+Juliet.test = function() {
+  var test_info = '';
+
+  return {
+    quit: quit,
+    print: print,
+    put: function(a) {
+      test_info = test_info + a;
+    },
+    putln: function(a) {
+      test_info = test_info + a + '\n';
+    },
+    getTestInfo: function() {
+      return test_info;
+    },
+    init: function() {
+      test_info = ''
+    }
+  }
+}();
+
 (function(args) {
+
+  System.out.println = function (a) {
+    Juliet.stdout = Juliet.stdout + a + '\n';
+  };
+
+  quit = function () {
+    throw new Error('QUIT');
+  };
+
+  print = System.out.println;
+
+
   var tests = [
     /*
       Base tests
@@ -692,34 +727,17 @@ load('juliet.js');
     }
   }
 
-  var result = '';
-  System.out.println = function (a) {
-    result = result + a + '\n';
-  };
-  var tquit = quit;
-  quit = function () {
-    throw new Error('QUIT');
-  };
-  var tprint = print;
-  print = System.out.println;
-
-  var test_info = '';
-  var put = function(a) {
-    test_info = test_info + a;
-  };
-  var putln = function(a) {
-    test_info = test_info + a + '\n';
-  };
-
   if (!summarize) {
-    tprint('BEGIN TESTS');
-    tprint('');
+    Juliet.test.print('BEGIN TESTS');
+    Juliet.test.print('');
   }
 
   var pass_count = 0;
   var fail_count = 0;
   for (var i = 0; i < tests.length; i++) {
-    result = '';
+
+    Juliet.stdout = '';
+
     try {
 
       Juliet.compile(readFile(tests[i].path));
@@ -730,34 +748,47 @@ load('juliet.js');
 
     } catch (e) {
       // if (e.message != 'QUIT') System.out.println(e);
-      // if (e.message != 'QUIT') tprint(e);
+      // if (e.message != 'QUIT') Juliet.test.print(e);
     }
 
-    test_info = '';
-    put('Running ' + tests[i].path + ' ' + tests[i].principal);
+    Juliet.test.init();
+    Juliet.test.put('Running ' + tests[i].path + ' ' + tests[i].principal);
 
-    if (tests[i].expected == result) {
+    if (tests[i].expected == Juliet.stdout) {
       pass_count++;
-      put(' pass');
+      Juliet.test.put(' pass');
     } else {
       fail_count++;
-      putln(' FAIL');
-      putln('Expected:');
-      put(tests[i].expected);
-      putln('Actual:');
-      put(result);
-      putln('Code:');
-      putln(Juliet.source);
+      Juliet.test.putln(' FAIL');
+
+      Juliet.test.putln('Expected:');
+      Juliet.test.put(tests[i].expected);
+
+      Juliet.test.putln('Actual:');
+      Juliet.test.put(Juliet.stdout);
+
+      Juliet.test.putln('Code:');
+      Juliet.test.putln(Juliet.source);
     }
-    if (!summarize) tprint(test_info);
+
+    if (!summarize) {
+      Juliet.test.print(Juliet.test.getTestInfo());
+    }
+
   }
 
   if (!summarize) {
-    tprint('\nSUMMARY');
-    tprint('=======');
+    Juliet.test.print('\nSUMMARY');
+    Juliet.test.print('=======');
   }
-  tprint('Passed ' + pass_count + ' tests.');
-  tprint('Failed ' + fail_count + ' tests.');
-  if (!summarize) tprint('END TESTS');
-  else tprint('');
+
+  Juliet.test.print('Passed ' + pass_count + ' tests.');
+  Juliet.test.print('Failed ' + fail_count + ' tests.');
+
+  if (!summarize) {
+    Juliet.test.print('END TESTS');
+  } else {
+    Juliet.test.print('');
+  }
+
 })(scriptArgs);
