@@ -1334,6 +1334,10 @@ Juliet.compiler = function() {
       return typeCheckTernary(expr);
     }
 
+    if (expr.kind == 'assignment') {
+      return typeCheckAssignmentExpr(expr);
+    }
+
   };
 
   var typeCheckLocalDecl = function(decl) {
@@ -1569,6 +1573,8 @@ Juliet.compiler = function() {
     } else {
       // TODO: 15.26.2
     }
+
+    return leftHandSideType;
 
   };
 
