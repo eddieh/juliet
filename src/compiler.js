@@ -771,7 +771,8 @@ Juliet.compiler = function() {
   };
 
   var typeCheckPostfixExpr = function(expr) {
-    var operand = typeCheckExpr(expr.operand);
+    // TODO: hmmmm?
+    // var operand = typeCheckExpr(expr.operand);
 
     // ++, -- must be applied to variables with numeric types
     if ((expr.token == Juliet.TOKEN_INCREMENT) || (expr.token == Juliet.TOKEN_DECREMENT)) {
