@@ -438,19 +438,28 @@ Juliet.compiler = function() {
       return a.type;
     }
 
-    if (a.kind == 'type') {
+    if (a.kind == 'type' || a.kind == 'definition') {
       return a;
     }
 
-    return null;
+    if (a.kind == 'array') {
+      return a.type;;
+    }
+
+    if (a.kind == 'local') {
+      return a.type;
+    }
+
+    print('getType: no handler for ' + a.kind);
+    quit();
   }
 
   var getTypeName = function(a) {
     if (a.kind == 'literal') {
       return primitiveStr(a.token);
-    } else if (a.kind == 'type') {
-      return a.name;
-    } else if (a.kind == 'construct') {
+    }
+
+    if (a.kind == 'construct') {
       if (a.token == Juliet.TOKEN_ID) {
         var typeDescriptor = typeDescriptorForName(a.name);
 
@@ -473,11 +482,20 @@ Juliet.compiler = function() {
       return a.type.name;
     }
 
-    if (a.kind == 'type') {
+    if (a.kind == 'type' || a.kind == 'definition') {
       return a.name;
     }
 
-    return null;
+    if (a.kind == 'array') {
+      return a.type.name;
+    }
+
+    if (a.kind == 'local') {
+      return a.type.name;
+    }
+
+    print('getTypeName: no handler for ' + a.kind);
+    quit();
   };
 
   var compatibleTypes = function(leftType, rightType) {
@@ -1348,10 +1366,16 @@ Juliet.compiler = function() {
     var initialValueTypeName = getTypeName(initialValueType);
 
     // sanity check, remove later maybe?
-    if (!localTypeName || !initialValueTypeName) {
+    if (!localTypeName) {
       print('***');
-      print('no name?');
+      print('localType has no name?');
       Juliet.util.print_ast(localType);
+      quit();
+    }
+
+    if (!initialValueTypeName) {
+      print('***');
+      print('initialValueType has no name?');
       Juliet.util.print_ast(initialValueType);
       quit();
     }
@@ -1481,11 +1505,9 @@ Juliet.compiler = function() {
     var name = identifierForExpression(expr);
 
     var typeDescriptor = null;
-    if (expr.operand.kind == 'postfix') {
-      typeDescriptor = typeCheckContextualAccess(expr.operand);
+    if (expr.kind == 'postfix' && expr.token == Juliet.TOKEN_PERIOD) {
+      typeDescriptor = typeCheckFieldAccessExpression(expr);
     }
-    // print(name);
-    // Juliet.util.print_ast(typeDescriptor);
 
     var depth = 0;
     while (expr.expression) {
