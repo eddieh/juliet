@@ -80,7 +80,7 @@ Juliet.test = function() {
     {
       path:'test/fields.java',
       principal:'Runner',
-      expected:'10\n'
+      expected:'12\n'
     },
     {
       path:'test/hello.java',

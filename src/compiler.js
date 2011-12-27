@@ -434,6 +434,10 @@ Juliet.compiler = function() {
       }
     }
 
+    if (a.kind == 'property') {
+      return a.type;
+    }
+
     if (a.kind == 'type') {
       return a;
     }
@@ -463,6 +467,10 @@ Juliet.compiler = function() {
       } else {
         return a.name;
       }
+    }
+
+    if (a.kind == 'property') {
+      return a.type.name;
     }
 
     if (a.kind == 'type') {
@@ -770,10 +778,7 @@ Juliet.compiler = function() {
       return typeCheckIncDecExpr(expr);
     }
 
-    if (expr.token == Juliet.TOKEN_LBRACKET) {
-      return arrayAccessExpressionType(expr);
-    }
-
+    return typeCheckContextualAccess(expr);
   };
 
   var typeCheckPrefixExpr = function(expr) {
@@ -1388,8 +1393,10 @@ Juliet.compiler = function() {
       }
 
       if (typeDescriptor.type.kind == 'definition') {
-        // print('STATIC CONTEXT');
-        staticContext = true;
+        if (context != 'this') { // TODO: not super too?
+          // print('STATIC CONTEXT');
+          staticContext = true;
+        }
       }
 
       var props = typeDescriptor.type.properties;
