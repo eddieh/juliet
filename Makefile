@@ -41,6 +41,9 @@ test-all:
 	$(V8) test/all.js -- --summarize
 	$(NODE) test/all.js --summarize
 
+test-tokenize:
+	$(JS) test/tokenize.js
+
 clean:
 	-rm juliet-cli.js
 	-rm juliet-browser.js
