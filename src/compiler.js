@@ -1030,7 +1030,7 @@ Juliet.compiler = function() {
       // 15.21.2
       // 15.21.3
       print('equality operators type checking not implemented');
-      quit();
+      //quit();
     }
 
     // Bitwise and Logical Operators
