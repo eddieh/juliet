@@ -44,6 +44,9 @@ test-all:
 test-tokenize:
 	$(JS) test/tokenize.js
 
+test-parser:
+	$(JS) test/parser.js
+
 clean:
 	-rm juliet-cli.js
 	-rm juliet-browser.js

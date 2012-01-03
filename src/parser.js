@@ -1747,6 +1747,13 @@ Juliet.parser = function() {
     parse: function () {
       if (Juliet.options.trace) print('parse');
       parse_compilation_unit();
+    },
+
+    /*
+     * Used for testing the parser.
+     */
+    parseStatement: function() {
+      return parse_statement(false);
     }
   };
 }();

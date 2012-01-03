@@ -1,591 +1,1605 @@
+if (typeof(load) === 'undefined') {
+  if (typeof(require) !== 'undefined') {
+    nodeRequire = require;
+    load = function(filename) {
+      var fs = require('fs');
+      var script = fs.readFileSync(filename, 'utf8');
+      var evalGlobal = eval.bind(this);
+      evalGlobal(script);
+    };
+  }
+}
+
+load('src/platform.js');
+load('src/juliet.js');
+load('src/util.js');
+load('src/lexer.js');
+load('src/parser.js');
+
 var test_parse = function() {
   var tests = [
-    ['3.14', {token:LITERAL_DOUBLE, value:3.14}],
-    ['42', {token:LITERAL_INT, value:42}],
-    ['\'a\'', {token:LITERAL_CHAR, value:'a'}],
-    ['"hello"', {token:LITERAL_STRING, value:'hello'}],
-    ['false', {token:LITERAL_BOOLEAN, value:false}],
-    ['true', {token:LITERAL_BOOLEAN, value:true}],
-    ['null', {token:TOKEN_NULL, value:'null'}],
+    ['3.14', {
+      token:Juliet.LITERAL_DOUBLE,
+      kind:'literal',
+      value:3.14}],
+    ['42', {
+      token:Juliet.LITERAL_INT,
+      kind:'literal',
+      value:42}],
+    ['\'a\'', {
+      token:Juliet.LITERAL_CHAR,
+      kind:'literal',
+      value:'a'}],
+    ['"hello"', {
+      token:Juliet.LITERAL_STRING,
+      kind:'literal',
+      value:'hello'}],
+    ['false', {
+      token:Juliet.LITERAL_BOOLEAN,
+      kind:'literal',
+      value:false}],
+    ['true', {
+      token:Juliet.LITERAL_BOOLEAN,
+      kind:'literal',
+      value:true}],
+    ['null', {
+      token:Juliet.TOKEN_NULL,
+      kind:'literal',
+      value:'null'}],
     ['a = b', {
-      token:TOKEN_ASSIGN,
-      location:{token:TOKEN_ID, name:'a'},
-      new_value:{token:TOKEN_ID, name:'b'}}],
+      token:Juliet.TOKEN_ASSIGN,
+      kind:'assignment',
+      location:{
+        token:Juliet.TOKEN_ID,
+        kind:'construct',
+        name:'a'},
+      new_value:{
+        token:Juliet.TOKEN_ID,
+        kind:'construct',
+        name:'b'}}],
     ['a += b', {
-      token:TOKEN_ADD_ASSIGN,
-      location:{token:TOKEN_ID, name:'a'},
-      new_value:{token:TOKEN_ID, name:'b'}}],
+      token:Juliet.TOKEN_ADD_ASSIGN,
+      kind:'assignment',
+      location:{
+        token:Juliet.TOKEN_ID,
+        kind:'construct',
+        name:'a'},
+      new_value:{
+        token:Juliet.TOKEN_ID,
+        kind:'construct',
+        name:'b'}}],
     ['a -= b', {
-      token:TOKEN_SUB_ASSIGN,
-      location:{token:TOKEN_ID, name:'a'},
-      new_value:{token:TOKEN_ID, name:'b'}}],
+      token:Juliet.TOKEN_SUB_ASSIGN,
+      kind:'assignment',
+      location:{
+        token:Juliet.TOKEN_ID,
+        kind:'construct',
+        name:'a'},
+      new_value:{
+        token:Juliet.TOKEN_ID,
+        kind:'construct',
+        name:'b'}}],
     ['a *= b', {
-      token:TOKEN_MUL_ASSIGN,
-      location:{token:TOKEN_ID, name:'a'},
-      new_value:{token:TOKEN_ID, name:'b'}}],
+      token:Juliet.TOKEN_MUL_ASSIGN,
+      kind:'assignment',
+      location:{
+        token:Juliet.TOKEN_ID,
+        kind:'construct',
+        name:'a'},
+      new_value:{
+        token:Juliet.TOKEN_ID,
+        kind:'construct',
+        name:'b'}}],
     ['a /= b', {
-      token:TOKEN_DIV_ASSIGN,
-      location:{token:TOKEN_ID, name:'a'},
-      new_value:{token:TOKEN_ID, name:'b'}}],
+      token:Juliet.TOKEN_DIV_ASSIGN,
+      kind:'assignment',
+      location:{
+        token:Juliet.TOKEN_ID,
+        kind:'construct',
+        name:'a'},
+      new_value:{
+        token:Juliet.TOKEN_ID,
+        kind:'construct',
+        name:'b'}}],
     ['a %= b', {
-      token:TOKEN_MOD_ASSIGN,
-      location:{token:TOKEN_ID, name:'a'},
-      new_value:{token:TOKEN_ID, name:'b'}}],
+      token:Juliet.TOKEN_MOD_ASSIGN,
+      kind:'assignment',
+      location:{token:Juliet.TOKEN_ID, kind:'construct', name:'a'},
+      new_value:{token:Juliet.TOKEN_ID, kind:'construct', name:'b'}}],
     ['a &= b', {
-      token:TOKEN_AND_ASSIGN,
-      location:{token:TOKEN_ID, name:'a'},
-      new_value:{token:TOKEN_ID, name:'b'}}],
+      token:Juliet.TOKEN_AND_ASSIGN,
+      kind:'assignment',
+      location:{token:Juliet.TOKEN_ID, kind:'construct', name:'a'},
+      new_value:{token:Juliet.TOKEN_ID, kind:'construct', name:'b'}}],
     ['a |= b', {
-      token:TOKEN_OR_ASSIGN,
-      location:{token:TOKEN_ID, name:'a'},
-      new_value:{token:TOKEN_ID, name:'b'}}],
+      token:Juliet.TOKEN_OR_ASSIGN,
+      kind:'assignment',
+      location:{token:Juliet.TOKEN_ID, kind:'construct', name:'a'},
+      new_value:{token:Juliet.TOKEN_ID, kind:'construct', name:'b'}}],
     ['a ^= b', {
-      token:TOKEN_XOR_ASSIGN,
-      location:{token:TOKEN_ID, name:'a'},
-      new_value:{token:TOKEN_ID, name:'b'}}],
+      token:Juliet.TOKEN_XOR_ASSIGN,
+      kind:'assignment',
+      location:{token:Juliet.TOKEN_ID, kind:'construct', name:'a'},
+      new_value:{token:Juliet.TOKEN_ID, kind:'construct', name:'b'}}],
     ['a <<= b', {
-      token:TOKEN_SHL_ASSIGN,
-      location:{token:TOKEN_ID, name:'a'},
-      new_value:{token:TOKEN_ID, name:'b'}}],
+      token:Juliet.TOKEN_SHL_ASSIGN,
+      kind:'assignment',
+      location:{token:Juliet.TOKEN_ID, kind:'construct', name:'a'},
+      new_value:{token:Juliet.TOKEN_ID, kind:'construct', name:'b'}}],
     ['a >>>= b', {
-      token:TOKEN_SHRX_ASSIGN,
-      location:{token:TOKEN_ID, name:'a'},
-      new_value:{token:TOKEN_ID, name:'b'}}],
+      token:Juliet.TOKEN_SHRX_ASSIGN,
+      kind:'assignment',
+      location:{token:Juliet.TOKEN_ID, kind:'construct', name:'a'},
+      new_value:{token:Juliet.TOKEN_ID, kind:'construct', name:'b'}}],
     ['a >>= b', {
-      token:TOKEN_SHR_ASSIGN,
-      location:{token:TOKEN_ID, name:'a'},
-      new_value:{token:TOKEN_ID, name:'b'}}],
+      token:Juliet.TOKEN_SHR_ASSIGN,
+      kind:'assignment',
+      location:{token:Juliet.TOKEN_ID, kind:'construct', name:'a'},
+      new_value:{token:Juliet.TOKEN_ID, kind:'construct', name:'b'}}],
     ['true ? "true" : "false"', {
-      token:TOKEN_QUESTIONMARK,
+      token:Juliet.TOKEN_QUESTIONMARK,
+      kind:'ternary',
       expression:{
-        token:LITERAL_BOOLEAN,
+        token:Juliet.LITERAL_BOOLEAN,
+        kind:'literal',
         value:true
       },
       true_value:{
-        token:LITERAL_STRING,
+        token:Juliet.LITERAL_STRING,
+        kind:'literal',
         value:'true'
       },
       false_value:{
-        token:LITERAL_STRING,
+        token:Juliet.LITERAL_STRING,
+        kind:'literal',
         value:'false'
       }
     }],
     ['a = true || false;', {
-      token:TOKEN_ASSIGN,
-      location:{token:TOKEN_ID, name:'a'},
-      new_value:{token:TOKEN_LOGICAL_OR,
-                 lhs:{token:LITERAL_BOOLEAN, value:true},
-                 rhs:{token:LITERAL_BOOLEAN, value:false}}}],
+      token:Juliet.TOKEN_ASSIGN,
+      kind:'assignment',
+      location:{
+        token:Juliet.TOKEN_ID,
+        kind:'construct',
+        name:'a'},
+      new_value:{
+        token:Juliet.TOKEN_LOGICAL_OR,
+        kind:'binary',
+        lhs:{
+          token:Juliet.LITERAL_BOOLEAN,
+          kind:'literal',
+          value:true},
+        rhs:{
+          token:Juliet.LITERAL_BOOLEAN,
+          kind:'literal',
+          value:false}}}],
     ['a = true && false;', {
-      token:TOKEN_ASSIGN,
-      location:{token:TOKEN_ID, name:'a'},
-      new_value:{token:TOKEN_LOGICAL_AND,
-                 lhs:{token:LITERAL_BOOLEAN, value:true},
-                 rhs:{token:LITERAL_BOOLEAN, value:false}}}],
+      token:Juliet.TOKEN_ASSIGN,
+      kind:'assignment',
+      location:{
+        token:Juliet.TOKEN_ID,
+        kind:'construct',
+        name:'a'},
+      new_value:{
+        token:Juliet.TOKEN_LOGICAL_AND,
+        kind:'binary',
+        lhs:{
+          token:Juliet.LITERAL_BOOLEAN,
+          kind:'literal',
+          value:true},
+        rhs:{
+          token:Juliet.LITERAL_BOOLEAN,
+          kind:'literal',
+          value:false}}}],
     ['a = 1 | 0;', {
-      token:TOKEN_ASSIGN,
-      location:{token:TOKEN_ID, name:'a'},
-      new_value:{token:TOKEN_PIPE,
-                 lhs:{token:LITERAL_INT, value:1},
-                 rhs:{token:LITERAL_INT, value:0}}}],
+      token:Juliet.TOKEN_ASSIGN,
+      kind:'assignment',
+      location:{
+        token:Juliet.TOKEN_ID,
+        kind:'construct',
+        name:'a'
+      },
+      new_value:{
+        token:Juliet.TOKEN_PIPE,
+        kind:'binary',
+        lhs:{
+          token:Juliet.LITERAL_INT,
+          kind:'literal',
+          value:1
+        },
+        rhs:{
+          token:Juliet.LITERAL_INT,
+          kind:'literal',
+          value:0
+        }
+      }
+    }],
     ['a = 1 ^ 0;', {
-      token:TOKEN_ASSIGN,
-      location:{token:TOKEN_ID, name:'a'},
-      new_value:{token:TOKEN_CARET,
-                 lhs:{token:LITERAL_INT, value:1},
-                 rhs:{token:LITERAL_INT, value:0}}}],
+      token:Juliet.TOKEN_ASSIGN,
+      kind:'assignment',
+      location:{
+        token:Juliet.TOKEN_ID,
+        kind:'construct',
+        name:'a'
+      },
+      new_value:{
+        token:Juliet.TOKEN_CARET,
+        kind:'binary',
+        lhs:{
+          token:Juliet.LITERAL_INT,
+          kind:'literal',
+          value:1
+        },
+        rhs:{
+          token:Juliet.LITERAL_INT,
+          kind:'literal',
+          value:0
+        }
+      }
+    }],
     ['a = 1 & 0;', {
-      token:TOKEN_ASSIGN,
-      location:{token:TOKEN_ID, name:'a'},
-      new_value:{token:TOKEN_AMPERSAND,
-                 lhs:{token:LITERAL_INT, value:1},
-                 rhs:{token:LITERAL_INT, value:0}}}],
+      token:Juliet.TOKEN_ASSIGN,
+      kind:'assignment',
+      location:{
+        token:Juliet.TOKEN_ID,
+        kind:'construct',
+        name:'a'
+      },
+      new_value:{
+        token:Juliet.TOKEN_AMPERSAND,
+        kind:'binary',
+        lhs:{
+          token:Juliet.LITERAL_INT,
+          kind:'literal',
+          value:1
+        },
+        rhs:{
+          token:Juliet.LITERAL_INT,
+          kind:'literal',
+          value:0
+        }
+      }
+    }],
     ['a = 1 << 0;', {
-      token:TOKEN_ASSIGN,
-      location:{token:TOKEN_ID, name:'a'},
-      new_value:{token:TOKEN_SHL,
-                 lhs:{token:LITERAL_INT, value:1},
-                 rhs:{token:LITERAL_INT, value:0}}}],
+      token:Juliet.TOKEN_ASSIGN,
+      kind:'assignment',
+      location:{
+        token:Juliet.TOKEN_ID,
+        kind:'construct',
+        name:'a'
+      },
+      new_value:{
+        token:Juliet.TOKEN_SHL,
+        kind:'binary',
+        lhs:{
+          token:Juliet.LITERAL_INT,
+          kind:'literal',
+          value:1
+        },
+        rhs:{
+          token:Juliet.LITERAL_INT,
+          kind:'literal',
+          value:0
+        }
+      }
+    }],
     ['a = 1 >> 0;', {
-      token:TOKEN_ASSIGN,
-      location:{token:TOKEN_ID, name:'a'},
-      new_value:{token:TOKEN_SHR,
-                 lhs:{token:LITERAL_INT, value:1},
-                 rhs:{token:LITERAL_INT, value:0}}}],
+      token:Juliet.TOKEN_ASSIGN,
+      kind:'assignment',
+      location:{
+        token:Juliet.TOKEN_ID,
+        kind:'construct',
+        name:'a'
+      },
+      new_value:{
+        token:Juliet.TOKEN_SHR,
+        kind:'binary',
+        lhs:{
+          token:Juliet.LITERAL_INT,
+          kind:'literal',
+          value:1
+        },
+        rhs:{
+          token:Juliet.LITERAL_INT,
+          kind:'literal',
+          value:0
+        }
+      }
+    }],
     ['a = 1 >>> 0;', {
-      token:TOKEN_ASSIGN,
-      location:{token:TOKEN_ID, name:'a'},
-      new_value:{token:TOKEN_SHRX,
-                 lhs:{token:LITERAL_INT, value:1},
-                 rhs:{token:LITERAL_INT, value:0}}}],
+      token:Juliet.TOKEN_ASSIGN,
+      kind:'assignment',
+      location:{
+        token:Juliet.TOKEN_ID,
+        kind:'construct',
+        name:'a'
+      },
+      new_value:{
+        token:Juliet.TOKEN_SHRX,
+        kind:'binary',
+        lhs:{
+          token:Juliet.LITERAL_INT,
+          kind:'literal',
+          value:1
+        },
+        rhs:{
+          token:Juliet.LITERAL_INT,
+          kind:'literal',
+          value:0
+        }
+      }
+    }],
     ['a = 1 < 0;', {
-      token:TOKEN_ASSIGN,
-      location:{token:TOKEN_ID, name:'a'},
-      new_value:{token:TOKEN_LT,
-                 lhs:{token:LITERAL_INT, value:1},
-                 rhs:{token:LITERAL_INT, value:0}}}],
+      token:Juliet.TOKEN_ASSIGN,
+      kind:'assignment',
+      location:{
+        token:Juliet.TOKEN_ID,
+        kind:'construct',
+        name:'a'
+      },
+      new_value:{
+        token:Juliet.TOKEN_LT,
+        kind:'binary',
+        lhs:{
+          token:Juliet.LITERAL_INT,
+          kind:'literal',
+          value:1
+        },
+        rhs:{
+          token:Juliet.LITERAL_INT,
+          kind:'literal',
+          value:0
+        }
+      }
+    }],
     ['a = 1 <= 0;', {
-      token:TOKEN_ASSIGN,
-      location:{token:TOKEN_ID, name:'a'},
-      new_value:{token:TOKEN_LE,
-                 lhs:{token:LITERAL_INT, value:1},
-                 rhs:{token:LITERAL_INT, value:0}}}],
+      token:Juliet.TOKEN_ASSIGN,
+      kind:'assignment',
+      location:{
+        token:Juliet.TOKEN_ID,
+        kind:'construct',
+        name:'a'
+      },
+      new_value:{
+        token:Juliet.TOKEN_LE,
+        kind:'binary',
+        lhs:{
+          token:Juliet.LITERAL_INT,
+          kind:'literal',
+          value:1
+        },
+        rhs:{
+          token:Juliet.LITERAL_INT,
+          kind:'literal',
+          value:0
+        }
+      }
+    }],
     ['a = 1 > 0;', {
-      token:TOKEN_ASSIGN,
-      location:{token:TOKEN_ID, name:'a'},
-      new_value:{token:TOKEN_GT,
-                 lhs:{token:LITERAL_INT, value:1},
-                 rhs:{token:LITERAL_INT, value:0}}}],
+      token:Juliet.TOKEN_ASSIGN,
+      kind:'assignment',
+      location:{
+        token:Juliet.TOKEN_ID,
+        kind:'construct',
+        name:'a'
+      },
+      new_value:{
+        token:Juliet.TOKEN_GT,
+        kind:'binary',
+        lhs:{
+          token:Juliet.LITERAL_INT,
+          kind:'literal',
+          value:1
+        },
+        rhs:{
+          token:Juliet.LITERAL_INT,
+          kind:'literal',
+          value:0
+        }
+      }
+    }],
     ['a = 1 >= 0;', {
-      token:TOKEN_ASSIGN,
-      location:{token:TOKEN_ID, name:'a'},
-      new_value:{token:TOKEN_GE,
-                 lhs:{token:LITERAL_INT, value:1},
-                 rhs:{token:LITERAL_INT, value:0}}}],
+      token:Juliet.TOKEN_ASSIGN,
+      kind:'assignment',
+      location:{
+        token:Juliet.TOKEN_ID,
+        kind:'construct',
+        name:'a'
+      },
+      new_value:{
+        token:Juliet.TOKEN_GE,
+        kind:'binary',
+        lhs:{
+          token:Juliet.LITERAL_INT,
+          kind:'literal',
+          value:1
+        },
+        rhs:{
+          token:Juliet.LITERAL_INT,
+          kind:'literal',
+          value:0
+        }
+      }
+    }],
     ['a = b instanceof c;', {
-      token:TOKEN_ASSIGN,
-      location:{token:TOKEN_ID, name:'a'},
-      new_value:{token:TOKEN_INSTANCEOF,
-                 lhs:{token:TOKEN_ID, name:'b'},
-                 rhs:{token:TOKEN_ID, name:'c'}}}],
+      token:Juliet.TOKEN_ASSIGN,
+      kind:'assignment',
+      location:{
+        token:Juliet.TOKEN_ID,
+        kind:'construct',
+        name:'a'
+      },
+      new_value:{
+        token:Juliet.TOKEN_INSTANCEOF,
+        kind:'binary',
+        lhs:{
+          token:Juliet.TOKEN_ID,
+          kind:'construct',
+          name:'b'
+        },
+        rhs:{
+          token:Juliet.TOKEN_ID,
+          kind:'type',
+          name:'c'
+        }
+      }
+    }],
     ['a = 1 == 0;', {
-      token:TOKEN_ASSIGN,
-      location:{token:TOKEN_ID, name:'a'},
-      new_value:{token:TOKEN_EQ,
-                 lhs:{token:LITERAL_INT, value:1},
-                 rhs:{token:LITERAL_INT, value:0}}}],
+      token:Juliet.TOKEN_ASSIGN,
+      kind:'assignment',
+      location:{
+        token:Juliet.TOKEN_ID,
+        kind:'construct',
+        name:'a'
+      },
+      new_value:{
+        token:Juliet.TOKEN_EQ,
+        kind:'binary',
+        lhs:{
+          token:Juliet.LITERAL_INT,
+          kind:'literal',
+          value:1
+        },
+        rhs:{
+          token:Juliet.LITERAL_INT,
+          kind:'literal',
+          value:0
+        }
+      }
+    }],
     ['a = 1 != 0;', {
-      token:TOKEN_ASSIGN,
-      location:{token:TOKEN_ID, name:'a'},
-      new_value:{token:TOKEN_NE,
-                 lhs:{token:LITERAL_INT, value:1},
-                 rhs:{token:LITERAL_INT, value:0}}}],
+      token:Juliet.TOKEN_ASSIGN,
+      kind:'assignment',
+      location:{
+        token:Juliet.TOKEN_ID,
+        kind:'construct',
+        name:'a'
+      },
+      new_value:{
+        token:Juliet.TOKEN_NE,
+        kind:'binary',
+        lhs:{
+          token:Juliet.LITERAL_INT,
+          kind:'literal',
+          value:1
+        },
+        rhs:{
+          token:Juliet.LITERAL_INT,
+          kind:'literal',
+          value:0
+        }
+      }
+    }],
     ['a = 1 + 0;', {
-      token:TOKEN_ASSIGN,
-      location:{token:TOKEN_ID, name:'a'},
-      new_value:{token:TOKEN_PLUS,
-                 lhs:{token:LITERAL_INT, value:1},
-                 rhs:{token:LITERAL_INT, value:0}}}],
+      token:Juliet.TOKEN_ASSIGN,
+      kind:'assignment',
+      location:{
+        token:Juliet.TOKEN_ID,
+        kind:'construct',
+        name:'a'
+      },
+      new_value:{
+        token:Juliet.TOKEN_PLUS,
+        kind:'binary',
+        lhs:{
+          token:Juliet.LITERAL_INT,
+          kind:'literal',
+          value:1
+        },
+        rhs:{
+          token:Juliet.LITERAL_INT,
+          kind:'literal',
+          value:0
+        }
+      }
+    }],
     ['a = 1 - 0;', {
-      token:TOKEN_ASSIGN,
-      location:{token:TOKEN_ID, name:'a'},
-      new_value:{token:TOKEN_MINUS,
-                 lhs:{token:LITERAL_INT, value:1},
-                 rhs:{token:LITERAL_INT, value:0}}}],
+      token:Juliet.TOKEN_ASSIGN,
+      kind:'assignment',
+      location:{
+        token:Juliet.TOKEN_ID,
+        kind:'construct',
+        name:'a'
+      },
+      new_value:{
+        token:Juliet.TOKEN_MINUS,
+        kind:'binary',
+        lhs:{
+          token:Juliet.LITERAL_INT,
+          kind:'literal',
+          value:1
+        },
+        rhs:{
+          token:Juliet.LITERAL_INT,
+          kind:'literal',
+          value:0
+        }
+      }
+    }],
     ['a = 1 * 0;', {
-      token:TOKEN_ASSIGN,
-      location:{token:TOKEN_ID, name:'a'},
-      new_value:{token:TOKEN_STAR,
-                 lhs:{token:LITERAL_INT, value:1},
-                 rhs:{token:LITERAL_INT, value:0}}}],
+      token:Juliet.TOKEN_ASSIGN,
+      kind:'assignment',
+      location:{
+        token:Juliet.TOKEN_ID,
+        kind:'construct',
+        name:'a'
+      },
+      new_value:{
+        token:Juliet.TOKEN_STAR,
+        kind:'binary',
+        lhs:{
+          token:Juliet.LITERAL_INT,
+          kind:'literal',
+          value:1
+        },
+        rhs:{
+          token:Juliet.LITERAL_INT,
+          kind:'literal',
+          value:0
+        }
+      }
+    }],
     ['a = 1 / 1;', {
-      token:TOKEN_ASSIGN,
-      location:{token:TOKEN_ID, name:'a'},
-      new_value:{token:TOKEN_SLASH,
-                 lhs:{token:LITERAL_INT, value:1},
-                 rhs:{token:LITERAL_INT, value:1}}}],
+      token:Juliet.TOKEN_ASSIGN,
+      kind:'assignment',
+      location:{
+        token:Juliet.TOKEN_ID,
+        kind:'construct',
+        name:'a'
+      },
+      new_value:{
+        token:Juliet.TOKEN_SLASH,
+        kind:'binary',
+        lhs:{
+          token:Juliet.LITERAL_INT,
+          kind:'literal',
+          value:1
+        },
+        rhs:{
+          token:Juliet.LITERAL_INT,
+          kind:'literal',
+          value:1
+        }
+      }
+    }],
     ['(int)a', {
-      token:TOKEN_LPAREN,
-      operand:{token:TOKEN_ID, name:'a'},
-      to_type:{token:TOKEN_INT, name:'int'}}],
+      token:Juliet.TOKEN_LPAREN,
+      kind:'cast',
+      operand:{
+        token:Juliet.TOKEN_ID,
+        kind:'construct',
+        name:'a'
+      },
+      to_type:{
+        token:Juliet.TOKEN_INT,
+        kind:'type',
+        name:'int'
+      }
+    }],
     ['(Object)a', {
-      token:TOKEN_LPAREN,
-      operand:{token:TOKEN_ID, name:'a'},
-      to_type:{token:TOKEN_ID, name:'Object'}}],
+      token:Juliet.TOKEN_LPAREN,
+      kind:'cast',
+      operand:{
+        token:Juliet.TOKEN_ID,
+        kind:'construct',
+        name:'a'
+      },
+      to_type:{
+        token:Juliet.TOKEN_ID,
+        kind:'type',
+        name:'Object'
+      }
+    }],
     ['new Object()', {
-      token:TOKEN_NEW,
-      type:{token:TOKEN_ID, name:'Object'},
-      args:[]}],
-    ['new Object(a, b)', {
-      token:TOKEN_NEW,
-      type:{token:TOKEN_ID, name:'Object'},
+      token:Juliet.TOKEN_NEW,
+      kind:'new',
+      type:{
+        token:Juliet.TOKEN_ID,
+        kind:'type',
+        name:'Object'
+      },
       args:[
-        {token:TOKEN_ID, name:'a'},
-        {token:TOKEN_ID, name:'b'}
+      ]
+    }],
+    ['new Object(a, b)', {
+      token:Juliet.TOKEN_NEW,
+      kind:'new',
+      type:{
+        token:Juliet.TOKEN_ID,
+        kind:'type',
+        name:'Object'
+      },
+      args:[
+        {
+          token:Juliet.TOKEN_ID,
+          kind:'construct',
+          name:'a'
+        },
+        {
+          token:Juliet.TOKEN_ID,
+          kind:'construct',
+          name:'b'
+        }
       ]
     }],
     ['new int[10]', {
-      token:TOKEN_NEW,
-      type:{token:TOKEN_INT, name:'int', length:1},
-      length:{token:LITERAL_INT, value:10}}],
+      token:Juliet.TOKEN_NEW,
+      kind:'array',
+      type:{
+        token:Juliet.TOKEN_INT,
+        kind:'type',
+        name:'int',
+        length:1
+      },
+      length:{
+        token:Juliet.LITERAL_INT,
+        kind:'literal',
+        value:10
+      }
+    }],
     ['new int[10][3]', {
-      token:TOKEN_NEW,
-      type:{token:TOKEN_INT, name:'int', length:2},
-      length:{token:LITERAL_INT, value:10},
+      token:Juliet.TOKEN_NEW,
+      kind:'array',
+      type:{
+        token:Juliet.TOKEN_INT,
+        kind:'type',
+        name:'int',
+        length:2
+      },
+      length:{
+        token:Juliet.LITERAL_INT,
+        kind:'literal',
+        value:10
+      },
       element_expr:{
-        token:TOKEN_NEW,
-        type:{token:LITERAL_INT, name:'int', length:1},// TODO: <- seems wrong!
-        expression:{token:LITERAL_INT, value:3}}}],
+        token:Juliet.TOKEN_NEW,
+        kind:'expression',
+        type:{
+          token:Juliet.LITERAL_INT,
+          kind:'element',
+          name:'int',
+          length:1 // TODO: <- seems wrong!
+        },
+        expression:{
+          token:Juliet.LITERAL_INT,
+          kind:'literal',
+          value:3
+        }
+      }
+    }],
     ['++a', {
-      token:TOKEN_INCREMENT,
-      operand:{token:TOKEN_ID, name:'a'}}],
+      token:Juliet.TOKEN_INCREMENT,
+      kind:'prefix',
+      operand:{
+        token:Juliet.TOKEN_ID,
+        kind:'construct',
+        name:'a'
+      }
+    }],
     ['--a', {
-      token:TOKEN_DECREMENT,
-      operand:{token:TOKEN_ID, name:'a'}}],
+      token:Juliet.TOKEN_DECREMENT,
+      kind:'prefix',
+      operand:{
+        token:Juliet.TOKEN_ID,
+        kind:'construct',
+        name:'a'
+      }
+    }],
     ['+a', {
-      token:TOKEN_ID, name:'a'}],
+      token:Juliet.TOKEN_ID,
+      kind:'construct',
+      name:'a'
+    }],
     ['-a', {
-      token:TOKEN_MINUS,
-      operand:{token:TOKEN_ID, name:'a'}}],
+      token:Juliet.TOKEN_MINUS,
+      kind:'prefix',
+      operand:{
+        token:Juliet.TOKEN_ID,
+        kind:'construct',
+        name:'a'
+      }
+    }],
     ['!a', {
-      token:TOKEN_BANG,
-      operand:{token:TOKEN_ID, name:'a'}}],
+      token:Juliet.TOKEN_BANG,
+      kind:'prefix',
+      operand:{
+        token:Juliet.TOKEN_ID,
+        kind:'construct',
+        name:'a'
+      }
+    }],
     ['~a', {
-      token:TOKEN_TILDE,
-      operand:{token:TOKEN_ID, name:'a'}}],
+      token:Juliet.TOKEN_TILDE,
+      kind:'prefix',
+      operand:{
+        token:Juliet.TOKEN_ID,
+        kind:'construct',
+        name:'a'
+      }
+    }],
     ['a++', {
-      token:TOKEN_INCREMENT,
-      operand:{token:TOKEN_ID, name:'a'}}],
+      token:Juliet.TOKEN_INCREMENT,
+      kind:'postfix',
+      operand:{
+        token:Juliet.TOKEN_ID,
+        kind:'construct',
+        name:'a'
+      }
+    }],
     ['a--', {
-      token:TOKEN_DECREMENT,
-      operand:{token:TOKEN_ID, name:'a'}}],
+      token:Juliet.TOKEN_DECREMENT,
+      kind:'postfix',
+      operand:{
+        token:Juliet.TOKEN_ID,
+        kind:'construct',
+        name:'a'
+      }
+    }],
     ['a.b', {
-      token:TOKEN_PERIOD,
-      operand:{token:TOKEN_ID, name:'a'},
-      term:{token:TOKEN_ID, name:'b'}}],
-    ['int[] a', [{
-      token:TOKEN_ID,
-      type:{token:TOKEN_INT, name:'int[]'},
-      name:'a',
-      initial_value:null}]],
-    ['Object[] a', [{
-      token:TOKEN_ID,
-      type:{token:TOKEN_ID, name:'Object[]'},
-      name:'a',
-      initial_value:null}]],
+      token:Juliet.TOKEN_PERIOD,
+      kind:'postfix',
+      operand:{
+        token:Juliet.TOKEN_ID,
+        kind:'construct',
+        name:'a'
+      },
+      term:{
+        token:Juliet.TOKEN_ID,
+        kind:'construct',
+        name:'b'
+      }
+    }],
+    ['int[] a', [
+      {
+        token:Juliet.TOKEN_ID,
+        kind:'local',
+        type:{
+          token:Juliet.TOKEN_INT,
+          kind:'construct',
+          name:'int[]'
+        },
+        name:'a',
+        initial_value:null
+      }
+    ]],
+    ['Object[] a', [
+      {
+        token:Juliet.TOKEN_ID,
+        kind:'local',
+        type:{
+          token:Juliet.TOKEN_ID,
+          kind:'construct',
+          name:'Object[]'
+        },
+        name:'a',
+        initial_value:null
+      }
+    ]],
     ['a[0]', {
-      token:TOKEN_LBRACKET,
-      operand:{token:TOKEN_ID, name:'a'},
-      expression:{token:LITERAL_INT, value:0}}],
+      token:Juliet.TOKEN_LBRACKET,
+      kind:'postfix',
+      operand:{
+        token:Juliet.TOKEN_ID,
+        kind:'construct',
+        name:'a'
+      },
+      expression:{
+        token:Juliet.LITERAL_INT,
+        kind:'literal',
+        value:0
+      }
+    }],
     ['a[b]', {
-      token:TOKEN_LBRACKET,
-      operand:{token:TOKEN_ID, name:'a'},
-      expression:{token:TOKEN_ID, name:'b'}}],
+      token:Juliet.TOKEN_LBRACKET,
+      kind:'postfix',
+      operand:{
+        token:Juliet.TOKEN_ID,
+        kind:'construct',
+        name:'a'
+      },
+      expression:{
+        token:Juliet.TOKEN_ID,
+        kind:'construct',
+        name:'b'
+      }
+    }],
     ['a[0][0]', {
-      token:TOKEN_LBRACKET,
+      token:Juliet.TOKEN_LBRACKET,
+      kind:'postfix',
       operand:{
-        token:TOKEN_LBRACKET,
-        operand:{token:TOKEN_ID, name:'a'},
-        expression:{token:LITERAL_INT, value:0}},
-      expression:{token:LITERAL_INT, value:0}}],
+        token:Juliet.TOKEN_LBRACKET,
+        kind:'postfix',
+        operand:{
+          token:Juliet.TOKEN_ID,
+          kind:'construct',
+          name:'a'
+        },
+        expression:{
+          token:Juliet.LITERAL_INT,
+          kind:'literal',
+          value:0
+        }
+      },
+      expression:{
+        token:Juliet.LITERAL_INT,
+        kind:'literal',
+        value:0
+      }
+    }],
     ['var1 |= (true || false);', {
-      token:TOKEN_OR_ASSIGN,
-      location:{token:TOKEN_ID, name:'var1'},
-      new_value:{token:TOKEN_LOGICAL_OR,
-                 lhs:{token:LITERAL_BOOLEAN, value:true},
-                 rhs:{token:LITERAL_BOOLEAN, value:false}}}],
+      token:Juliet.TOKEN_OR_ASSIGN,
+      kind:'assignment',
+      location:{
+        token:Juliet.TOKEN_ID,
+        kind:'construct',
+        name:'var1'
+      },
+      new_value:{
+        token:Juliet.TOKEN_LOGICAL_OR,
+        kind:'binary',
+        lhs:{
+          token:Juliet.LITERAL_BOOLEAN,
+          kind:'literal',
+          value:true
+        },
+        rhs:{
+          token:Juliet.LITERAL_BOOLEAN,
+          kind:'literal',
+          value:false
+        }
+      }
+    }],
     ['var1 = (a + b) * c;', {
-      token:TOKEN_ASSIGN,
-      location:{token:TOKEN_ID, name:'var1'},
-      new_value:{token:TOKEN_STAR,
-                 lhs:{token:TOKEN_PLUS,
-                      lhs:{token:TOKEN_ID, name:'a'},
-                      rhs:{token:TOKEN_ID, name:'b'}},
-                 rhs:{token:TOKEN_ID, name:'c'}}}],
-    ['int num = 1;', [{
-      token:TOKEN_ID,
-      type:{token:TOKEN_INT, name:'int'},
-      name:'num',
-      initial_value:{token:LITERAL_INT, value:1}}]],
-    ['float num = 1.0, num2 = 6.28;', [{
-      token:TOKEN_ID,
-      type:{token:TOKEN_FLOAT, name:'float'},
-      name:'num',
-      initial_value:{token:LITERAL_DOUBLE, value:1.0}},
-      {token:TOKEN_ID,
-       type:{token:TOKEN_FLOAT, name:'float'},
-       name:'num2',
-       initial_value:{token:LITERAL_DOUBLE, value:6.28}}]],
+      token:Juliet.TOKEN_ASSIGN,
+      kind:'assignment',
+      location:{
+        token:Juliet.TOKEN_ID,
+        kind:'construct',
+        name:'var1'
+      },
+      new_value:{
+        token:Juliet.TOKEN_STAR,
+        kind:'binary',
+        lhs:{
+          token:Juliet.TOKEN_PLUS,
+          kind:'binary',
+          lhs:{
+            token:Juliet.TOKEN_ID,
+            kind:'construct',
+            name:'a'
+          },
+          rhs:{
+            token:Juliet.TOKEN_ID,
+            kind:'construct',
+            name:'b'
+          }
+        },
+        rhs:{
+          token:Juliet.TOKEN_ID,
+          kind:'construct',
+          name:'c'
+        }
+      }
+    }],
+    ['int num = 1;', [
+      {
+        token:Juliet.TOKEN_ID,
+        kind:'local',
+        type:{
+          token:Juliet.TOKEN_INT,
+          kind:'construct',
+          name:'int'
+        },
+        name:'num',
+        initial_value:{
+          token:Juliet.LITERAL_INT,
+          kind:'literal',
+          value:1
+        }
+      }
+    ]],
+    ['float num = 1.0, num2 = 6.28;', [
+      {
+        token:Juliet.TOKEN_ID,
+        kind:'local',
+        type:{
+          token:Juliet.TOKEN_FLOAT,
+          kind:'construct',
+          name:'float'
+        },
+        name:'num',
+        initial_value:{
+          token:Juliet.LITERAL_DOUBLE,
+          kind:'literal',
+          value:1
+        }
+      },
+      {
+        token:Juliet.TOKEN_ID,
+        kind:'local',
+        type:{
+          token:Juliet.TOKEN_FLOAT,
+          kind:'construct',
+          name:'float'
+        },
+        name:'num2',
+        initial_value:{
+          token:Juliet.LITERAL_DOUBLE,
+          kind:'literal',
+          value:6.28
+        }
+      }
+    ]],
     ['Vector<String>', {
-      token:TOKEN_ID,
-      name:'Vector<String>'}],
+      token:Juliet.TOKEN_ID,
+      kind:'construct',
+      name:'Vector<String>'
+    }],
     ['Seq<Seq<A>>', {
-      token:TOKEN_ID,
-      name:'Seq<Seq<A>>'}],
+      token:Juliet.TOKEN_ID,
+      kind:'construct',
+      name:'Seq<Seq<A>>'
+    }],
     ['Seq<Seq<Seq<A>>>', {
-      token:TOKEN_ID,
-      name:'Seq<Seq<Seq<A>>>'}],
+      token:Juliet.TOKEN_ID,
+      kind:'construct',
+      name:'Seq<Seq<Seq<A>>>'
+    }],
     ['Seq<Seq<Seq<Seq<A>>>>', {
-      token:TOKEN_ID,
-      name:'Seq<Seq<Seq<Seq<A>>>>'}],
+      token:Juliet.TOKEN_ID,
+      kind:'construct',
+      name:'Seq<Seq<Seq<Seq<A>>>>'
+    }],
     ['Seq<String>.Zipper<Integer>', {
-      token:TOKEN_PERIOD,
+      token:Juliet.TOKEN_PERIOD,
+      kind:'postfix',
       operand:{
-        token:TOKEN_ID,
+        token:Juliet.TOKEN_ID,
+        kind:'construct',
         name:'Seq<String>'
       },
       term:{
-        token:TOKEN_ID,
+        token:Juliet.TOKEN_ID,
+        kind:'construct',
         name:'Zipper<Integer>'
       }
     }],
     ['Collection<Integer>', {
-      token:TOKEN_ID,
+      token:Juliet.TOKEN_ID,
+      kind:'construct',
       name:'Collection<Integer>'
     }],
     ['Pair<String,String>', {
-      token:TOKEN_ID,
+      token:Juliet.TOKEN_ID,
+      kind:'construct',
       name:'Pair<String,String>'
     }],
     ['Collection<?>', {
-      token:TOKEN_ID,
+      token:Juliet.TOKEN_ID,
+      kind:'construct',
       name:'Collection<?>'
     }],
     ['Class<?>[]', {
-      token:TOKEN_ID,
+      token:Juliet.TOKEN_ID,
+      kind:'construct',
       name:'Class<?>[]'
     }],
     ['Collection<? extends E>', {
-      token:TOKEN_ID,
+      token:Juliet.TOKEN_ID,
+      kind:'construct',
       name:'Collection<? extends E>'
     }],
     ['Collection<? super E>', {
-      token:TOKEN_ID,
+      token:Juliet.TOKEN_ID,
+      kind:'construct',
       name:'Collection<? super E>'
     }],
-    ['Cell x = new Cell<String>("abc");', [{
-      token:TOKEN_ID,
-      type:{
-        token:TOKEN_ID,
-        name:'Cell'
-      },
-      name:'x',
-      initial_value:{
-        token:TOKEN_NEW,
+    ['Cell x = new Cell<String>("abc");', [
+      {
+        token:Juliet.TOKEN_ID,
+        kind:'local',
         type:{
-          token:TOKEN_ID,
-          name:'Cell<String>'
+          token:Juliet.TOKEN_ID,
+          kind:'construct',
+          name:'Cell'
         },
-        args:[
-          {
-            token:LITERAL_STRING,
-            value:'abc'
-          }
-        ]
-      }
-    }]],
-    ['return;', {
-      token:TOKEN_RETURN,
-      value:'void'}],
-    ['return 1;', {
-      token:TOKEN_RETURN,
-      expression:{token:LITERAL_INT, value:'1'}}],
-    ['{ return; }', [{
-      token:TOKEN_RETURN,
-      value:'void'
-    }]],
-    ['{ a = 1; b = 2; }', [
-      {
-        token:TOKEN_ASSIGN,
-        location:{token:TOKEN_ID, name:'a'},
-        new_value:{token:LITERAL_INT, value:1}
-      },
-      {
-        token:TOKEN_ASSIGN,
-        location:{token:TOKEN_ID, name:'b'},
-        new_value:{token:LITERAL_INT, value:2}
+        name:'x',
+        initial_value:{
+          token:Juliet.TOKEN_NEW,
+          kind:'new',
+          type:{
+            token:Juliet.TOKEN_ID,
+            kind:'type',
+            name:'Cell<String>'
+          },
+          args:[
+            {
+              token:Juliet.LITERAL_STRING,
+              kind:'literal',
+              value:'abc'
+            }
+          ]
+        }
       }
     ]],
-    ['if (true) {}', {
-      token:TOKEN_IF,
-      expression:{token:LITERAL_BOOLEAN, value:true},
-      body:{}
+    ['return;', {
+      token:Juliet.TOKEN_RETURN,
+      kind:'return',
+      value:'void'
     }],
-    ['if (a) {}', {
-      token:TOKEN_IF,
-      expression:{token:TOKEN_ID, name:'a'},
-      body:{}
-    }],
-    ['if (a && b) {} else {}', {
-      token:TOKEN_IF,
+    ['return 1;', {
+      token:Juliet.TOKEN_RETURN,
+      kind:'return',
       expression:{
-        token:TOKEN_LOGICAL_AND,
-        lhs:{token:TOKEN_ID, name:'a'},
-        rhs:{token:TOKEN_ID, name:'b'}
-      },
-      body:{},
-      else_body: {}
-    }],
-    ['if (a != null) { a = null; } else if (b) { a = b; }', {
-      token:TOKEN_IF,
-      expression:{
-        token:TOKEN_NE,
-        lhs:{token:TOKEN_ID, name:'a'},
-        rhs:{token:TOKEN_NULL, value:'null'}
-      },
-      body: [{
-        token:TOKEN_ASSIGN,
-        location:{token:TOKEN_ID, name:'a'},
-        new_value:{token:TOKEN_NULL, value:'null'}
-      }],
-      else_body: {
-        token:TOKEN_IF,
-        expression:{token:TOKEN_ID, name:'b'},
-        body: [{
-            token:TOKEN_ASSIGN,
-            location:{token:TOKEN_ID, name:'a'},
-            new_value:{token:TOKEN_ID, name:'b'}
-        }]
+        token:Juliet.LITERAL_INT,
+        kind:'literal',
+        value:1
       }
     }],
-    ['while (a) a = b;', {
-      token:TOKEN_WHILE,
-      expression:{token:TOKEN_ID, name:'a'},
-      body: {
-        token:TOKEN_ASSIGN,
-        location:{token:TOKEN_ID, name:'a'},
-        new_value:{token:TOKEN_ID, name:'b'}
-      }
-    }],
-    ['while (!a) { c = a; a = b; b = a; }', {
-      token:TOKEN_WHILE,
-      expression:{
-        token:TOKEN_BANG,
-        operand:{token:TOKEN_ID, name:'a'}
-      },
-      body: [
+    ['{ return; }', {
+      kind:'block',
+      statements:[
         {
-          token:TOKEN_ASSIGN,
-          location:{token:TOKEN_ID, name:'c'},
-          new_value:{token:TOKEN_ID, name:'a'}
-        },
-        {
-          token:TOKEN_ASSIGN,
-          location:{token:TOKEN_ID, name:'a'},
-          new_value:{token:TOKEN_ID, name:'b'}
-        },
-        {
-          token:TOKEN_ASSIGN,
-          location:{token:TOKEN_ID, name:'b'},
-          new_value:{token:TOKEN_ID, name:'a'}
+          token:Juliet.TOKEN_RETURN,
+          kind:'return',
+          value:'void'
         }
       ]
     }],
+    ['{ a = 1; b = 2; }', {
+      kind:'block',
+      statements:[
+        {
+          token:Juliet.TOKEN_ASSIGN,
+          kind:'assignment',
+          location:{
+            token:Juliet.TOKEN_ID,
+            kind:'construct',
+            name:'a'
+          },
+          new_value:{
+            token:Juliet.LITERAL_INT,
+            kind:'literal',
+            value:1
+          }
+        },
+        {
+          token:Juliet.TOKEN_ASSIGN,
+          kind:'assignment',
+          location:{
+            token:Juliet.TOKEN_ID,
+            kind:'construct',
+            name:'b'
+          },
+          new_value:{
+            token:Juliet.LITERAL_INT,
+            kind:'literal',
+            value:2
+          }
+        }
+      ]
+    }],
+    ['if (true) {}', {
+      token:Juliet.TOKEN_IF,
+      kind:'if',
+      expression:{
+        token:Juliet.LITERAL_BOOLEAN,
+        kind:'literal',
+        value:true
+      },
+      body:{
+        kind:'block',
+        statements:[
+        ]
+      }
+    }],
+    ['if (a) {}', {
+      token:Juliet.TOKEN_IF,
+      kind:'if',
+      expression:{
+        token:Juliet.TOKEN_ID,
+        kind:'construct',
+        name:'a'
+      },
+      body:{
+        kind:'block',
+        statements:[
+        ]
+      }
+    }],
+    ['if (a && b) {} else {}', {
+      token:Juliet.TOKEN_IF,
+      kind:'if',
+      expression:{
+        token:Juliet.TOKEN_LOGICAL_AND,
+        kind:'binary',
+        lhs:{
+          token:Juliet.TOKEN_ID,
+          kind:'construct',
+          name:'a'
+        },
+        rhs:{
+          token:Juliet.TOKEN_ID,
+          kind:'construct',
+          name:'b'
+        }
+      },
+      body:{
+        kind:'block',
+        statements:[
+        ]
+      },
+      else_body:{
+        kind:'block',
+        statements:[
+        ]
+      }
+    }],
+    ['if (a != null) { a = null; } else if (b) { a = b; }', {
+      token:Juliet.TOKEN_IF,
+      kind:'if',
+      expression:{
+        token:Juliet.TOKEN_NE,
+        kind:'binary',
+        lhs:{
+          token:Juliet.TOKEN_ID,
+          kind:'construct',
+          name:'a'
+        },
+        rhs:{
+          token:Juliet.TOKEN_NULL,
+          kind:'literal',
+          value:'null'
+        }
+      },
+      body:{
+        kind:'block',
+        statements:[
+          {
+            token:Juliet.TOKEN_ASSIGN,
+            kind:'assignment',
+            location:{
+              token:Juliet.TOKEN_ID,
+              kind:'construct',
+              name:'a'
+            },
+            new_value:{
+              token:Juliet.TOKEN_NULL,
+              kind:'literal',
+              value:'null'
+            }
+          }
+        ]
+      },
+      else_body:{
+        token:Juliet.TOKEN_IF,
+        kind:'if',
+        expression:{
+          token:Juliet.TOKEN_ID,
+          kind:'construct',
+          name:'b'
+        },
+        body:{
+          kind:'block',
+          statements:[
+            {
+              token:Juliet.TOKEN_ASSIGN,
+              kind:'assignment',
+              location:{
+                token:Juliet.TOKEN_ID,
+                kind:'construct',
+                name:'a'
+              },
+              new_value:{
+                token:Juliet.TOKEN_ID,
+                kind:'construct',
+                name:'b'
+              }
+            }
+          ]
+        }
+      }
+    }],
+    ['while (a) a = b;', {
+      token:Juliet.TOKEN_WHILE,
+      kind:'while',
+      expression:{
+        token:Juliet.TOKEN_ID,
+        kind:'construct',
+        name:'a'
+      },
+      body:{
+        token:Juliet.TOKEN_ASSIGN,
+        kind:'assignment',
+        location:{
+          token:Juliet.TOKEN_ID,
+          kind:'construct',
+          name:'a'
+        },
+        new_value:{
+          token:Juliet.TOKEN_ID,
+          kind:'construct',
+          name:'b'
+        }
+      }
+    }],
+    ['while (!a) { c = a; a = b; b = a; }', {
+      token:Juliet.TOKEN_WHILE,
+      kind:'while',
+      expression:{
+        token:Juliet.TOKEN_BANG,
+        kind:'prefix',
+        operand:{
+          token:Juliet.TOKEN_ID,
+          kind:'construct',
+          name:'a'
+        }
+      },
+      body:{
+        kind:'block',
+        statements:[
+          {
+            token:Juliet.TOKEN_ASSIGN,
+            kind:'assignment',
+            location:{
+              token:Juliet.TOKEN_ID,
+              kind:'construct',
+              name:'c'
+            },
+            new_value:{
+              token:Juliet.TOKEN_ID,
+              kind:'construct',
+              name:'a'
+            }
+          },
+          {
+            token:Juliet.TOKEN_ASSIGN,
+            kind:'assignment',
+            location:{
+              token:Juliet.TOKEN_ID,
+              kind:'construct',
+              name:'a'
+            },
+            new_value:{
+              token:Juliet.TOKEN_ID,
+              kind:'construct',
+              name:'b'
+            }
+          },
+          {
+            token:Juliet.TOKEN_ASSIGN,
+            kind:'assignment',
+            location:{
+              token:Juliet.TOKEN_ID,
+              kind:'construct',
+              name:'b'
+            },
+            new_value:{
+              token:Juliet.TOKEN_ID,
+              kind:'construct',
+              name:'a'
+            }
+          }
+        ]
+      }
+    }],
     ['for (int i = 0; i < len; i++) a *= i;', {
-      token:TOKEN_FOR,
-      initialization:[{
-        token:TOKEN_ID,
-        type:{token:TOKEN_INT, name:'int'},
-        name:'i',
-        initial_value:{token:LITERAL_INT, value:0}
-      }],
-      condition: {
-        token:TOKEN_LT,
-        lhs:{token:TOKEN_ID, name:'i'},
-        rhs:{token:TOKEN_ID, name:'len'}
+      token:Juliet.TOKEN_FOR,
+      kind:'for',
+      initialization:[
+        {
+          token:Juliet.TOKEN_ID,
+          kind:'local',
+          type:{
+            token:Juliet.TOKEN_INT,
+            kind:'construct',
+            name:'int'
+          },
+          name:'i',
+          initial_value:{
+            token:Juliet.LITERAL_INT,
+            kind:'literal',
+            value:0
+          }
+        }
+      ],
+      condition:{
+        token:Juliet.TOKEN_LT,
+        kind:'binary',
+        lhs:{
+          token:Juliet.TOKEN_ID,
+          kind:'construct',
+          name:'i'
+        },
+        rhs:{
+          token:Juliet.TOKEN_ID,
+          kind:'construct',
+          name:'len'
+        }
       },
       var_mod:{
-        token:TOKEN_INCREMENT,
-        operand:{token:TOKEN_ID, name:'i'}
+        token:Juliet.TOKEN_INCREMENT,
+        kind:'postfix',
+        operand:{
+          token:Juliet.TOKEN_ID,
+          kind:'construct',
+          name:'i'
+        }
       },
-      body: {
-        token:TOKEN_MUL_ASSIGN,
-        location:{token:TOKEN_ID, name:'a'},
-        new_value:{token:TOKEN_ID, name:'i'}
+      body:{
+        token:Juliet.TOKEN_MUL_ASSIGN,
+        kind:'assignment',
+        location:{
+          token:Juliet.TOKEN_ID,
+          kind:'construct',
+          name:'a'
+        },
+        new_value:{
+          token:Juliet.TOKEN_ID,
+          kind:'construct',
+          name:'i'
+        }
       }
     }],
     ['for (Object obj : collection) { obj = null; }', {
-      token:TOKEN_FOR,
-      type:{token:TOKEN_ID, name:'Object'},
+      token:Juliet.TOKEN_FOR,
+      kind:'for-each',
+      type:{
+        token:Juliet.TOKEN_ID,
+        kind:'type',
+        name:'Object'
+      },
       name:'obj',
-      iterable: {token:TOKEN_ID, name:'collection'},
-      body:[{
-          token:TOKEN_ASSIGN,
-          location:{token:TOKEN_ID, name:'obj'},
-          new_value:{token:TOKEN_NULL, value:'null'}
-      }]
+      iterable:{
+        token:Juliet.TOKEN_ID,
+        kind:'construct',
+        name:'collection'
+      },
+      body:{
+        kind:'block',
+        statements:[
+          {
+            token:Juliet.TOKEN_ASSIGN,
+            kind:'assignment',
+            location:{
+              token:Juliet.TOKEN_ID,
+              kind:'construct',
+              name:'obj'
+            },
+            new_value:{
+              token:Juliet.TOKEN_NULL,
+              kind:'literal',
+              value:'null'
+            }
+          }
+        ]
+      }
     }],
-    ['break;', {token:TOKEN_BREAK}],
-    ['continue;', {token:TOKEN_CONTINUE}],
+    ['break;', {
+      token:Juliet.TOKEN_BREAK,
+      kind:'abrupt'
+    }],
+    ['continue;', {
+      token:Juliet.TOKEN_CONTINUE,
+      kind:'abrupt'
+    }],
     ['assert(true);', {
-      token:TOKEN_ASSERT,
-      expression:{token:LITERAL_BOOLEAN, value:true}}],
+      token:Juliet.TOKEN_ASSERT,
+      kind:'assert',
+      expression:{
+        token:Juliet.LITERAL_BOOLEAN,
+        kind:'literal',
+        value:true
+      }
+    }],
     ['assert(a != null, "a is null");', {
-      token:TOKEN_ASSERT,
-      expression:{token:TOKEN_NE,
-                  lhs:{token:TOKEN_ID, name:'a'},
-                  rhs:{token:TOKEN_NULL, value:'null'}},
-      message:'a is null'}],
+      token:Juliet.TOKEN_ASSERT,
+      kind:'assert',
+      expression:{
+        token:Juliet.TOKEN_NE,
+        kind:'binary',
+        lhs:{
+          token:Juliet.TOKEN_ID,
+          kind:'construct',
+          name:'a'
+        },
+        rhs:{
+          token:Juliet.TOKEN_NULL,
+          kind:'literal',
+          value:'null'
+        }
+      },
+      message:'a is null'
+    }],
     ['print();', {
-      token:TOKEN_ID,
-      name:'print',
-      args:[]}],
-    ['print("hello");', {
-      token:TOKEN_ID,
+      token:Juliet.TOKEN_ID,
+      kind:'construct',
       name:'print',
       args:[
-        {token:LITERAL_STRING, value:'hello'}
-      ]}],
-    ['int[] a = {};', [{
-      token:TOKEN_ID,
-      type:{token:TOKEN_INT, name:'int[]'},
-      name:'a',
-      initial_value:{
-        token:TOKEN_LCURLY,
-        type:{token:TOKEN_INT, name:'int[]'},
-        terms:[]
-      }}]],
-    ['int[] a = {0, 1};', [{
-      token:TOKEN_ID,
-      type:{token:TOKEN_INT, name:'int[]'},
-      name:'a',
-      initial_value:{
-        token:TOKEN_LCURLY,
-        type:{token:TOKEN_INT, name:'int[]'},
-        terms:[
-          {token:LITERAL_INT, value:0},
-          {token:LITERAL_INT, value:1}
-        ]
-      }}]],
-    ['int[][] a = {{0, 1}, {0, 1}};', [{
-      token:TOKEN_ID,
-      type:{token:TOKEN_INT, name:'int[][]'},
-      name:'a',
-      initial_value:{
-        token:TOKEN_LCURLY,
-        type:{token:TOKEN_INT, name:'int[][]'},
-        terms:[
-          {
-            token:TOKEN_LCURLY,
-            type:{token:TOKEN_INT, name:'int[]'},
-            terms:[
-              {token:LITERAL_INT, value:0},
-              {token:LITERAL_INT, value:1}
-            ]
+      ]
+    }],
+    ['print("hello");', {
+      token:Juliet.TOKEN_ID,
+      kind:'construct',
+      name:'print',
+      args:[
+        {
+          token:Juliet.LITERAL_STRING,
+          kind:'literal',
+          value:'hello'
+        }
+      ]
+    }],
+    ['int[] a = {};', [
+      {
+        token:Juliet.TOKEN_ID,
+        kind:'local',
+        type:{
+          token:Juliet.TOKEN_INT,
+          kind:'construct',
+          name:'int[]'
+        },
+        name:'a',
+        initial_value:{
+          token:Juliet.TOKEN_LCURLY,
+          kind:'array',
+          type:{
+            token:Juliet.TOKEN_INT,
+            kind:'construct',
+            name:'int[]'
           },
-          {
-            token:TOKEN_LCURLY,
-            type:{token:TOKEN_INT, name:'int[]'},
-            terms:[
-              {token:LITERAL_INT, value:0},
-              {token:LITERAL_INT, value:1}
-            ]
-          }
-        ]}}]],
+          terms:[
+          ]
+        }
+      }
+    ]],
+    ['int[] a = {0, 1};', [
+      {
+        token:Juliet.TOKEN_ID,
+        kind:'local',
+        type:{
+          token:Juliet.TOKEN_INT,
+          kind:'construct',
+          name:'int[]'
+        },
+        name:'a',
+        initial_value:{
+          token:Juliet.TOKEN_LCURLY,
+          kind:'array',
+          type:{
+            token:Juliet.TOKEN_INT,
+            kind:'construct',
+            name:'int[]'
+          },
+          terms:[
+            {
+              token:Juliet.LITERAL_INT,
+              kind:'literal',
+              value:0
+            },
+            {
+              token:Juliet.LITERAL_INT,
+              kind:'literal',
+              value:1
+            }
+          ]
+        }
+      }
+    ]],
+    ['int[][] a = {{0, 1}, {0, 1}};', [
+      {
+        token:Juliet.TOKEN_ID,
+        kind:'local',
+        type:{
+          token:Juliet.TOKEN_INT,
+          kind:'construct',
+          name:'int[][]'
+        },
+        name:'a',
+        initial_value:{
+          token:Juliet.TOKEN_LCURLY,
+          kind:'array',
+          type:{
+            token:Juliet.TOKEN_INT,
+            kind:'construct',
+            name:'int[][]'
+          },
+          terms:[
+            {
+              token:Juliet.TOKEN_LCURLY,
+              kind:'array',
+              type:{
+                token:Juliet.TOKEN_INT,
+                kind:'type',
+                name:'int[]'
+              },
+              terms:[
+                {
+                  token:Juliet.LITERAL_INT,
+                  kind:'literal',
+                  value:0
+                },
+                {
+                  token:Juliet.LITERAL_INT,
+                  kind:'literal',
+                  value:1
+                }
+              ]
+            },
+            {
+              token:Juliet.TOKEN_LCURLY,
+              kind:'array',
+              type:{
+                token:Juliet.TOKEN_INT,
+                kind:'type',
+                name:'int[]'
+              },
+              terms:[
+                {
+                  token:Juliet.LITERAL_INT,
+                  kind:'literal',
+                  value:0
+                },
+                {
+                  token:Juliet.LITERAL_INT,
+                  kind:'literal',
+                  value:1
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ]],
     ['super();', {
-      token:TOKEN_SUPER,
+      token:Juliet.TOKEN_SUPER,
+      kind:'super',
       args:[
       ]
     }],
     ['super.x', {
-      token:TOKEN_SUPER,
+      token:Juliet.TOKEN_SUPER,
+      kind:'super',
       name:'x',
       args:null
     }],
     ['super.isAwesome();', {
-      token:TOKEN_SUPER,
+      token:Juliet.TOKEN_SUPER,
+      kind:'super',
       name:'isAwesome',
       args:[
       ]
     }],
     ['return; // i\'m not here', {
-      token:TOKEN_RETURN,
+      token:Juliet.TOKEN_RETURN,
+      kind:'return',
       value:'void'
     }],
     ['/* this is\n' +
-     '   ignored */\n' +
+     '  ignored */\n' +
      'return;', {
-       token:TOKEN_RETURN,
+       token:Juliet.TOKEN_RETURN,
+       kind:'return',
        value:'void'
      }]
   ];
@@ -593,20 +1607,35 @@ var test_parse = function() {
   print('BEGIN TESTS');
   print('');
 
+  //var str = '';
+
   var pass_count = 0;
   var fail_count = 0;
   for (i in tests) {
     var t = tests[i];
     print('Testing the parsing of ' + t[0]);
-    init();
-    data = t[0];
 
-    var stm = parse_statement(false);
-    print_ast(stm);
-    if (equal(stm, t[1])) {
+    Juliet.lexer.init();
+    Juliet.parser.init();
+
+    Juliet.source = t[0];
+
+    var stm = Juliet.parser.parseStatement();
+
+    // str = str + '[\'' + t[0] + '\', ';
+    // str = str + Juliet.util.ast_str(stm);
+    // str = str + '],\n';
+
+    if (Juliet.util.equal(stm, t[1])) {
       print('Passed.');
       pass_count++;
     } else {
+      print('Expected:');
+      Juliet.util.print_ast(t[1]);
+
+      print('Actual:');
+      Juliet.util.print_ast(stm);
+
       print('FAILED.');
       fail_count++;
     }
@@ -619,563 +1648,6 @@ var test_parse = function() {
   print('Passed ' + pass_count + ' tests.');
   print('Failed ' + fail_count + ' tests.');
   print('END TESTS');
-}
 
-
-var test_parse_types = function () {
-  var tests = [
-    ['class Empty {}', {
-      parsed_types: [{
-        token:TOKEN_CLASS,
-        qualifiers:JOG_QUALIFIER_CLASS | JOG_QUALIFIER_PROTECTED,
-        name:'Empty',
-        static_initializers:[{
-          token: TOKEN_CLASS,
-          qualifiers:JOG_QUALIFIER_STATIC,
-          // TODO: type_context:,
-          return_type:null,
-          name:'static'
-        }]
-      }]
-    }],
-    ['class Test {' +
-     '  Test () {' +
-     '    Object obj = "Works";' +
-     '    String str = (String)obj;' +
-     '    println(str);' +
-     '  }' +
-     '}', {
-       parsed_types: [{
-         token:TOKEN_CLASS,
-         qualifiers:JOG_QUALIFIER_CLASS | JOG_QUALIFIER_PROTECTED,
-         name:'Test',
-         static_initializers:[{
-           token: TOKEN_CLASS,
-           qualifiers:JOG_QUALIFIER_STATIC,
-           // TODO: type_context:,
-           return_type:null,
-           name:'static'
-         }],
-         methods:[{
-           token:TOKEN_ID,
-           qualifiers:JOG_QUALIFIER_CONSTRUCTOR,
-           return_type: null,
-           name:'<init>',
-           statements:[[{
-             token:TOKEN_ID,
-             type:{token:TOKEN_ID, name:'Object'},
-             name:'obj',
-             initial_value:{token:LITERAL_STRING, value:'Works'}
-           }],[{
-             token:TOKEN_ID,
-             type:{token:TOKEN_STRING, name:'String'},
-             name:'str',
-             initial_value:{
-               token:TOKEN_LPAREN,
-               operand:{token:TOKEN_ID, name:'obj'},
-               to_type:{token:TOKEN_STRING, name:'String'}}
-           }],{
-             token:TOKEN_ID,
-             name:'println',
-             args:[
-               {token:TOKEN_ID, name:'str'}
-             ]
-           }]}],
-       }]
-     }],
-    ['class Test {' +
-     '  public class A {' +
-     '    public A () {;}' +
-     '  }' +
-     '}', {
-       parsed_types:[{
-         token:TOKEN_CLASS,
-         qualifiers:JOG_QUALIFIER_CLASS | JOG_QUALIFIER_PROTECTED,
-         name:'Test',
-         static_initializers:[{
-           token:TOKEN_CLASS,
-           qualifiers:JOG_QUALIFIER_STATIC,
-           // TODO: type_context:,
-           return_type:null,
-           name:'static'
-         }]},{
-           token:TOKEN_CLASS,
-           qualifiers:JOG_QUALIFIER_CLASS | JOG_QUALIFIER_PUBLIC,
-           // TODO: type_context:,
-           name:'A',
-           static_initializers:[{
-             token:TOKEN_CLASS,
-             qualifiers:JOG_QUALIFIER_STATIC,
-             // TODO: type_context:,
-             return_type:null,
-             name:'static'
-           }],
-           methods:[{
-             token:TOKEN_PUBLIC,
-             qualifiers:JOG_QUALIFIER_CONSTRUCTOR | JOG_QUALIFIER_PUBLIC,
-             return_type: null,
-             name:'<init>',
-             statements:null
-           }]
-         }]}],
-    ['class Test {\n' +
-     '  Test ()\n' +
-     '  {\n' +
-     '    Object obj = "Works";\n' +
-     '    String st = (String) obj;\n' +
-     '    println( st );\n' +
-     '  }\n' +
-     '\n' +
-     '  public class A {\n' +
-     '    public A () {;}\n' +
-     '  }\n' +
-     '\n' +
-     '  public class B {\n' +
-     '    public B () {;}\n' +
-     '    public A something () {\n' +
-     '      if (true) {return null;}\n' +
-     '      return (A) new A ();\n' +
-     '    }\n' +
-     '  }\n' +
-     '}', {
-       parsed_types:[
-         {
-           token:TOKEN_CLASS,
-           qualifiers:34,
-           name:'Test',
-           static_initializers:[
-             {
-               token:TOKEN_CLASS,
-               qualifiers:8,
-               return_type:null,
-               name:'static'
-             }
-           ],
-           methods:[
-             {
-               token:TOKEN_ID,
-               qualifiers:256,
-               return_type:null,
-               name:'<init>',
-               statements:[
-                 [
-                   {
-                     token:TOKEN_ID,
-                     type:{
-                       token:TOKEN_ID,
-                       name:'Object'
-                     },
-                     name:'obj',
-                     initial_value:{
-                       token:LITERAL_STRING,
-                       value:'Works'
-                     }
-                   }
-                 ],
-                 [
-                   {
-                     token:TOKEN_ID,
-                     type:{
-                       token:TOKEN_STRING,
-                       name:'String'
-                     },
-                     name:'st',
-                     initial_value:{
-                       token:TOKEN_LPAREN,
-                       operand:{
-                         token:TOKEN_ID,
-                         name:'obj'
-                       },
-                       to_type:{
-                         token:TOKEN_STRING,
-                         name:'String'
-                       }
-                     }
-                   }
-                 ],
-                 {
-                   token:TOKEN_ID,
-                   name:'println',
-                   args:[
-                     {
-                       token:TOKEN_ID,
-                       name:'st'
-                     }
-                   ]
-                 }
-               ]
-             }
-           ]
-         },
-         {
-           token:TOKEN_CLASS,
-           qualifiers:33,
-           name:'A',
-           static_initializers:[
-             {
-               token:TOKEN_CLASS,
-               qualifiers:8,
-               return_type:null,
-               name:'static'
-             }
-           ],
-           methods:[
-             {
-               token:TOKEN_PUBLIC,
-               qualifiers:257,
-               return_type:null,
-               name:'<init>'
-             }
-           ]
-         },
-         {
-           token:TOKEN_CLASS,
-           qualifiers:33,
-           name:'B',
-           static_initializers:[
-             {
-               token:TOKEN_CLASS,
-               qualifiers:8,
-               return_type:null,
-               name:'static'
-             }
-           ],
-           methods:[
-             {
-               token:TOKEN_PUBLIC,
-               qualifiers:257,
-               return_type:null,
-               name:'<init>'
-             },
-             {
-               token:TOKEN_PUBLIC,
-               qualifiers:1,
-               return_type:{
-                 token:TOKEN_ID,
-                 name:'A'
-               },
-               name:'something',
-               statements:[
-                 {
-                   token:TOKEN_IF,
-                   expression:{
-                     token:LITERAL_BOOLEAN,
-                     value:true
-                   },
-                   body:[
-                     {
-                       token:TOKEN_RETURN,
-                       expression:{
-                         token:TOKEN_NULL,
-                         value:'null'
-                       }
-                     }
-                   ]
-                 },
-                 {
-                   token:TOKEN_RETURN,
-                   expression:{
-                     token:TOKEN_LPAREN,
-                     operand:{
-                       token:TOKEN_NEW,
-                       type:{
-                         token:TOKEN_ID,
-                         name:'A'
-                       },
-                       args:[
-                       ]
-                     },
-                     to_type:{
-                       token:TOKEN_ID,
-                       name:'A'
-                     }
-                   }
-                 }
-               ]
-             }
-           ]
-         }
-       ]
-     }],
-    ['class Outer<T> {\n' +
-     '  T t;\n' +
-     '  class Inner {\n' +
-     '    T setOuterT(T t1) {t = t1;return t;}\n' +
-     '  }\n' +
-     '}', {
-       parsed_types:[
-         {
-           token:TOKEN_CLASS,
-           qualifiers:34,
-           name:'Outer',
-           placeholder_types:[
-             {
-               token:TOKEN_ID,
-               name:'T'
-             }
-           ],
-           properties:[
-             {
-               token:TOKEN_ID,
-               qualifiers:0,
-               type:{
-                 token:TOKEN_ID,
-                 name:'T'
-               },
-               name:'t',
-               initial_value:null
-             }
-           ],
-           template_tokens:[
-             {
-               type:28
-             },
-             {
-               type:1,
-               content:'T'
-             },
-             {
-               type:1,
-               content:'t'
-             },
-             {
-               type:19
-             },
-             {
-               type:59,
-               content:'class'
-             },
-             {
-               type:1,
-               content:'Inner'
-             },
-             {
-               type:28
-             },
-             {
-               type:1,
-               content:'T'
-             },
-             {
-               type:1,
-               content:'setOuterT'
-             },
-             {
-               type:10
-             },
-             {
-               type:1,
-               content:'T'
-             },
-             {
-               type:1,
-               content:'t1'
-             },
-             {
-               type:11
-             },
-             {
-               type:28
-             },
-             {
-               type:1,
-               content:'t'
-             },
-             {
-               type:21,
-               content:'='
-             },
-             {
-               type:1,
-               content:'t1'
-             },
-             {
-               type:19
-             },
-             {
-               type:84,
-               content:'return'
-             },
-             {
-               type:1,
-               content:'t'
-             },
-             {
-               type:19
-             },
-             {
-               type:30
-             },
-             {
-               type:30
-             },
-             {
-               type:30
-             }
-           ]
-         },
-         {
-           token:TOKEN_CLASS,
-           qualifiers:34,
-           name:'Inner',
-           static_initializers:[
-             {
-               token:TOKEN_CLASS,
-               qualifiers:8,
-               return_type:null,
-               name:'static'
-             }
-           ],
-           methods:[
-             {
-               token:TOKEN_ID,
-               qualifiers:0,
-               return_type:{
-                 token:TOKEN_ID,
-                 name:'T'
-               },
-               name:'setOuterT',
-               parameters:[
-                 {
-                   token:TOKEN_ID,
-                   type:{
-                     token:TOKEN_ID,
-                     name:'T'
-                   },
-                   name:'t1'
-                 }
-               ],
-               statements:[
-                 {
-                   token:TOKEN_ASSIGN,
-                   location:{
-                     token:TOKEN_ID,
-                     name:'t'
-                   },
-                   new_value:{
-                     token:TOKEN_ID,
-                     name:'t1'
-                   }
-                 },
-                 {
-                   token:TOKEN_RETURN,
-                   expression:{
-                     token:TOKEN_ID,
-                     name:'t'
-                   }
-                 }
-               ]
-             }
-           ]
-         }
-       ]
-     }],
-    ['/* Test class with comments */\n' +
-     '/* 1\n' +
-     '   2\n' +
-     '*/\n' +
-      'class Empty {\n' +
-      '  // single-line comment\n' +
-      '  /* multi-line comment */\n' +
-     '}', {
-       parsed_types: [{
-         token:TOKEN_CLASS,
-         qualifiers:JOG_QUALIFIER_CLASS | JOG_QUALIFIER_PROTECTED,
-         name:'Empty',
-         static_initializers:[{
-           token: TOKEN_CLASS,
-           qualifiers:JOG_QUALIFIER_STATIC,
-           // TODO: type_context:,
-           return_type:null,
-           name:'static'
-         }]
-       }]
-     }],
-    ['package java.lang;', {
-      parsed_types:[
-      ],
-      'package':{
-        token:TOKEN_PACKAGE,
-        name:'java.lang'
-      }
-    }],
-    ['package java.lang;\n' +
-     'import java.io;\n' +
-     'import java.error.*;', {
-       parsed_types:[
-       ],
-       'package':{
-         token:TOKEN_PACKAGE,
-         name:'java.lang'
-       },
-       imports:[
-         {
-           token:TOKEN_IMPORT,
-           name:'java.io'
-         },
-         {
-           token:TOKEN_IMPORT,
-           name:'java.error.*'
-         }
-       ]
-     }],
-    ['import java.io;\n' +
-     'class Empty {}', {
-      parsed_types:[{
-        token:TOKEN_CLASS,
-        qualifiers:JOG_QUALIFIER_CLASS | JOG_QUALIFIER_PROTECTED,
-        name:'Empty',
-        static_initializers:[{
-          token: TOKEN_CLASS,
-          qualifiers:JOG_QUALIFIER_STATIC,
-          // TODO: type_context:,
-          return_type:null,
-          name:'static'
-        }]
-      }],
-      imports:[
-        {
-          token:TOKEN_IMPORT,
-          name:'java.io'
-        }
-      ]
-    }]
-  ];
-
-  print('BEGIN TESTS');
-  print('');
-
-  var pass_count = 0;
-  var fail_count = 0;
-  for (i in tests) {
-    var t = tests[i];
-    print('Testing the parsing of ' + t[0]);
-    init();
-    init_parser();
-    data = t[0];
-
-    parse();
-    delete Parser.this_method;
-
-    //print_ast(Parser);
-    if (equal(Parser, t[1])) {
-      print('Passed.');
-      pass_count++;
-    } else {
-      print('FAILED.');
-      fail_count++;
-    }
-
-    print('');
-  }
-
-  print('SUMMARY');
-  print('=======');
-  print('Passed ' + pass_count + ' tests.');
-  print('Failed ' + fail_count + ' tests.');
-  print('END TESTS');
-}
-
-//test_tokenize();
-//test_parse();
-//test_parse_types();
+  //print(str);
+}();
