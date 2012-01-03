@@ -1773,7 +1773,14 @@ Juliet.compiler = function() {
       case 'if':
         if (Juliet.options.trace) print('if');
         ret = ret + 'if (' + flatten(stm.expression) + ')';
-        ret = ret + flatten(stm.body, ';');
+
+        // TODO: verify this is the correct behavior
+        if (stm.body.kind == 'block') {
+          ret = ret + flatten(stm.body, ';');
+        } else {
+          ret = ret + flatten(stm.body) + ';';
+        }
+
         if (stm.else_body) {
           ret = ret + ' else ';
           ret = ret + flatten(stm.else_body);
