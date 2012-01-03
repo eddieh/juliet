@@ -108,6 +108,7 @@ Juliet.util = function() {
     },
 
     equal: function(a, b) {
+      if (typeof(a) !== typeof(b)) return false;
       for (var prop in a) {
         if (a.hasOwnProperty(prop) && b.hasOwnProperty(prop)) {
           if (typeof(a[prop]) !== 'object') {
