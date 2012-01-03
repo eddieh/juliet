@@ -675,7 +675,15 @@ Juliet.lexer = function() {
             }
             next.content = eval('\'\\u' + buffer + '\'');
             if (Juliet.options.trace) print(next.content);
-          } else if (Juliet.source[data_i] == 'n') next.content = '\n';
+
+            next.line = line_i;
+            next.col = col_i;
+            next.length = buffer.length;
+            col_i = col_i + buffer.lenght;
+            return true;
+          }
+
+          if (Juliet.source[data_i] == 'n') next.content = '\n';
           else if (Juliet.source[data_i] == 't') next.content = '\t';
           else if (Juliet.source[data_i] == 'b') next.content = '\b';
           else if (Juliet.source[data_i] == 'f') next.content = '\f';
@@ -691,8 +699,8 @@ Juliet.lexer = function() {
 
           next.line = line_i;
           next.col = col_i;
-          next.length = buffer.length;
-          col_i = col_i + buffer.lenght;
+          next.length = next.content.length;
+          col_i = col_i + next.content.lenght;
           return true;
         };
 
