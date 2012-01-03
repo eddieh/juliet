@@ -1842,7 +1842,7 @@ Juliet.compiler = function() {
         var name = '';
 
         // TODO: remove this kludge
-        if (stm.name == 'System' || stm.name == 'out' || stm.name == 'println')
+        if (stm.name == 'System' || stm.name == 'out' || stm.name == 'println' || stm.name == 'print')
           if (stm.name == 'System') {
             name = 'Juliet.stdlib.System';
           } else {
