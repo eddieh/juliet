@@ -1976,7 +1976,12 @@ Juliet.compiler = function() {
     pushScope();
     static_context = type;
     var params = parameterList(cm.parameters);
-    var body = flatten(cm.statements);
+    var body = '';
+    if (Juliet.util.isArray(cm.statements)) {
+      body = flatten(cm.statements);
+    } else {
+      body = cm.statements.value;
+    }
     type[name] = new Function(params, body);
     static_context = null;
     popScope();
@@ -1993,7 +1998,12 @@ Juliet.compiler = function() {
       //addIdentifier(m.name, m.name, null, true);
       pushScope();
       var params = parameterList(m.parameters);
-      var body = flatten(m.statements);
+      var body = '';
+      if (Juliet.util.isArray(m.statements)) {
+        body = flatten(m.statements);
+      } else {
+        body = m.statements.value;
+      }
       type[name] = new Function(params, body);
       popScope();
     }

@@ -3,6 +3,7 @@ Juliet.CLI = function() {
   /* Privates */
   var filepath = '';
   var showAST = false;
+  var showJS = false;
   var verbose = false;
   var run = false;
   var className = '';
@@ -14,6 +15,7 @@ Juliet.CLI = function() {
         for (var i = 0; i < argc; i++) {
           if (scriptArgs[i] == '--trace') Juliet.options.trace = true;
           else if (scriptArgs[i] == '--ast') showAST = true;
+          else if (scriptArgs[i] == '--js') showJS = true;
           else if (scriptArgs[i] == '--verbose') verbose = true;
           else if (scriptArgs[i] == '--run') {
             run = true;
@@ -43,7 +45,7 @@ Juliet.CLI = function() {
         }
 
         Juliet.compiler.compile(Juliet.AST);
-        if (verbose) {
+        if (verbose || showJS) {
           Juliet.util.print_ast(Juliet.program);
         }
 

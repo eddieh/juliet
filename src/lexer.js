@@ -258,19 +258,64 @@ Juliet.lexer = function() {
             data_i++;
             continue;
           } else if (Juliet.source[data_i + 1] == '*') {
-            if (Juliet.options.trace) print('multi-line comment');
-            // Discard multi-line comment
-            data_i = data_i + 2;
+            // multi-line comments begin with: /*
+            // literal javascript begins with: /*-{
+            var literal_js = false;
+            if (Juliet.source[data_i + 2] == '-') {
+              if (Juliet.source[data_i + 3] == '{') {
+                if (Juliet.options.trace) print('literal javascript');
+                data_i = data_i + 4;
+                literal_js = true;
+                next.line = line_i;
+                next.col = col_i;
+              }
+            } else {
+              if (Juliet.options.trace) print('multi-line comment');
+              // Discard multi-line comment
+              data_i = data_i + 2;
+            }
+
             ch = Juliet.source.charCodeAt(data_i);
             while (ch) {
               if (ch == 10) line_i++;
-              if (ch == 42 && Juliet.source[data_i + 1] == '/') {
-                data_i = data_i + 2;
-                break;
+
+              // terminate multi-line comment or literal javascript
+              // multi-line comments end with: */
+              // literal javascript ends with: }-*/
+              if (literal_js) {
+                if (ch == 125) {
+                  if (Juliet.source[data_i + 1] == '-') {
+                    if (Juliet.source[data_i + 2] == '*') {
+                      if (Juliet.source[data_i + 3] == '/') {
+                        data_i = data_i + 4;
+                        break;
+                      }
+                    }
+                  }
+                }
+              } else {
+                if (ch == 42 && Juliet.source[data_i + 1] == '/') {
+                  data_i = data_i + 2;
+                  break;
+                }
               }
+
+              if (literal_js) {
+                buffer += Juliet.source[data_i];
+              }
+
               data_i++;
               ch = Juliet.source.charCodeAt(data_i);
             }
+
+            if (literal_js) {
+              next.content = buffer;
+              next.type = Juliet.LITERAL_JAVASCRIPT;
+              next.length = buffer.length;
+              this.pending.push(next);
+              return true;
+            }
+
             continue;
           }
         }

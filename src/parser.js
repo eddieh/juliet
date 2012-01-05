@@ -609,6 +609,7 @@ Juliet.parser = function() {
 
       this_method = m;
       parse_params(m);
+
       if (is_static(m)) {
         if (!type.class_methods) type.class_methods = [];
         type.class_methods.push(m);
@@ -621,7 +622,18 @@ Juliet.parser = function() {
         if (is_interface(m)) {
           throw t.error('Interface method cannot be native.');
         }
-        must_consume(Juliet.TOKEN_SEMICOLON, 'Expected ;.');
+
+        // literal javascript
+        if (next_is(Juliet.LITERAL_JAVASCRIPT)) {
+          var t2 = read();
+          m.statements = {
+            token:t2.type,
+            kind:'literal',
+            value:t2.content};
+        } else {
+          must_consume(Juliet.TOKEN_SEMICOLON, 'Expected ;.');
+        }
+
       } else if (consume(Juliet.TOKEN_SEMICOLON)) {
         if (!is_abstract(m)) {
           throw t.error('Method missing body.');
