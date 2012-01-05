@@ -166,6 +166,18 @@ Juliet.test = function() {
           'character\n' +
           'string\n'
     },
+    {
+      path:'test/escape.java',
+      principal:'Escape',
+      expected:'\b\n' +
+               '\t\n' +
+               '\n\n' +
+               '\f\n' +
+               '\r\n' +
+               '"\n'  +
+               '\'\n' +
+               '\\\n'
+    },
 
     /*
        Scope

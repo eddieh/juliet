@@ -21,12 +21,44 @@ Juliet.compiler = function() {
     return ret;
   };
 
-  var escapeQuotes = function(str) {
+  var escapeStr = function(str) {
     var ret = '';
     var ch = 0;
     for (var i = 0; i < str.length; i++) {
       ch = str.charCodeAt(i);
-      ret = ret + ((ch == 39) ? '\\\'' : str.charAt(i));
+      switch (ch) {
+      // backspace
+      case 8:
+        ch = '\\b';
+        break;
+      // horizontal tab
+      case 9:
+        ch = '\\t';
+        break;
+      // newline
+      case 10:
+        ch = '\\n';
+        break;
+      // form feed
+      case 12:
+        ch = '\\f';
+        break;
+      // carriage return
+      case 13:
+        ch = '\\r';
+        break;
+      // single quote
+      case 39:
+        ch = '\\\'';
+        break;
+      // backslash
+      case 92:
+        ch = '\\\\';
+        break;
+      default:
+        ch = str.charAt(i);
+      }
+      ret = ret + ch;
     }
     return ret;
   }
@@ -1878,7 +1910,7 @@ Juliet.compiler = function() {
         case Juliet.LITERAL_CHAR:
         case Juliet.LITERAL_STRING:
           ret = ret + '\'';
-          ret = ret + escapeQuotes(stm.value);
+          ret = ret + escapeStr(stm.value);
           ret = ret + '\'';
           break;
         case Juliet.LITERAL_DOUBLE:
