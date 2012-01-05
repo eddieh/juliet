@@ -259,11 +259,16 @@ Juliet.test = function() {
       expected:'Hello from static_method()\n' +
                'Hello from static_method()\n'
     },
-    {
-      path:'test/scope/test17.java',
-      principal:'Test17',
-      expected:'instance_method is not defined\n'
-    },
+
+    // TODO: this should print an error like the following
+    // non-static method instance_method() cannot be referenced
+    // from a static context
+    // {
+    //   path:'test/scope/test17.java',
+    //   principal:'Test17',
+    //   expected:'instance_method is not defined\n'
+    // },
+
     {
       path:'test/scope/test18.java',
       principal:'Test18',

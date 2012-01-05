@@ -1913,11 +1913,6 @@ Juliet.compiler = function() {
   var addClassProperty = function(type, cp) {
     if (Juliet.options.trace) print('addClassProperty');
     //var name = qualifiers_str(cp.qualifiers) + cp.name
-    addIdentifier(cp.name,
-                  'Juliet.program.' + type.name + '.' + cp.name,
-                  cp.type,
-                  true,
-                  'field');
     // TODO: type check
     var value = cp.initial_value;
     if (value && value.kind == 'literal')
@@ -1933,7 +1928,6 @@ Juliet.compiler = function() {
       if (!type.private_properies) type.private_properties = {};
       type.private_properties[p.name] = p;
     } else {
-      addIdentifier(p.name, 'this.' + p.name, p.type, true, 'field');
       // TODO: type check
       if (p.initial_value && p.initial_value.kind == 'literal') {
         type[p.name] = p.initial_value.value;
@@ -1947,7 +1941,6 @@ Juliet.compiler = function() {
   var addClassMethod = function(type, cm) {
     if (Juliet.options.trace) print('addClassMethod: ' + cm.name);
     var name = methodSignature(cm);
-    addIdentifier(name, name, cm.return_type, true, 'method');
     pushScope();
     static_context = type;
     var params = parameterList(cm.parameters);
@@ -1966,7 +1959,6 @@ Juliet.compiler = function() {
       type.private_methods[m.name] = m;
     } else {
       //addIdentifier(m.name, m.name, null, true);
-      addIdentifier(name, name, m.return_type, true, 'method');
       pushScope();
       var params = parameterList(m.parameters);
       var body = flatten(m.statements);
@@ -1988,20 +1980,27 @@ Juliet.compiler = function() {
 
     pushScope();
 
-
+    /*
+     * Interfaces
+     */
     if (type.interfaces) {
       if (Juliet.options.trace) print('have interfaces');
       for (var j = 0; j < type.interfaces.length; j++) {
+        // look up the named interface
         var anInterface = classByName(type.interfaces[j].name);
+
+        // incorporate its static members
         if (anInterface.class_properties) {
           if (Juliet.options.trace) print('have interface class_properties');
           for (var j = 0; j < anInterface.class_properties.length; j++) {
             var cp = anInterface.class_properties[j];
             if (!type.class_properties) type.class_properties = [];
+            // add to the fron of the class properties
             type.class_properties.unshift(cp);
-            //addClassProperty(ctype, cp);
           }
         }
+
+        // require implementation of its abstract methods
         if (anInterface.methods) {
           if (Juliet.options.trace) print('have interface methods');
           // TODO: ensure methods are implemented
@@ -2009,9 +2008,15 @@ Juliet.compiler = function() {
       }
     }
 
+    /*
+     * Inheritance
+     */
     var base_class = null;
     if (type.base_class) {
+      // look up the named base class
       base_class = classByName(type.base_class.name);
+
+      // incorporate its non-private static members
       if (base_class.class_properties) {
         if (Juliet.options.trace) print('have super class_properties');
         for (var j = 0; j < base_class.class_properties.length; j++) {
@@ -2019,10 +2024,11 @@ Juliet.compiler = function() {
           if (!(cp.qualifiers & Juliet.QUALIFIER_PRIVATE)) {
             if (!type.class_properties) type.class_properties = [];
             type.class_properties.unshift(cp);
-            //addClassProperty(ctype, cp);
           }
         }
       }
+
+      // incorporate its non-private members
       if (base_class.properties) {
         if (Juliet.options.trace) print('have super properties');
         for (var j = 0; j < base_class.properties.length; j++) {
@@ -2030,10 +2036,11 @@ Juliet.compiler = function() {
           if (!(p.qualifiers & Juliet.QUALIFIER_PRIVATE)) {
             if (!type.properties) type.properties = [];
             type.properties.unshift(p);
-            //addProperty(ctype, p);
           }
         }
       }
+
+      // incorporate its non-private static methods
       if (base_class.class_methods) {
         if (Juliet.options.trace) print('have super class_methods');
         for (var j = 0; j < base_class.class_methods.length; j++) {
@@ -2041,39 +2048,18 @@ Juliet.compiler = function() {
           if (!(cm.qualifiers & Juliet.QUALIFIER_PRIVATE)) {
             if (!type.class_methods) type.class_methods = [];
             type.class_methods.unshift(cm);
-            //addClassMethod(ctype, cm);
           }
         }
       }
+
+      // incorporate its non-private methods
+      // See below: Inheritance (Methods)
+
     }
 
-    if (type.class_properties) {
-      if (Juliet.options.trace) print('have class_properties');
-      for (var j = 0; j < type.class_properties.length; j++) {
-        var cp = type.class_properties[j];
-        addClassProperty(ctype, cp);
-      }
-    }
-    if (type.properties) {
-      if (Juliet.options.trace) print('have properties');
-      for (var j = 0; j < type.properties.length; j++) {
-        var p = type.properties[j];
-        addProperty(ctype, p);
-      }
-    }
-    if (type.class_methods) {
-      if (Juliet.options.trace) print('have class_methods');
-      for (var j = 0; j < type.class_methods.length; j++) {
-        var cm = type.class_methods[j];
-        addClassMethod(ctype, cm);
-      }
-    }
-
-    addIdentifier('this',
-                  'this',
-                  type,
-                  false,
-                  'this');
+    /*
+     * Inheritance (Methods)
+     */
     if (base_class && base_class.methods) {
       if (Juliet.options.trace) print('have super methods');
       for (var j = 0; j < base_class.methods.length; j++) {
@@ -2082,10 +2068,95 @@ Juliet.compiler = function() {
           if (m.kind != 'constructor') {
             if (!type.methods) type.methods = [];
             type.methods.unshift(m);
-            //addMethod(ctype, m);
           }
       }
     }
+
+    /*
+     * Add Identifiers
+     */
+    if (type.class_properties) {
+      if (Juliet.options.trace) print('add identifiers for class_properties');
+      for (var j = 0; j < type.class_properties.length; j++) {
+        var cp = type.class_properties[j];
+        addIdentifier(cp.name,
+                  'Juliet.program.' + type.name + '.' + cp.name,
+                  cp.type,
+                  true,
+                  'field');
+      }
+    }
+    if (type.properties) {
+      if (Juliet.options.trace) print('have properties');
+      for (var j = 0; j < type.properties.length; j++) {
+        var p = type.properties[j];
+        if (!(p.qualifiers & Juliet.QUALIFIER_PRIVATE)) {
+          addIdentifier(p.name, 'this.' + p.name, p.type, true, 'field');
+        }
+      }
+    }
+    if (type.class_methods) {
+      if (Juliet.options.trace) print('have class_methods');
+      for (var j = 0; j < type.class_methods.length; j++) {
+        var cm = type.class_methods[j];
+        var name = methodSignature(cm);
+        addIdentifier(name, name, cm.return_type, true, 'method');
+      }
+    }
+    if (type.methods) {
+      if (Juliet.options.trace) print('have methods');
+      for (var j = 0; j < type.methods.length; j++) {
+        var m = type.methods[j];
+        if (!(m.qualifiers & Juliet.QUALIFIER_PRIVATE)) {
+          var name = methodSignature(m);
+          addIdentifier(name, name, m.return_type, true, 'method');
+        }
+      }
+    }
+
+    /*
+     * Static Members
+     */
+    if (type.class_properties) {
+      if (Juliet.options.trace) print('have class_properties');
+      for (var j = 0; j < type.class_properties.length; j++) {
+        var cp = type.class_properties[j];
+        addClassProperty(ctype, cp);
+      }
+    }
+
+    /*
+     * Members
+     */
+    if (type.properties) {
+      if (Juliet.options.trace) print('have properties');
+      for (var j = 0; j < type.properties.length; j++) {
+        var p = type.properties[j];
+        addProperty(ctype, p);
+      }
+    }
+
+    /*
+     * Static Methods
+     */
+    if (type.class_methods) {
+      if (Juliet.options.trace) print('have class_methods');
+      for (var j = 0; j < type.class_methods.length; j++) {
+        var cm = type.class_methods[j];
+        addClassMethod(ctype, cm);
+      }
+    }
+
+    // add 'this' to the scope
+    addIdentifier('this',
+                  'this',
+                  type,
+                  false,
+                  'this');
+
+    /*
+     * Methods
+     */
     if (type.methods) {
       if (Juliet.options.trace) print('have methods');
       for (var j = 0; j < type.methods.length; j++) {
@@ -2094,6 +2165,9 @@ Juliet.compiler = function() {
       }
     }
 
+    /*
+     * Private Methods
+     */
     var private_methods = '';
     if (ctype.private_methods) {
       if (Juliet.options.trace) print('have private methods');
@@ -2112,6 +2186,10 @@ Juliet.compiler = function() {
       }
       delete ctype.private_methods;
     }
+
+    /*
+     * Private Members
+     */
     var private_properties = {};
     if (ctype.private_properties) {
       if (Juliet.options.trace) print('have private properties');
@@ -2121,6 +2199,9 @@ Juliet.compiler = function() {
       delete ctype.private_properties;
     }
 
+    /*
+     * Private Runtime Support
+     */
     ctype['<class>'] =
         (new Function(
           'if (this[\'<private>\']) {'
@@ -2137,6 +2218,9 @@ Juliet.compiler = function() {
               + ' privates[field] = x;'
               + '}}}}(this);'));
 
+    /*
+     * Static Initializers
+     */
     if (type.static_initializers) {
       if (Juliet.options.trace) print('have static_initializers');
       for (var j = 0; j < type.static_initializers.length; j++) {
@@ -2144,6 +2228,10 @@ Juliet.compiler = function() {
         addStaticInitializer(ctype, si);
       }
     }
+
+    /*
+     * Instance Initializers
+     */
     if (type.instance_initializers) {
       if (Juliet.options.trace) print('have instance_initializers');
       for (var j = 0; j < type.instance_initializers.length; j++) {
