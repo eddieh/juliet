@@ -136,6 +136,8 @@ var test_tokenize = function () {
     ['a .b', [Juliet.TOKEN_ID, Juliet.TOKEN_PERIOD, Juliet.TOKEN_ID]],
     ['Foo.e10', [Juliet.TOKEN_ID, Juliet.TOKEN_PERIOD, Juliet.TOKEN_ID]],
     ['Foo .e10', [Juliet.TOKEN_ID, Juliet.TOKEN_PERIOD, Juliet.TOKEN_ID]],
+    ['1 // "string in comment"', Juliet.LITERAL_INT, 1],
+    ['"// comment in string"', Juliet.LITERAL_STRING, '// comment in string']
   ];
 
   print('BEGIN TESTS');
