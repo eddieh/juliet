@@ -126,6 +126,14 @@ Juliet.util = function() {
 
     capitalize:function(str) {
       return str.charAt(0).toLocaleUpperCase() + str.slice(1);
+    },
+
+    keys: function(a) {
+      var ret = [];
+      for (key in a) {
+        ret.push(key);
+      }
+      return ret;
     }
   };
 }();

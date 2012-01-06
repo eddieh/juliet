@@ -1,6 +1,8 @@
 Juliet.AST = function() {
   return {
-    parsed_types: []
+    'package': null,
+    imports: [],
+    parsed_types: {}
   };
 }();
 
@@ -167,11 +169,11 @@ Juliet.parser = function() {
     if (Juliet.options.trace) print('parse_compilation_unit');
     var t = peek();
     if (next_is(Juliet.TOKEN_PACKAGE)) {
-      Parser['package'] = parse_package_decls();
+      Juliet.AST['package'] = parse_package_decls();
     }
     while (next_is(Juliet.TOKEN_IMPORT)) {
-      if (!Parser.imports) Parser.imports = [];
-      Parser.imports.push(parse_import_decls());
+      if (!Juliet.AST.imports) Juliet.AST.imports = [];
+      Juliet.AST.imports.push(parse_import_decls());
     }
     var type = parse_type_def();
     while (type) {
@@ -251,7 +253,9 @@ Juliet.parser = function() {
               kind:'definition',
               qualifiers:quals,
               name:name};
-      Juliet.AST.parsed_types.push(type);
+
+      Juliet.parser._type_names.push(name);
+      Juliet.AST.parsed_types[name] = type;
 
       // parametrized types
       // template type (Jog implements templates instead of generics).
@@ -1753,12 +1757,18 @@ Juliet.parser = function() {
 
   return {
     init: function () {
-      Juliet.AST.parsed_types = [];
+
     },
 
     parse: function () {
       if (Juliet.options.trace) print('parse');
+      Juliet.parser._type_names = [];
+
       parse_compilation_unit();
+
+      var ret = Juliet.parser._type_names;
+      delete Juliet.parser._type_names;
+      return ret;
     },
 
     /*

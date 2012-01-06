@@ -19,8 +19,6 @@ load('src/compiler.js');
 load('src/runtime.js');
 load('src/stdlib.js');
 
-Juliet.stdout = '';
-
 Juliet.test = function() {
   var test_info = '';
 
@@ -763,7 +761,7 @@ Juliet.test = function() {
   var fail_count = 0;
   for (var i = 0; i < tests.length; i++) {
 
-    Juliet.stdout = '';
+    Juliet.reset();
 
     try {
 
@@ -779,7 +777,11 @@ Juliet.test = function() {
     }
 
     Juliet.test.init();
-    Juliet.test.put('Running ' + tests[i].path + ' ' + tests[i].principal);
+    if (tests[i].principal) {
+      Juliet.test.put('Running ' + tests[i].path + ' ' + tests[i].principal);
+    } else {
+      Juliet.test.put('Compiling ' + tests[i].path);
+    }
 
     if (tests[i].expected == Juliet.stdout) {
       pass_count++;

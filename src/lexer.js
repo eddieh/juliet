@@ -184,8 +184,6 @@ Juliet.lexer = function() {
     marks: [],
 
     init: function() {
-      Juliet.source = '';
-
       data_i = 0;
       line_i = 1;
       col_i = 1;

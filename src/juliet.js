@@ -151,6 +151,14 @@ Juliet = function() {
 
     QUALIFIER_REFERENCE: (this.QUALIFIER_CLASS | this.QUALIFIER_INTERFACE),
 
+    /*
+     * stdout is used to capture the output of print and
+     * System.out.println (among others) in the browser and for
+     * running test. When running from the command line print (etc)
+     * puts output to the systems stdout.
+     */
+    stdout: '',
+
     init: function() {
       for (var i = 0; i < this.tokens.length; i++) {
         this[this.tokens[i]] = i;
@@ -158,14 +166,26 @@ Juliet = function() {
       return this;
     },
 
+    reset: function() {
+      Juliet.source = '';
+      Juliet.AST = {
+        'package': null,
+        imports: [],
+        parsed_types: {}
+      };
+      Juliet.program = {};
+      Juliet.stdout = '';
+    },
+
     compile: function(source) {
+      Juliet.source = source;
+
       Juliet.lexer.init();
       Juliet.parser.init();
       Juliet.compiler.init();
 
-      Juliet.source = source;
-      Juliet.parser.parse();
-      Juliet.compiler.compile(Juliet.AST);
+      var types = Juliet.parser.parse();
+      Juliet.compiler.compile(types);
     },
 
     run: function(className) {

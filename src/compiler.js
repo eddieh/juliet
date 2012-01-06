@@ -1,7 +1,4 @@
-Juliet.program = function() {
-  return {
-  };
-}();
+Juliet.program = {};
 
 Juliet.compiler = function() {
   /* Privates */
@@ -2012,6 +2009,11 @@ Juliet.compiler = function() {
   var addClass = function(type) {
     if (Juliet.options.trace) print('Class: ' + type.name);
 
+    if (Juliet.program[type.name]) {
+      print(type.name + ' is already defined');
+      quit();
+    }
+
     var ctype = Juliet.program[type.name] = {name:type.name};
 
     addIdentifier(type.name,
@@ -2286,23 +2288,19 @@ Juliet.compiler = function() {
   };
 
   var classByName = function(name) {
-    var type = null;
-    for (var i = 0; i < Juliet.AST.parsed_types.length; i++) {
-      type = Juliet.AST.parsed_types[i];
-      if (type.name == name) return type;
-    }
-    return null;
+    return Juliet.AST.parsed_types[name];
   };
 
   return {
     init: function()  {
       scope = [];
       static_context = null;
-      Juliet.program = {};
     },
 
-    compile: function(ast) {
+    compile: function(types) {
       if (Juliet.options.trace) print('compile');
+
+      var ast = Juliet.AST;
       if (!ast) { print('Nothing to compile.'); return; }
 
       // TODO: there is a possible naming collision here if
@@ -2313,10 +2311,18 @@ Juliet.compiler = function() {
         // TODO: recursively add imports
       }
 
-      var type = null;
+      var needToCompile = []
+      if (!types) {
+        needToCompile = Juliet.util.keys(ast.parsed_types);
+      } else {
+        needToCompile = types;
+      }
+
       pushScope();
-      for (var i = 0; i < ast.parsed_types.length; i++) {
-        type = ast.parsed_types[i];
+      for (var i in needToCompile) {
+        var typeKey = needToCompile[i];
+        var type = null;
+        type = ast.parsed_types[typeKey];
         addClass(type);
       }
       popScope();

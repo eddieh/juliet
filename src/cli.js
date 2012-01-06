@@ -44,7 +44,7 @@ Juliet.CLI = function() {
           Juliet.util.print_ast(Juliet.AST);
         }
 
-        Juliet.compiler.compile(Juliet.AST);
+        Juliet.compiler.compile();
         if (verbose || showJS) {
           Juliet.util.print_ast(Juliet.program);
         }

@@ -1,5 +1,3 @@
-Juliet.stdout = '';
-
 Juliet.stdlib.System.out.println = function (a) {
   Juliet.stdout = Juliet.stdout + a + '\n';
 };
