@@ -2307,7 +2307,7 @@ Juliet.compiler = function() {
      * Dynamic Dispatch Support
      */
     ctype['___dispatch___'] = function(name, context) {
-      Juliet.runtime.dispatch(arguments);
+      Juliet.runtime.dispatch.apply(this, arguments);
     };
 
     /*

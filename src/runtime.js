@@ -28,6 +28,10 @@ Juliet.runtime = function() {
     },
 
     'dispatch': function (name, context) {
+      if (typeof(context) === 'string') {
+        context = Juliet.program[context];
+      }
+
       var args = [];
       var argTypeSig = '___';
       for (var i = 2; i < arguments.length; i++) {
@@ -35,7 +39,7 @@ Juliet.runtime = function() {
         args.push(a);
         switch(typeof(a)) {
         case 'object':
-          // what is the objects Java type
+          // TODO: what is the objects Java type
           argTypeSig = argTypeSig + 'Object';
           break;
         case 'boolean':
@@ -59,7 +63,7 @@ Juliet.runtime = function() {
           }
           break;
         case 'function':
-          // what is the objects Java type
+          // TODO: what is the objects Java type
           argTypeSig = argTypeSig + 'Object';
           break;
         default:
@@ -69,10 +73,7 @@ Juliet.runtime = function() {
         if (i < arguments.length - 1) argTypeSig = argTypeSig + '_';
       }
 
-      if (typeof(context) === 'string') {
-        var t = Juliet.program[context][name + argTypeSig]
-        t.apply(t, args);
-      } else {
+      if (context[name + argTypeSig]) {
         context[name + argTypeSig].apply(context, args);
       }
 
