@@ -11,7 +11,7 @@ Juliet.runtime = function() {
       }
       // find appropriate constructor
       if (!constructor) {
-        constructor = '<init>';
+        constructor = '<init>___';
       }
       if (typeof(inst['<class>']) === 'function')
         inst['<class>'].call(inst);

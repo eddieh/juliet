@@ -188,7 +188,7 @@ Juliet = function() {
       Juliet.compiler.compile(types);
     },
 
-    run: function(className) {
+    run: function(className, noMain) {
       // initialize classes
       for (var c in Juliet.program) {
         // TODO: remove this kludge
@@ -206,13 +206,17 @@ Juliet = function() {
       }
 
       if (Juliet.program[className]) {
-        //var main = Juliet.program[className].public_static_void_main;
-        var main = Juliet.program[className]['main___String[]'];
-        if (!main) {
-          print(className + ' does not have a main mehtod.');
-          quit();
+        if (noMain) {
+          Juliet.runtime['new'](Juliet.program[className]);
+        } else {
+          //var main = Juliet.program[className].public_static_void_main;
+          var main = Juliet.program[className]['main___String[]'];
+          if (!main) {
+            print(className + ' does not have a main mehtod.');
+            quit();
+          }
+          main.call();
         }
-        main.call();
       } else {
         if (className == '') {
           print('You must specify which class to run.');

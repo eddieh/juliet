@@ -134,6 +134,48 @@ Juliet.util = function() {
         ret.push(key);
       }
       return ret;
+    },
+
+    escapeStr: function(str) {
+      var ret = '';
+      var ch = 0;
+      for (var i = 0; i < str.length; i++) {
+        ch = str.charCodeAt(i);
+        switch (ch) {
+          // backspace
+        case 8:
+          ch = '\\b';
+          break;
+          // horizontal tab
+        case 9:
+          ch = '\\t';
+          break;
+          // newline
+        case 10:
+          ch = '\\n';
+          break;
+          // form feed
+        case 12:
+          ch = '\\f';
+          break;
+          // carriage return
+        case 13:
+          ch = '\\r';
+          break;
+          // single quote
+        case 39:
+          ch = '\\\'';
+          break;
+          // backslash
+        case 92:
+          ch = '\\\\';
+          break;
+        default:
+          ch = str.charAt(i);
+        }
+        ret = ret + ch;
+      }
+      return ret;
     }
   };
 }();

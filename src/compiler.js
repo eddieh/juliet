@@ -18,48 +18,6 @@ Juliet.compiler = function() {
     return ret;
   };
 
-  var escapeStr = function(str) {
-    var ret = '';
-    var ch = 0;
-    for (var i = 0; i < str.length; i++) {
-      ch = str.charCodeAt(i);
-      switch (ch) {
-      // backspace
-      case 8:
-        ch = '\\b';
-        break;
-      // horizontal tab
-      case 9:
-        ch = '\\t';
-        break;
-      // newline
-      case 10:
-        ch = '\\n';
-        break;
-      // form feed
-      case 12:
-        ch = '\\f';
-        break;
-      // carriage return
-      case 13:
-        ch = '\\r';
-        break;
-      // single quote
-      case 39:
-        ch = '\\\'';
-        break;
-      // backslash
-      case 92:
-        ch = '\\\\';
-        break;
-      default:
-        ch = str.charAt(i);
-      }
-      ret = ret + ch;
-    }
-    return ret;
-  }
-
   var parameterList = function(params) {
     if (Juliet.options.trace) print('parameterList');
     if (!params) return [];
@@ -126,6 +84,10 @@ Juliet.compiler = function() {
       default:
         // can't determine at compile-time return the empty string so
         // that the methods base name is used
+
+        // NOTE: this case will happen when the arguments are
+        // expressions, etc.
+
         return '';
         break;
       }
@@ -151,12 +113,13 @@ Juliet.compiler = function() {
     if (Juliet.options.trace) print('nameInContext: ' + context);
     if (Juliet.options.trace) print('  name: ' + name);
 
+    // if the id has args this is a method call
     var args = id.args;
     var argTypeSig = '';
     if (args) {
       argTypeSig = typeListSignature(args);
       if (argTypeSig === '') {
-        return 'Juliet.runtime.dispatch(\'' + name + '\',\'' + context + '\',';
+        return '___dispatch___(\'' + name + '\',\'' + context + '\',';
       }
     }
 
@@ -198,6 +161,21 @@ Juliet.compiler = function() {
 
     var privateName = privateMemberName(typeName, name);
     if (privateName) return privateName;
+
+    // look up name in previously compiled
+    if (context in Juliet.AST.parsed_types) {
+      var static_methods = Juliet.AST.parsed_types[context].class_methods;
+      if (static_methods) {
+        for (var m in static_methods) {
+          // TODO: check for matching signature
+          //if (static_methods[m].signature == name + argTypeSig) {
+
+          if (static_methods[m].name == name) {
+            return name + argTypeSig;
+          }
+        }
+      }
+    }
 
     print(name + ' is not a member of ' + context);
     quit();
@@ -250,6 +228,11 @@ Juliet.compiler = function() {
     if (privateName) return 'this' + privateName;
 
     // TODO: super
+
+    // look up name in previously compiled
+    if (name in Juliet.AST.parsed_types) {
+      return 'Juliet.program.' + name;
+    }
 
     // TODO: single-static-import declarations
     // TODO: static-import-on-demand declarations
@@ -1907,7 +1890,7 @@ Juliet.compiler = function() {
         case Juliet.LITERAL_CHAR:
         case Juliet.LITERAL_STRING:
           ret = ret + '\'';
-          ret = ret + escapeStr(stm.value);
+          ret = ret + Juliet.util.escapeStr(stm.value);
           ret = ret + '\'';
           break;
         case Juliet.LITERAL_DOUBLE:
@@ -2261,6 +2244,13 @@ Juliet.compiler = function() {
               + '} else {'
               + ' privates[field] = x;'
               + '}}}}(this);'));
+
+    /*
+     * Dynamic Dispatch Support
+     */
+    ctype['___dispatch___'] = function(name, context) {
+      Juliet.runtime.dispatch(arguments);
+    };
 
     /*
      * Static Initializers
