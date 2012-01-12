@@ -2345,6 +2345,10 @@ Juliet.compiler = function() {
       static_context = null;
     },
 
+    reset: function() {
+      prevScope = null;
+    },
+
     compile: function(types) {
       if (Juliet.options.trace) print('compile');
 
@@ -2377,6 +2381,11 @@ Juliet.compiler = function() {
         var type = null;
         type = ast.parsed_types[typeKey];
         addClass(type);
+      }
+
+      if (scope.length != 1) {
+        print('there should be only 1 level in the scope stack');
+        quit();
       }
 
       prevScope = Juliet.util.copy(scope);

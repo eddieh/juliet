@@ -175,6 +175,7 @@ Juliet = function() {
       };
       Juliet.program = {};
       Juliet.stdout = '';
+      Juliet.compiler.reset();
     },
 
     compile: function(source) {
