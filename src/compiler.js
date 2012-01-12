@@ -80,6 +80,11 @@ Juliet.compiler = function() {
           break;
         }
       case 'construct':
+        // method call
+        if (typeList[i].args) {
+          return '';
+        }
+
         var t = typeDescriptorForName(typeList[i].name);
         if (t && t.type) ret = ret + t.type.name;
         break;
@@ -464,6 +469,10 @@ Juliet.compiler = function() {
       return a.type;
     }
 
+    if (a.kind == 'method') {
+      return a.return_type;
+    }
+
     print('getType: no handler for ' + a.kind);
     quit();
   }
@@ -506,6 +515,10 @@ Juliet.compiler = function() {
 
     if (a.kind == 'local') {
       return a.type.name;
+    }
+
+    if (a.kind == 'method') {
+      return a.return_type.name;
     }
 
     print('getTypeName: no handler for ' + a.kind);
@@ -1442,6 +1455,7 @@ Juliet.compiler = function() {
         }
       }
 
+      // property?
       var props = typeDescriptor.type.properties;
       if (!props) {
         typeDescriptor = typeDescriptorForName(typeDescriptor.type.name);
@@ -1464,6 +1478,29 @@ Juliet.compiler = function() {
         }
       }
 
+      // method?
+      var methods = typeDescriptor.type.methods;
+      if (!methods) {
+        typeDescriptor = typeDescriptorForName(typeDescriptor.type.name);
+        if (typeDescriptor && typeDescriptor.type) {
+          methods = typeDescriptor.type.methods;
+        }
+      }
+      if (methods) {
+        for (var i = 0; i < methods.length; i++) {
+          if (methods[i].name == name) {
+            // print('INSTANCE IN CONTEXT: ' + context);
+            // Juliet.util.print_ast(methods[i]);
+            if (staticContext) {
+              print('non-static method ' + name +
+                    ' cannot be referenced from a static context');
+              quit();
+            }
+            return methods[i];
+          }
+        }
+      }
+
       // class/static property?
       var cprops = typeDescriptor.type.class_properties;
       if (!cprops) {
@@ -1481,6 +1518,25 @@ Juliet.compiler = function() {
           }
         }
       }
+
+      // class/static method?
+      var cmethods = typeDescriptor.type.class_methods;
+      if (!cmethods) {
+        typeDescriptor = typeDescriptorForName(typeDescriptor.type.name);
+        if (typeDescriptor && typeDescriptor.type) {
+          cmethods = typeDescriptor.type.class_methods;
+        }
+      }
+      if (cmethods) {
+        for (var i = 0; i < cmethods.length; i++) {
+          if (cmethods[i].name == name) {
+            // print('STATIC IN CONTEXT: ' + context);
+            // Juliet.util.print_ast(cmethods[i]);
+            return cmethods[i];
+          }
+        }
+      }
+
     }
   };
 
