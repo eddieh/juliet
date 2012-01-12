@@ -86,7 +86,7 @@ Juliet.util = function() {
     },
 
     copy: function(obj, without) {
-      var theCopy = {};
+      var theCopy = (this.isArray(obj)) ? [] : {};
       for (var propKey in obj) {
         if (obj.hasOwnProperty(propKey)) {
           if (without && this.has(without, propKey)) continue;
@@ -101,10 +101,8 @@ Juliet.util = function() {
     },
 
     isArray: function(obj) {
-      if (obj.constructor.toString().indexOf('Array') == -1)
-        return false;
-      else
-        return true;
+      if (!obj) return false;
+      return (obj.constructor.toString().indexOf('Array') != -1)
     },
 
     equal: function(a, b) {

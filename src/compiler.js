@@ -5,6 +5,8 @@ Juliet.compiler = function() {
   var scope = [];
   var static_context = null;
 
+  var prevScope = null;
+
   var typeName = function(type) {
     var ret = '';
     var ch = 0;
@@ -2308,13 +2310,20 @@ Juliet.compiler = function() {
         needToCompile = types;
       }
 
-      pushScope();
+      if (prevScope) {
+        scope = prevScope;
+      } else {
+        pushScope();
+      }
+
       for (var i in needToCompile) {
         var typeKey = needToCompile[i];
         var type = null;
         type = ast.parsed_types[typeKey];
         addClass(type);
       }
+
+      prevScope = Juliet.util.copy(scope);
       popScope();
     }
   }
