@@ -169,6 +169,11 @@ Juliet.compiler = function() {
     var privateName = privateMemberName(typeName, name);
     if (privateName) return privateName;
 
+    /*
+
+      TODO: remove? (since we change how the scope stack is handled
+      this is probably not necessary)
+
     // look up name in previously compiled
     if (context in Juliet.AST.parsed_types) {
       var static_methods = Juliet.AST.parsed_types[context].class_methods;
@@ -183,6 +188,7 @@ Juliet.compiler = function() {
         }
       }
     }
+    */
 
     print(name + ' is not a member of ' + context);
     quit();
@@ -236,10 +242,16 @@ Juliet.compiler = function() {
 
     // TODO: super
 
+    /*
+
+      TODO: remove? (since we change how the scope stack is handled
+      this is probably not necessary)
+
     // look up name in previously compiled
     if (name in Juliet.AST.parsed_types) {
       return 'Juliet.program.' + name;
     }
+    */
 
     // TODO: single-static-import declarations
     // TODO: static-import-on-demand declarations
@@ -1056,7 +1068,7 @@ Juliet.compiler = function() {
       // 15.21.1
       // 15.21.2
       // 15.21.3
-      print('equality operators type checking not implemented');
+      print('Warning: equality operators type checking not implemented');
       //quit();
     }
 
