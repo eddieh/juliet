@@ -73,10 +73,14 @@ Juliet.runtime = function() {
         if (i < arguments.length - 1) argTypeSig = argTypeSig + '_';
       }
 
-      if (context[name + argTypeSig]) {
-        context[name + argTypeSig].apply(context, args);
+      var methodSig = name + argTypeSig;
+      if (context[methodSig]) {
+        context[methodSig].apply(context, args);
+        return;
       }
 
+      print(methodSig + ' not found');
+      quit();
     }
   };
 }();
