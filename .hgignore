@@ -1,10 +1,11 @@
 syntax: glob
 .DS_Store
-*.d8_history
 *.class
 kinds.txt
 langspec-3.0.pdf
+langspec-7.0.pdf
 juliet-browser.js
 juliet-cli.js
 vendor
 test/javagrinder-juliet-test
+.d8_history
