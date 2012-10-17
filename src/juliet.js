@@ -213,7 +213,7 @@ Juliet = function() {
           //var main = Juliet.program[className].public_static_void_main;
           var main = Juliet.program[className]['main___String[]'];
           if (!main) {
-            print(className + ' does not have a main mehtod.');
+            print(className + ' does not have a main method.');
             quit();
           }
           main.call();
