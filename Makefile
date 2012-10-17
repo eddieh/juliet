@@ -6,10 +6,10 @@ JS=$(V8)
 
 all: juliet-cli.js juliet-browser.js
 
-juliet-cli.js:
+juliet-cli.js: src/*.js
 	java -jar vendor/closure-compiler/compiler.jar --flagfile Build.cli
 
-juliet-browser.js:
+juliet-browser.js: src/*.js
 	java -jar vendor/closure-compiler/compiler.jar --flagfile Build.browser
 
 lint:
