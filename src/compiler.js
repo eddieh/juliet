@@ -2030,7 +2030,9 @@ Juliet.compiler = function() {
     if (Juliet.util.isArray(cm.statements)) {
       body = flatten(cm.statements);
     } else {
-      body = cm.statements.value;
+      if (m.statements) {
+        body = cm.statements.value;
+      }
     }
     type[name] = new Function(params, body);
     static_context = null;
@@ -2052,7 +2054,9 @@ Juliet.compiler = function() {
       if (Juliet.util.isArray(m.statements)) {
         body = flatten(m.statements);
       } else {
-        body = m.statements.value;
+        if (m.statements) {
+          body = m.statements.value;
+	}
       }
       type[name] = new Function(params, body);
       popScope();
