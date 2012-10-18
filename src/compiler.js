@@ -746,6 +746,7 @@ Juliet.compiler = function() {
   };
 
   var typeCheckArray = function(array) {
+    if (Juliet.options.trace) print('typeCheckArray');
     var name = array.type.name;
     if (array.token == Juliet.TOKEN_LCURLY && array.terms) {
       var arrayElements = array.terms;
@@ -770,10 +771,12 @@ Juliet.compiler = function() {
   };
 
   var typeCheckNew = function(expr) {
+    if (Juliet.options.trace) print('typeCheckNew');
     return expr.type;
   };
 
   var typeCheckWiderNumericType = function(leftType, rightType) {
+    if (Juliet.options.trace) print('typeCheckWiderNumericType');
     var leftTypeName = getTypeName(leftType);
     var rightTypeName = getTypeName(rightType);
 
@@ -791,6 +794,7 @@ Juliet.compiler = function() {
   };
 
   var typeCheckIncDecExpr = function(expr) {
+    if (Juliet.options.trace) print('typeCheckIncDecExpr');
     // variable?
     if (expr.operand) {
       if (expr.operand.kind != 'construct') {
@@ -828,6 +832,7 @@ Juliet.compiler = function() {
   };
 
   var typeCheckPostfixExpr = function(expr) {
+    if (Juliet.options.trace) print('typeCheckPostfixExpr');
     // TODO: hmmmm?
     // var operand = typeCheckExpr(expr.operand);
 
@@ -840,6 +845,7 @@ Juliet.compiler = function() {
   };
 
   var typeCheckPrefixExpr = function(expr) {
+    if (Juliet.options.trace) print('typeCheckPrefixExpr');
     var operand = typeCheckExpr(expr.operand);
 
     // ++, -- must be applied to variables with numeric types
@@ -898,6 +904,7 @@ Juliet.compiler = function() {
   };
 
   var typeCheckBinaryExpr = function(expr) {
+    if (Juliet.options.trace) print('typeCheckBinaryExpr');
 
     var multiplicative = function(a) {
       switch (a) {
@@ -1135,6 +1142,7 @@ Juliet.compiler = function() {
   };
 
   var typeCheckTernary = function(expr) {
+    if (Juliet.options.trace) print('typeCheckTernary');
     var trueValue = typeCheckExpr(expr.true_value);
     var falseValue = typeCheckExpr(expr.false_value);
 
@@ -1356,6 +1364,8 @@ Juliet.compiler = function() {
   };
 
   var typeCheckExpr = function(expr) {
+    if (Juliet.options.trace) print('typeCheckExpr: ' + expr.kind);
+
     if (expr.kind == 'literal') {
       return expr;
     }
@@ -1398,6 +1408,7 @@ Juliet.compiler = function() {
   };
 
   var typeCheckLocalDecl = function(decl) {
+    if (Juliet.options.trace) print('typeCheckLocalDecl');
     var localType = decl.type;
     var initialValueType = typeCheckExpr(decl.initial_value);
 
@@ -1655,6 +1666,8 @@ Juliet.compiler = function() {
   };
 
   var typeCheckAssignmentExpr = function(assign) {
+    if (Juliet.options.trace) print('typeCheckAssignmentExpr');
+
     // Juliet.util.print_ast(assign);
     var leftHandSide = typeCheckLeftHandSide(assign.location);
     var newValue = typeCheckExpr(assign.new_value);
