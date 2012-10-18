@@ -215,6 +215,13 @@ Juliet.compiler = function() {
         return n.name;
       }
 
+	cname = name.split('.');
+	cname = cname[cname.length - 1];
+	if ((cname in scope[i]) && (scope[i][cname].name == name)) {
+	    return n.name;
+	}
+
+
       if ((name + argTypeSig) in scope[i]) {
         var context = 'this.';
 
