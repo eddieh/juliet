@@ -165,23 +165,42 @@ Juliet.parser = function() {
   var cmd = function(op, t, lhs, rhs) {
   };
 
+  // 7.3
+  // CompilationUnit:
+  //   PackageDeclaration(opt) ImportDeclarations(opt) TypeDeclarations(opt)
+  //
+  // ImportDeclarations:
+  //   ImportDeclaration
+  //   ImportDeclarations ImportDeclaration
+  //
+  // TypeDeclarations:
+  //   TypeDeclaration
+  //   TypeDeclarations TypeDeclaration
+
   var parse_compilation_unit = function(unit) {
     if (Juliet.options.trace) print('parse_compilation_unit');
     var t = peek();
+
     if (next_is(Juliet.TOKEN_PACKAGE)) {
-      Juliet.AST['package'] = parse_package_decls();
+      Juliet.AST['package'] = parse_package_declaration();
     }
     while (next_is(Juliet.TOKEN_IMPORT)) {
       if (!Juliet.AST.imports) Juliet.AST.imports = [];
-      Juliet.AST.imports.push(parse_import_decls());
+      Juliet.AST.imports.push(parse_import_declaration());
     }
-    var type = parse_type_def();
+    var type = parse_type_declaration();
     while (type) {
-      type = parse_type_def();
+      type = parse_type_declaration();
     }
   };
 
-  var parse_package_decls = function(){
+  // 7.4
+  // PackageDeclaration:
+  //   Annotations(opt) package PackageName ;
+  //
+  // TODO: Annotations
+
+  var parse_package_declaration = function(){
     if (Juliet.options.trace) print('parse_package_decls');
     var t = read();
     var name = must_read_id('Expected package name.');
@@ -194,7 +213,26 @@ Juliet.parser = function() {
             name:name};
   };
 
-  var parse_import_decls = function() {
+  // 7.5
+  // ImportDeclaration:
+  //   SingleTypeImportDeclaration
+  //   TypeImportOnDemandDeclaration
+  //   SingleStaticImportDeclaration
+  //   StaticImportOnDemandDeclaration
+  //
+  // SingleTypeImportDeclaration:
+  //   import TypeName ;
+  //
+  // TypeImportOnDemandDeclaration:
+  //   import PackageOrTypeName . * ;
+  //
+  // SingleStaticImportDeclaration:
+  //   import static TypeName . Identifier ;
+  //
+  // StaticImportOnDemandDeclaration:
+  //   import static TypeName . * ;
+
+  var parse_import_declaration = function() {
     if (Juliet.options.trace) print('parse_import_decls');
     var t = read();
     var name = '';
@@ -215,8 +253,26 @@ Juliet.parser = function() {
             name:name};
   };
 
-  var parse_type_def = function() {
-    if (Juliet.options.trace) print('parse_type_def');
+  // 7.6
+  // TypeDeclaration:
+  //   ClassDeclaration
+  //   InterfaceDeclaration
+  //   ;
+  //
+  // 8.1
+  // ClassDeclaration:
+  //   NormalClassDeclaration
+  //   EnumDeclaration
+  //
+  // NormalClassDeclaration:
+  //   ClassModifiers(opt) class Identifier TypeParameters(opt)
+  //     Super(opt) Interfaces(opt) ClassBody
+  //
+  // TODO: I find this implementation confusing - specifically the recursion.
+  // TODO: Enums
+
+  var parse_type_declaration = function() {
+    if (Juliet.options.trace) print('parse_type_declaration');
     var quals = null;
     var t = null;
     var mesg = '';
@@ -225,12 +281,13 @@ Juliet.parser = function() {
     var t2 = null;
 
     if (arguments.length == 0) {
-      quals = parse_type_qualifiers();
+      quals = parse_type_modifiers();
       t = peek();
       if (consume(Juliet.TOKEN_CLASS)) {
-        return parse_type_def(t, quals | Juliet.QUALIFIER_CLASS , 'Class name expected.');
+        return parse_type_declaration(t, quals | Juliet.QUALIFIER_CLASS , 'Class name expected.');
       } else if (consume(Juliet.TOKEN_INTERFACE)) {
-        return parse_type_def(t, quals | Juliet.QUALIFIER_INTERFACE | Juliet.QUALIFIER_ABSTRACT, 'Interface name expected.');
+        if (quals & Juliet.QUALIFIER_FINAL) throw t.error('Interfaces can not be final.');
+        return parse_type_declaration(t, quals | Juliet.QUALIFIER_INTERFACE | Juliet.QUALIFIER_ABSTRACT, 'Interface name expected.');
       } else {
         if (quals) throw t.error('Expected class or interface.');
       }
@@ -271,7 +328,7 @@ Juliet.parser = function() {
         // implementing the template later on.
         set_mark();
 
-        parse_type_def(t, type);
+        parse_type_declaration(t, type);
 
         var start = Juliet.lexer.processed.length - Juliet.lexer.marks[Juliet.lexer.marks.length - 1];
         for (var i = start, len = Juliet.lexer.processed.length; i < len; i++) {
@@ -286,7 +343,7 @@ Juliet.parser = function() {
         return type;
       }
 
-      parse_type_def(t, type);
+      parse_type_declaration(t, type);
 
       return type;
     } else if (arguments.length == 2) {
@@ -326,7 +383,7 @@ Juliet.parser = function() {
         } catch (e) {
           rewind_to_mark();
           try {
-            if (!parse_type_def()) throw e;
+            if (!parse_type_declaration()) throw e;
           } catch (e) { throw e; }
         }
       }
@@ -341,8 +398,30 @@ Juliet.parser = function() {
     return placeholder_type;
   }
 
-  var parse_type_qualifiers = function() {
-    if (Juliet.options.trace) print('parse_type_qualifiers');
+  // 8.1.1
+  // ClassModifiers:
+  //   ClassModifier
+  //   ClassModifiers ClassModifier
+  //
+  // ClassModifier: one of
+  //   Annotation public protected private abstract static final strictfp
+  //
+  // 9.1.1
+  // InterfaceModifiers:
+  //   InterfaceModifier
+  //   InterfaceModifiers InterfaceModifier
+  //
+  // InterfaceModifier: one of
+  //   Annotation public protected private abstract static strictfp
+  //
+  // TODO: Annotations
+  // Comment: Interface and Class modifiers differ only in the 'final' keyword.
+  //   We check that interfaces don't have this keyword in parse_type_declaration() 
+  //   after we call this function and after we determine if we are parsing a
+  //   class or an interface.
+
+  var parse_type_modifiers = function() {
+    if (Juliet.options.trace) print('parse_type_modifiers');
     var quals = 0;
     var t = null;
 
@@ -397,6 +476,25 @@ Juliet.parser = function() {
       return quals;
     }
   }
+
+  // 8.3.1
+  // FieldModifiers:
+  //   FieldModifier
+  //   FieldModifiers FieldModifier
+  //
+  // FieldModifier: one of
+  //   Annotation public protected private static final transient volatile
+  //
+  // 8.4.3
+  // MethodModifiers:
+  //   MethodModifier
+  //   MethodModifiers MethodModifier
+  //
+  // MethodModifier: one of
+  //   Annotation public protected private abstract static final synchronized native strictfp
+  //
+  // Comment: Methods (but not fields) can be abstract, synchronized, native or strictp.
+  //   Fields (but not methods) can be transient or volatile.  We check these in parse_member().
 
   var parse_member_qualifiers = function() {
     if (Juliet.options.trace) print('parse_member_qualifiers');
@@ -473,6 +571,20 @@ Juliet.parser = function() {
       return quals;
     }
   }
+
+  // 8.1.6
+  // ClassMemberDeclaration:
+  //   FieldDeclaration
+  //   MethodDeclaration
+  //   ClassDeclaration
+  //   InterfaceDeclaration
+  //   ;
+  //
+  // 8.3
+  // FieldDeclaration
+  //
+  // 8.4
+  // MethodDeclaration
 
   var parse_member = function(type) {
     if (Juliet.options.trace) print('parse_member');
@@ -598,6 +710,14 @@ Juliet.parser = function() {
         throw t.error('Constructors cannot specify a return type.');
       }
 
+      if (quals & Juliet.QUALIFIER_TRANSIENT) {
+        throw t.error('Methods cannot be transient.');
+      }
+
+      if (quals & Juliet.QUALIFIER_VOLATILE) {
+        throw t.error('Methods cannot be volatile.');
+      }
+
       if (is_interface(type)) quals |= Juliet.QUALIFIER_ABSTRACT;
 
       m = {token:t.type,
@@ -663,17 +783,27 @@ Juliet.parser = function() {
     } else {
       // property
       if (Juliet.options.trace) print('property');
+
       if (data_type == null) {
         throw t.error('void cannot be use as property type.');
       }
+      if (quals & Juliet.QUALIFIER_ABSTRACT) {
+        throw t.error('Fields cannot be abstract.');
+      }
+      if (quals & Juliet.QUALIFIER_SYNCHRONIZED) {
+        throw t.error('Fields cannot be synchronized.');
+      }
+      if (quals & Juliet.QUALIFIER_STRICTP) {
+        throw t.error('Fields cannot be strictp.');
+      }
       if (quals & Juliet.QUALIFIER_NATIVE) {
-        throw t.error('native qualifier cannot be used for properties.');
+        throw t.error('Fields cannot be native.');
       }
 
       if (is_interface(type)) {
         // TODO: interfaces can in fact have field declarations, however
         // *every* field declaration in the body of an interface is
-        // implicityly public, static, and final. As such, each field in
+        // implicitly public, static, and final. As such, each field in
         // an interface must have an initial value.
         throw t.error('Interface cannot have properties.');
       }
@@ -708,6 +838,31 @@ Juliet.parser = function() {
     return true;
   };
 
+  // 8.4.1
+  // FormalParameterList:
+  //   LastFormalParameter
+  //   FormalParameters , LastFormalParameter
+  //
+  // FormalParameters:
+  //   FormalParameter
+  //   FormalParameters , FormalParameter
+  //
+  // FormalParameter:
+  //   VariableModifiers(opt) Type VariableDeclaratorId
+  //
+  // VariableModifiers:
+  //   VariableModifier
+  //   VariableModifiers VariableModifier
+  //
+  // VariableModifier: one of
+  //   Annotation final
+  //
+  // LastFormalParameter:
+  //   VariableModifiers(opt) Type... VariableDeclaratorId
+  //   FormalParameter
+  //
+  // TODO: Annotations, final, variadic arguments
+
   var parse_params = function(m) {
     if (Juliet.options.trace) print('parse_params');
     var t = null;
@@ -734,6 +889,48 @@ Juliet.parser = function() {
       must_consume(Juliet.TOKEN_RPAREN, 'Expected ).');
     }
   };
+
+  // 4.1
+  // Type
+  //   PrimitiveType
+  //   ReferenceType
+  //
+  // 4.2
+  // PrimitiveType: one of
+  //   byte short int long char float double boolean
+  //
+  // 4.3
+  // ReferenceType:
+  //   TypeDeclSpecifier TypeArguments(opt)  // classes/interfaces
+  //   Type [ ]  // arrays
+  //   Identifier
+  //
+  // TypeDeclSpecifier:
+  //   TypeName  
+  //   ClassOrInterfaceType . Identifier
+  //
+  // TypeName:
+  //   Identifier
+  //   TypeName . Identifier
+  //
+  // 4.5.1
+  // TypeArguments:
+  //   < TypeArgumentList >
+  //
+  // TypeArgumentList: 
+  //   TypeArgument
+  //   TypeArgumentList , TypeArgument
+  //
+  // TypeArgument:
+  //   ReferenceType
+  //   Wildcard
+  //
+  // Wildcard:
+  // ? WildcardBounds(opt)
+  //
+  // WildcardBounds:
+  //   extends ReferenceType
+  //   super ReferenceType
 
   var generic_depth = [];
   var parse_data_type = function(parse_brackets, parse_wildcards) {
