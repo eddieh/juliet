@@ -12,7 +12,17 @@ Juliet.CLI = function() {
     main: function() {
       var argc = scriptArgs.length;
       if (argc) {
-        for (var i = 0; i < argc; i++) {
+
+        // Unfortunately the arguments can be ambiguous from the command
+        // depending on shebang usage:
+        //
+        //    case1: node juliet-cli.js arg2 arg3 ...
+        //    case2: ./juliet-cli.js arg1 arg2 ...
+        //
+        // So we *always* look for the .java extension on files to compile.
+
+        for (var i = 1; i < argc; i++) {
+	  var ext = scriptArgs[i].split('.').pop();
           if (scriptArgs[i] == '--trace') Juliet.options.trace = true;
           else if (scriptArgs[i] == '--ast') showAST = true;
           else if (scriptArgs[i] == '--js') showJS = true;
@@ -25,8 +35,16 @@ Juliet.CLI = function() {
               print('Expected class name after --run.');
               quit();
             }
-          } else filepath = scriptArgs[i];
+          } else if (ext == 'java') {
+	      // The argument was *probably* the file to compile
+	      filepath = scriptArgs[i];
+	  }
         }
+
+	if (filepath == '') {
+	  print('No input file given.');
+	  quit();
+	}
 
         if (verbose) print('Compiling :' + filepath);
 

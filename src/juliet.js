@@ -222,7 +222,7 @@ Juliet = function() {
         if (className == '') {
           print('You must specify which class to run.');
         } else {
-          print(className + ' not found.');
+          print('Class "' + className + '" not found.');
         }
         quit();
       }
