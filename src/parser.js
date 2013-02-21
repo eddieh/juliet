@@ -165,6 +165,14 @@ Juliet.parser = function() {
   var cmd = function(op, t, lhs, rhs) {
   };
 
+  var push_statement = function(m, stm) {
+    if (stm) {
+      if (!m.statements) m.statements = [];
+      if (stm instanceof Array) m.statements = m.statements.concat(stm);
+      else m.statements.push(stm);
+    }
+  }
+
   // 7.3
   // CompilationUnit:
   //   PackageDeclaration(opt) ImportDeclarations(opt) TypeDeclarations(opt)
@@ -619,10 +627,7 @@ Juliet.parser = function() {
       read();
       while (!next_is(Juliet.TOKEN_RCURLY)) {
         stm = parse_statement(true);
-        if (stm) {
-          if (!m.statements) m.statements = [];
-          m.statements.push(stm);
-        }
+        push_statement(m, stm);
       }
       must_consume(Juliet.TOKEN_RCURLY, 'Expected }');
       if (next_is(Juliet.TOKEN_SEMICOLON)) read();
@@ -649,10 +654,7 @@ Juliet.parser = function() {
       read();
       while (!next_is(Juliet.TOKEN_RCURLY)) {
         stm = parse_statement(true);
-        if (stm) {
-          if (!m.statements) m.statements = [];
-          m.statements.push(stm);
-        }
+        push_statement(m, stm);
       }
       must_consume(Juliet.TOKEN_RCURLY, 'Expected }');
       if (next_is(Juliet.TOKEN_SEMICOLON)) read();
@@ -687,10 +689,7 @@ Juliet.parser = function() {
         must_consume(Juliet.TOKEN_LCURLY, 'Expected {.');
         while (!next_is(Juliet.TOKEN_RCURLY)) {
           stm = parse_statement(true);
-          if (stm) {
-            if (!m.statements) m.statements = [];
-            m.statements.push(stm);
-          }
+          push_statement(m, stm);
         }
         must_consume(Juliet.TOKEN_RCURLY, 'Expected }.');
 
@@ -773,10 +772,7 @@ Juliet.parser = function() {
         must_consume(Juliet.TOKEN_LCURLY, 'Expected {.');
         while (!next_is(Juliet.TOKEN_RCURLY)) {
           stm = parse_statement(true);
-          if (stm) {
-            if (!m.statements) m.statements = [];
-            m.statements.push(stm);
-          }
+          push_statement(m, stm);
         }
         must_consume(Juliet.TOKEN_RCURLY, 'Expected }.');
       }
