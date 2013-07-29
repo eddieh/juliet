@@ -1,3 +1,5 @@
+scriptArgs = [];
+
 if (typeof(load) === 'undefined') {
   if (typeof(require) !== 'undefined') {
     nodeRequire = require;
@@ -58,17 +60,17 @@ Juliet.test = function() {
       Base tests
     */
     {
-      path:'test/arrays.java',
+      path:'test/general/arrays.java',
       principal:'Arrays',
       expected:'96\n42\n'
     },
     {
-      path:'test/assignments.java',
+      path:'test/general/assignments.java',
       principal:'Assignments',
       expected:'0\n'
     },
     {
-      path:'test/conditionals.java',
+      path:'test/general/conditionals.java',
       principal:'Conditionals',
       expected:'You see me.\n' +
           'correct\n' +
@@ -76,17 +78,17 @@ Juliet.test = function() {
           'two\n'
     },
     {
-      path:'test/fields.java',
+      path:'test/general/fields.java',
       principal:'Runner',
       expected:'12\n'
     },
     {
-      path:'test/hello.java',
+      path:'test/general/hello.java',
       principal:'Hello',
       expected:'I\'m alive!\n'
     },
     {
-      path:'test/inheritance.java',
+      path:'test/general/inheritance.java',
       principal:'Runner',
       expected:'hello from A\n' +
           '  a = 1\n' +
@@ -101,17 +103,17 @@ Juliet.test = function() {
           '  b = 2\n'
     },
     {
-      path:'test/initializers.java',
+      path:'test/general/initializers.java',
       principal:'Runner',
       expected:'3\n7\n'
     },
     {
-      path:'test/interfaces.java',
+      path:'test/general/interfaces.java',
       principal:'Runner',
       expected:'(2 3)\n'
     },
     {
-      path:'test/jclass.java',
+      path:'test/general/jclass.java',
       principal:'Runner',
       expected:'3\n' +
           '7\n' +
@@ -121,7 +123,7 @@ Juliet.test = function() {
           '99\n'
     },
     {
-      path:'test/literals.java',
+      path:'test/general/literals.java',
       principal:'Literals',
       expected:'string\n' +
           'c\n' +
@@ -132,7 +134,7 @@ Juliet.test = function() {
           'null\n'
     },
     {
-      path:'test/loops.java',
+      path:'test/general/loops.java',
       principal:'Loops',
       expected:'twice\n' +
           'twice\n' +
@@ -141,12 +143,12 @@ Juliet.test = function() {
           'three\n'
     },
     {
-      path:'test/methods.java',
+      path:'test/general/methods.java',
       principal:'Runner',
       expected:'11\n'
     },
     {
-      path:'test/overloading.java',
+      path:'test/general/overloading.java',
       principal:'Runner',
       expected:'character\n' +
           'string\n' +
@@ -165,7 +167,7 @@ Juliet.test = function() {
           'string\n'
     },
     {
-      path:'test/escape.java',
+      path:'test/general/escape.java',
       principal:'Escape',
       expected:'\b\n' +
                '\t\n' +
@@ -187,7 +189,7 @@ Juliet.test = function() {
     },
 
     // {
-    //   path:'test/scope/test1.java',
+    //   path:'test/general/scope/test1.java',
     //   principal:'Test1',
     //   expected:'undefined\n'
     // },
@@ -778,14 +780,23 @@ Juliet.test = function() {
 
     Juliet.test.init();
     if (tests[i].principal) {
+      print("a");
       Juliet.test.put('Running ' + tests[i].path + ' ' + tests[i].principal);
+      print("b");
     } else {
       Juliet.test.put('Compiling ' + tests[i].path);
+    }
+
+    if (!summarize) {
+      Juliet.test.print(Juliet.test.getTestInfo());
     }
 
     if (tests[i].expected == Juliet.stdout) {
       pass_count++;
       Juliet.test.put(' pass');
+    if (!summarize) {
+      Juliet.test.print(Juliet.test.getTestInfo());
+    }
     } else {
       fail_count++;
       Juliet.test.putln(' FAIL');
@@ -798,11 +809,12 @@ Juliet.test = function() {
 
       Juliet.test.putln('Code:');
       Juliet.test.putln(Juliet.source);
-    }
-
     if (!summarize) {
       Juliet.test.print(Juliet.test.getTestInfo());
     }
+      break;
+    }
+
 
   }
 

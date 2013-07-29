@@ -7,6 +7,40 @@ Juliet.compiler = function() {
 
   var prevScope = null;
 
+  var mangle = function(class_name, field_name, parameters) {
+      if (parameters == undefined) {
+	  parameters = [];
+      } else if (parameters.length == 0) {
+	  parameters = ['void'];
+      } else {
+	  parameters = clone(parameters);
+      }
+      parameters.unshift(class_name, field_name);
+      var mangled = "";
+      for (var i=0; i<parameters.length; i++) {
+	  var pname = "";
+	  if (!parameters[i].kind) {
+	      pname = parameters[i];
+	  } else {
+	      if (parameters[i].kind == 'parameter') {
+		  pname = parameters[i].type.name;
+	      } else {
+		  print("Unknown element in parameter list.");
+		  quit();
+	      }
+	  }
+	  pname = pname.replace("[]", "___$");
+	  mangled += pname.length.toString();
+	  mangled += pname;
+      }
+      return mangled;
+  };
+
+  var clone = (function(){ 
+      return function (obj) { Clone.prototype=obj; return new Clone() };
+      function Clone(){}
+  }());
+
   var typeName = function(type) {
     var ret = '';
     var ch = 0;
@@ -23,6 +57,7 @@ Juliet.compiler = function() {
   var parameterList = function(params) {
     if (Juliet.options.trace) print('parameterList');
     if (!params) return [];
+
     var lst = [];
     for (var i = 0; i < params.length; i++) {
       var name = params[i].name;
@@ -109,191 +144,172 @@ Juliet.compiler = function() {
     return sig + typeListSignature(m.parameters);
   };
 
-  var methodDescriptor = function () {
-  };
+    var nameInContextClass = function(cxt_class, id) {
+	// Is it just the name, or an object with the name in it?
+	//var name = (typeof(id) === 'object') ? id.name : name;
+	var name = undefined;
 
-  var mostApplicableMethod = function () {
-  };
-
-  var nameInContext = function(context, id) {
-    var name = (typeof(id) === 'object') ? id.name : id;
-    if (Juliet.options.trace) print('nameInContext: ' + context);
-    if (Juliet.options.trace) print('  name: ' + name);
-
-    // if the id has args this is a method call
-    var args = id.args;
-    var argTypeSig = '';
-    if (args) {
-      argTypeSig = typeListSignature(args);
-      if (argTypeSig === '') {
-        return '___dispatch___(\'' + name + '\',\'' + context + '\',';
-      }
-    }
-
-    // if context is a variable we need to check if id is a
-    // field of the type
-    var typeDescriptor = typeDescriptorForName(context);
-    var typeName = null;
-
-    if (typeDescriptor && typeDescriptor.type) {
-      typeName = typeDescriptor.type.name;
-      if (name in Juliet.program[typeName]) {
-        // TODO: accessible?
-        return name;
-      } else if ((name + argTypeSig) in Juliet.program[typeName]) {
-        // TODO: accessible?
-        return name + argTypeSig;
-      }
-    }
-
-    var cononicalName = nameInScope(context) + '.';
-    var curScope = scope.length - 1;
-    for (var i = curScope; i >= 0; i--) {
-      if ((context in scope[i])) {
-        if (name in scope[i]) {
-          var n = scope[i][name].name;
-          // TODO: accessible?
-          return n.replace(cononicalName, '');
-        } else if ((name + argTypeSig) in scope[i]) {
-          //var n = scope[i][name].name;
-          //return n.replace(cononicalName, '');
-          var n = name + argTypeSig;
-          // TODO: accessible?
-          return n;
-        } else break;
-      } else {
-        continue;
-      }
-    }
-
-    var privateName = privateMemberName(typeName, name);
-    if (privateName) return privateName;
-
-    /*
-
-      TODO: remove? (since we change how the scope stack is handled
-      this is probably not necessary)
-
-    // look up name in previously compiled
-    if (context in Juliet.AST.parsed_types) {
-      var static_methods = Juliet.AST.parsed_types[context].class_methods;
-      if (static_methods) {
-        for (var m in static_methods) {
-          // TODO: check for matching signature
-          //if (static_methods[m].signature == name + argTypeSig) {
-
-          if (static_methods[m].name == name) {
-            return name + argTypeSig;
-          }
-        }
-      }
-    }
-    */
-
-    print(name + ' is not a member of ' + context);
-    quit();
-  };
-
-  var nameInScope = function(id, simple) {
-    var name = (typeof(id) === 'object') ? id.name : id;
-    if (Juliet.options.trace) print('nameInScope: ' + name);
-
-    var args = id.args;
-    var argTypeSig = '';
-    if (args) {
-      argTypeSig = typeListSignature(args);
-      if (argTypeSig === '') {
-        return 'Juliet.runtime.dispatch(\'' + name + '\',this,';
-      }
-    }
-
-    var curScope = scope.length - 1;
-    for (var i = curScope; i >= 0; i--) {
-
-      if (name in scope[i]) {
-        var n = scope[i][name];
-        return n.name;
-      }
-
-	cname = name.split('.');
-	cname = cname[cname.length - 1];
-	if ((cname in scope[i]) && (scope[i][cname].name == name)) {
-	    return n.name;
+	if (id.kind == 'new') {
+	    name = id.type.name;
+	} else {
+	    name = id.name;
 	}
 
+	// Use the class to lookup the appropriate field.
+	while (cxt_class && cxt_class.name) {
 
-      if ((name + argTypeSig) in scope[i]) {
-        var context = 'this.';
+	    if (Juliet.options.trace) print('  cxt_class: ' + cxt_class.name);
+	    var mname = mangle(cxt_class.name, name);
 
-        if (static_context) {
-          context = 'Juliet.program.' + static_context.name + '.';
-        }
+	    if ('_I' + mname in cxt_class) {
 
-        if (simple) {
-          context = '';
-        }
+		if (id.args) {
+		    var methods = cxt_class['_I' + mname];
 
-        var n = context + name + argTypeSig;
-        return n;
+		    if (!Juliet.util.isArray(methods)) {
+			print(name + " is defined as a field, not a method in " + context);
+			quit();
+		    }
+		    
+		    // Overloading:
+		    // We have to find the most specific signature.
+		    // http://docs.oracle.com/javase/specs/jls/se7/html/jls-15.html#jls-15.12
+		    var best_method = null;
+
+		    for (var k=0; k < methods.length; k++) {
+			var method_name = methods[k];
+			var method = cxt_class[method_name];
+			// TODO: Find the most specific signature.  Currently we only find the first fit based on arity.
+			if (id.args.length == method.parameters.length) {
+			    best_method = method_name;
+			}
+			// print("CHECKING.." + id.args.length + " == " + method.parameters.length);
+		    }
+		    
+		    // TODO: Check access qualifiers
+
+		    if (best_method) {
+			return "_Z" + best_method.substring(2);
+		    }
+		    
+		    // TODO: Better error.
+		    print("No matching signature for call to '" + name + "' in " + context);
+		    quit();
+
+		} else {
+
+		    // Property lookup
+		    if (Juliet.util.isArray(methods)) {
+			print(name + " is defined as a method, not a field in " + context);
+			quit();
+		    }
+
+		    // TODO: Check access qualifiers
+
+		    return '_Z' + mname;
+		}
+
+	    }
+
+	    if (cxt_class.base_class) {
+		cxt_class = Juliet.program[cxt_class.base_class];
+	    } else {
+		cxt_class = null;
+	    }
+	}
+
+	return cxt_class;
+    };
+
+    // context: string like 'this'
+    // name: construct dict or just a name..?
+    var nameInContext = function(context, id) {
+
+	// Is it just the name, or an object with the name in it?
+	var name = (typeof(id) === 'object') ? id.name : name;
+
+	if (Juliet.options.trace) print('nameInContext: ' + context);
+	//if (Juliet.options.trace) print('  name: ' + name);
+
+	// Get the type for the context.
+	var cxt_type = typeDescriptorForName(context);
+
+	// Then look up the class for the type.
+	var cxt_class = Juliet.program[cxt_type.type.name];
+
+	var r = nameInContextClass(cxt_class, id);
+
+	if (r) return r;
+
+	print(name + ' is not a member of ' + context);
+	quit();
+    };
+
+  var nameInScope = function(id, simple) {
+      var name = (typeof(id) === 'object') ? id.name : id;
+      if (Juliet.options.trace) print('nameInScope: ' + name);
+      
+      var args = id.args;
+      var argTypeSig = '';
+      if (args) {
+	  argTypeSig = typeListSignature(args);
+	  //if (argTypeSig === '') {
+          //    return 'Juliet.runtime.dispatch(\'' + name + '\',this,';
+	  //    
+	  //}
+      }
+      
+      var curScope = scope.length - 1;
+      for (var i = curScope; i >= 0; i--) {
+	  
+	  //Juliet.util.print_ast(scope[i]);
+	  
+	  if (name in scope[i]) {
+              var n = scope[i][name];
+              return n.name;
+	  }
+
+	  cname = name.split('.');
+	  cname = cname[cname.length - 1];
+	  if ((cname in scope[i]) && (scope[i][cname].name == name)) {
+	      return n.name;
+	  }
+	  
+	  
+	  if ((name + argTypeSig) in scope[i]) {
+              var context = 'this.';
+	      
+              if (static_context) {
+		  context = 'Juliet.program.' + static_context.name + '.';
+              }
+	      
+              if (simple) {
+		  context = '';
+              }
+	      
+              var n = context + name + argTypeSig;
+              return n;
+	  }
+	  
       }
 
-    }
-
-    var typeDescriptor = typeDescriptorForName('this');
-    var typeName = null;
-    if (typeDescriptor && typeDescriptor.type) {
-      typeName = typeDescriptor.type.name;
-    }
-    var privateName = privateMemberName(typeName, name);
-    if (privateName) return 'this' + privateName;
-
-    // TODO: super
-
-    /*
-
-      TODO: remove? (since we change how the scope stack is handled
-      this is probably not necessary)
-
-    // look up name in previously compiled
-    if (name in Juliet.AST.parsed_types) {
-      return 'Juliet.program.' + name;
-    }
-    */
-
-    // TODO: single-static-import declarations
-    // TODO: static-import-on-demand declarations
-
-    // TODO: if in static context, check if this is an instance
-    // identifier and print appropriate message
-    // (update tests/scope/test17.java to reflect this change)
-    print(name + ' is not defined');
-    quit();
+      var typeDescriptor = typeDescriptorForName('this');
+      var typeName = null;
+      if (typeDescriptor && typeDescriptor.type) {
+	  typeName = typeDescriptor.type.name;
+      }
+      
+      // TODO: super
+      // TODO: single-static-import declarations
+      // TODO: static-import-on-demand declarations
+      // TODO: if in static context, check if this is an instance
+      // identifier and print appropriate message
+      // (update tests/scope/test17.java to reflect this change)
+      print(name + ' is not defined');
+      quit();
   };
 
-  var privateMemberName = function(typeName, name) {
-    if (typeName) {
-      var type = Juliet.program[typeName];
-      if (type && type.private_methods) {
-        var privMethods = type.private_methods;
-        if (name in privMethods) {
-          return '[\'<private>\'].' + name;
-        } else {
-          print(name + ' is a private method');
-          quit();
-        }
-      } else if (type && type.private_properties) {
-        var privProps = type.private_properties;
-        if (name in privProps) {
-          return '[\'<private>\'][\'<mutate>\'](\'' + name + '\'';
-        } else {
-          print(name + ' is private');
-          quit();
-        }
-      }
-    }
-  }
-
-  var addIdentifier = function(name, cononicalName, type, shadowable, kind) {
+  var addIdentifier = function(name, canonicalName, type, shadowable, kind) {
     if (Juliet.options.trace) print('addIdentifier');
 
     var curScope = scope.length - 1;
@@ -306,15 +322,15 @@ Juliet.compiler = function() {
       }
     }
 
-    scope[scope.length - 1][name] = {name:cononicalName,
+    scope[scope.length - 1][name] = {name:canonicalName,
                                      type:type,
                                      shadowable:shadowable,
                                      kind:kind};
   };
 
-  var constructorForArguments = function(args) {
-    return '\'<init>' + typeListSignature(args) + '\'';
-  };
+//  var constructorForArguments = function(args) {
+//    return '\'__init__' + typeListSignature(args) + '\'';
+//  };
 
   var pushScope = function() {
     if (Juliet.options.trace) print('pushScope');
@@ -331,7 +347,7 @@ Juliet.compiler = function() {
   };
 
   var isField = function(id) {
-    return id.kind == 'field';
+    return id.kind == 'property';
   };
 
   var isArrayAccess = function(id) {
@@ -506,6 +522,7 @@ Juliet.compiler = function() {
         var typeDescriptor = typeDescriptorForName(a.name);
 
         if (!typeDescriptor) {
+	    print("Q");
           var name = nameInScope(a, true);
           typeDescriptor = typeDescriptorForName(name);
         }
@@ -739,6 +756,7 @@ Juliet.compiler = function() {
       depth++;
     }
 
+	    print("R");
     var name = nameInScope(expr.operand, true);
     typeDescriptor = typeDescriptorForName(name);
 
@@ -811,9 +829,10 @@ Juliet.compiler = function() {
         quit();
       }
 
+	    print("S");
       var name = nameInScope(expr.operand, true);
       var type = typeDescriptorForName(name);
-      if ((type.kind != 'local') && (type.kind != 'field')) {
+      if ((type.kind != 'local') && (type.kind != 'property')) {
         print('unexpected type');
         print('required: variable');
         print('found   : ' + type.kind);
@@ -1380,6 +1399,9 @@ Juliet.compiler = function() {
     if (expr.kind == 'construct') {
       var name = nameInScope(expr, true);
       typeDescriptor = typeDescriptorForName(name);
+	//if (Juliet.options.trace) {
+	//    Juliet.util.print_ast(typeDescriptor.type);
+	//}
 
       return typeDescriptor.type;
     }
@@ -1465,8 +1487,6 @@ Juliet.compiler = function() {
     // instance propery?
     var typeDescriptor = typeDescriptorForName(context);
     var staticContext = false;
-    // print('CONTEXT: ');
-    // Juliet.util.print_ast(typeDescriptor);
 
     if (typeDescriptor && typeDescriptor.type) {
       var tn = typeDescriptor.type.name;
@@ -1496,8 +1516,8 @@ Juliet.compiler = function() {
       if (props) {
         for (var i = 0; i < props.length; i++) {
           if (props[i].name == name) {
-            // print('INSTANCE IN CONTEXT: ' + context);
-            // Juliet.util.print_ast(props[i]);
+            //print('INSTANCE IN CONTEXT: ' + context);
+            //Juliet.util.print_ast(props[i]);
             if (staticContext) {
               print('non-static variable ' + name +
                     ' cannot be referenced from a static context');
@@ -1568,9 +1588,13 @@ Juliet.compiler = function() {
       }
 
     }
+      print("SHOULD NOT GET HERE");
+      quit();
   };
 
   var typeCheckContextualAccess = function(expr) {
+    if (Juliet.options.trace) print('typeCheckContextualAccess');
+
     if (expr.kind == 'postfix' && expr.token == Juliet.TOKEN_PERIOD) {
       return typeCheckFieldAccessExpression(expr);
     }
@@ -1584,6 +1608,8 @@ Juliet.compiler = function() {
   }
 
   var typeCheckFieldAccessExpression = function(expr) {
+    if (Juliet.options.trace) print('typeCheckFieldAccessExpression');
+
     var name = identifierForExpression(expr);
 
     var typeDescriptor = null;
@@ -1594,7 +1620,11 @@ Juliet.compiler = function() {
     if (typeDescriptor) {
       typeDescriptor = propertyInContext(typeDescriptor.type.name, name);
     } else {
+	//print("EXPRESSION");
+            //Juliet.util.print_ast(expr);	
       var context = getContext(expr);
+	//print("CONTEXT");
+            //Juliet.util.print_ast(context);	
       typeDescriptor = propertyInContext(context, name);
     }
 
@@ -1602,6 +1632,8 @@ Juliet.compiler = function() {
   };
 
   var typeCheckArrayAccessExpression = function(expr) {
+    if (Juliet.options.trace) print('typeCheckArrayAccessExpression');
+
     var name = identifierForExpression(expr);
 
     var typeDescriptor = null;
@@ -1661,8 +1693,8 @@ Juliet.compiler = function() {
         if (name in scope[i]) {
           var x = scope[i][name];
           if (isLocal(x) || isField(x)) {
-            // print('SIMPLE NAME');
-            // Juliet.util.print_ast(x);
+            //print('SIMPLE NAME depth: ' + i);
+            //Juliet.util.print_ast(x);
             return x;
           }
         }
@@ -1675,12 +1707,15 @@ Juliet.compiler = function() {
   var typeCheckAssignmentExpr = function(assign) {
     if (Juliet.options.trace) print('typeCheckAssignmentExpr');
 
-    // Juliet.util.print_ast(assign);
+    //Juliet.util.print_ast(assign);
     var leftHandSide = typeCheckLeftHandSide(assign.location);
     var newValue = typeCheckExpr(assign.new_value);
 
-    // Juliet.util.print_ast(leftHandSide);
-    // Juliet.util.print_ast(newValue);
+    //Juliet.util.print_ast(leftHandSide);
+    //Juliet.util.print_ast(newValue);
+
+    if (leftHandSide.qualifiers & Juliet.QUALIFIER_PRIVATE) {
+    }
 
     var leftHandSideType = getType(leftHandSide.type);
     var newValueType = getType(newValue);
@@ -1774,24 +1809,9 @@ Juliet.compiler = function() {
         //compatibleTypes(stm.location, stm.new_value);
         typeCheckAssignmentExpr(stm);
         var loc = flatten(stm.location, sep, context);
-        if (/<private>/.test(loc)) {
-          // must use private access method
-          ret = ret + loc.replace('this.', 'this').slice(0, -1);
-          var new_value = flatten(stm.new_value);
-          if (token == Juliet.TOKEN_ASSIGN) {
-            ret = ret + ',' + new_value + ')';
-          } else {
-            var val = flatten(stm.location, sep, context);
-            // TODO: we want the non-compound operator string
-            var op = Juliet.lexer.operatorStr(token);
-            ret = ret + ',' + val + op + new_value + ')';
-          }
-        } else {
-          // directly assignable
           ret = ret + loc;
           ret = ret + Juliet.lexer.operatorStr(token);
           ret = ret + flatten(stm.new_value);
-        }
         break;
       case 'ternary':
         if (Juliet.options.trace) print('ternary');
@@ -1819,7 +1839,14 @@ Juliet.compiler = function() {
       case 'new':
         if (Juliet.options.trace) print('new');
         ret = ret + 'Juliet.runtime.new(' + flatten(stm.type) + ',';
-        ret = ret + constructorForArguments(stm.args);
+	  var cxt_class = Juliet.program[stm.type.name];
+	  var n = nameInContextClass(cxt_class, stm);
+	  if (!n) {
+	      print("Unknown constructor for class " + cxt_class.name + ".");
+	      quit();
+	  }
+	  ret = ret + "'" + n + "'";
+          //ret = ret + "'" + mangle(stm.type.name, stm.type.name, stm.args) + "'";
         if (stm.args && stm.args.length > 0) {
           ret = ret + ',';
           ret = ret + flatten(stm.args, ',');
@@ -1840,9 +1867,7 @@ Juliet.compiler = function() {
         if (stm.term) {
           var cntx = stm.operand.name;
           var term = flatten_in_context(cntx, stm.term);
-          if (!(/<private>/.test(term))) {
             ret = ret + '.'
-          }
           ret = ret + term;
         } else if (stm.expression) {
           ret = ret + '[';
@@ -1952,8 +1977,10 @@ Juliet.compiler = function() {
           }
         else {
           if (context) {
-            name = nameInContext(context, stm);
+              name = nameInContext(context, stm);
           } else {
+	      //Juliet.util.print_ast(stm);
+	      
             name = nameInScope(stm);
           }
         }
@@ -1975,7 +2002,7 @@ Juliet.compiler = function() {
         }
         break;
       case 'literal':
-        if (Juliet.options.trace) print('literal');
+        if (Juliet.options.trace) print('literal: ' + token);
         switch(token) {
         case Juliet.LITERAL_CHAR:
         case Juliet.LITERAL_STRING:
@@ -2000,16 +2027,16 @@ Juliet.compiler = function() {
 
   var addStaticInitializer = function(type, si) {
     if (Juliet.options.trace) print('addStaticInitializer');
-    if (!type['<static-initializers>']) type['<static-initializers>'] = [];
+    if (!type['static_initializers']) type['static_initializers'] = [];
     var body = flatten(si.statements);
-    type['<static-initializers>'].push(new Function(body));
+    type['static_initializers'].push(new Function(body));
   };
 
   var addInstanceInitializer = function(type, ii) {
     if (Juliet.options.trace) print('addInstanceInitializer');
-    if (!type['<instance-initializers>']) type['<instance-initializers>'] = [];
+    if (!type['instance_initializers']) type['instance_initializers'] = [];
     var body = flatten(ii.statements);
-    type['<instance-initializers>'].push(new Function(body));
+    type['instance_initializers'].push(new Function(body));
   };
 
   var addClassProperty = function(type, cp) {
@@ -2024,21 +2051,19 @@ Juliet.compiler = function() {
     type[cp.name] = value;
   };
 
-  var addProperty = function(type, p, processPriv) {
-    if (Juliet.options.trace) print('addPropery');
-    if ((p.qualifiers & Juliet.QUALIFIER_PRIVATE) && !processPriv) {
-      if (!type.private_properies) type.private_properties = {};
-      type.private_properties[p.name] = p;
-    } else {
-      // TODO: type check
-      if (p.initial_value && p.initial_value.kind == 'literal') {
-        type[p.name] = p.initial_value.value;
-      } else {
-        // TODO: non-static initializer block
-        type[p.name] = flatten(p.initial_value);
-      }
-    }
-  };
+    var addProperty = function(ast_type, ctype, property) {
+	if (Juliet.options.trace) print('addProperty:' + property);
+
+	var mangled_name = '_Z' + mangle(ast_type.name, property.name);
+	
+	if (property.initial_value && property.initial_value.kind == 'literal') {
+            ctype[mangled_name] = property.initial_value.value;
+	} else {
+            // TODO: non-static initializer block
+            ctype[mangled_name] = flatten(property.initial_value);
+	}
+    };
+
 
   var addClassMethod = function(type, cm) {
     if (Juliet.options.trace) print('addClassMethod: ' + cm.name);
@@ -2059,51 +2084,181 @@ Juliet.compiler = function() {
     popScope();
   };
 
-  var addMethod = function(type, m, processPriv) {
-    if (Juliet.options.trace) print('addMehtod: ' + m.name);
-    var name = methodSignature(m);
-    //print('Signature: ' + name);
-    if ((m.qualifiers & Juliet.QUALIFIER_PRIVATE) && !processPriv) {
-      if (!type.private_methods) type.private_methods = {};
-      type.private_methods[m.name] = m;
-    } else {
-      //addIdentifier(m.name, m.name, null, true);
-      pushScope();
-      var params = parameterList(m.parameters);
-      var body = '';
-      if (Juliet.util.isArray(m.statements)) {
-        body = flatten(m.statements);
-      } else {
-        if (m.statements) {
-          body = m.statements.value;
-        }
+
+    var addMethod = function(ast_type, ctype, m) {
+	if (Juliet.options.trace) print('addMethod: ' + m.name);
+	
+	pushScope();
+	var params = parameterList(m.parameters);
+
+	var parameter_types = [];
+	for (var i=0; i<m.parameters.length; i++) {
+	    parameter_types.push(m.parameters[i].type.name);
+	}
+	
+	var mangled_name = mangle(ast_type.name, m.name, parameter_types);
+	var mangled_poly = mangle("_", m.name, parameter_types);
+
+	var body = flatten(m.statements);
+	print(mangled_name);
+	ctype["_Z" + mangled_name] = new Function(params, body);
+	body = 'this._Z' + mangled_name + '(' + params.join() + ');'
+	ctype["_Z" + mangled_poly] = new Function(params, body);
+	popScope();
+    };
+
+
+    var addClassRTTI = function(ast_type) {
+
+	if (Juliet.options.trace) print('addClassRTTI');
+	
+	if (Juliet.program[ast_type.name]) {
+	    print(ast_type.name + ' is already defined');
+	    quit();
+	}
+
+	var ctype = Juliet.program[ast_type.name] = {
+	    'name': ast_type.name,
+	    'base_class': ast_type.base_class.name,
+	    'static_initializers': [],
+	    'instance_initializers': []
+	};
+
+	// Inheritance: incorporate parent class RTTI
+	if (Juliet.options.trace) print('addClassRTTI: adding inherited fields');
+	if (ast_type.base_class && ast_type.base_class.name) {
+	    var base_class = Juliet.program[ast_type.base_class.name];
+	    if (base_class == undefined) {
+		print("Class "  + ast_type.base_class.name + " is undefined.");
+		quit();
+	    }
+	    for (var mangled_name in base_class) {
+		if (mangled_name.length > 2 && mangled_name.substring(0, 2) == "_I") {
+		    ctype[mangled_name] = base_class[mangled_name];
+		}
+	    }
+	}
+
+	// Create RTTI for new properties
+	if (Juliet.options.trace) print('addClassRTTI: adding properties');
+	for (var j = 0; j < ast_type.properties.length; j++) {
+	    var property = ast_type.properties[j];
+	    var mangled_name = "_I" + mangle(ast_type.name, property.name);
+	    ctype[mangled_name] = {
+		"name": property.name,
+		"kind": "property",
+		"mname": "_Z" + mangled_name,
+		"type": property.type.name,
+		"qualifiers": property.qualifiers
+	    };
+	}
+
+	// Create RTTI for new methods
+	// RTTI for methods has three entry points:
+	// 1. The full (mangled) method name prefixed by class and suffixed by parameters.
+	//    This points to the RTTI record with return type and qualifier information.
+	// 2. sname = The (mangled) class prefixed method name that points to an array of (1).
+	// 3. dname = The (mangled) unprefixed name that points to an array of (1).
+	// (2) is used for super lookups (3) is used for polymorphic calls.
+	if (Juliet.options.trace) print('addClassRTTI: adding methods');
+	for (var j = 0; j < ast_type.methods.length; j++) {
+	    var method = ast_type.methods[j];
+
+	    var parameters = [];
+	    for (var i=0; i<method.parameters.length; i++) {
+		parameters.push(method.parameters[i].type.name);
+	    }
+
+	    var sname = "_I" + mangle(ast_type.name, method.name);
+	    var fname = "_I" + mangle(ast_type.name, method.name, parameters);
+
+	    // Add fname to the sname record
+	    if (!ctype[sname]) {
+		ctype[sname] = [];
+	    }
+	    ctype[sname].push(fname);
+
+	    var rtype = 'void';
+	    if (method.return_type) {
+		rtype = method.return_type.name;
+	    }
+
+	    // Create the fname record
+	    ctype[fname] = {
+		"kind": "method",
+		"name": method.name,
+		"rtype": rtype,
+		"parameters": parameters
+	    };
+	}
+	
+    };
+    
+
+    // Add accessible instance identifiers to the current scope based on RTTI
+    var addClassIdentifiers = function(ctype, klass, allow_private, is_static) {
+
+	if (Juliet.options.trace) print('addClassIdentifiers: ' + klass);
+	
+	base_class = Juliet.program[klass].base_class;
+	if (base_class) {
+	    addClassIdentifiers(ctype, base_class, false);
+	}
+
+	// Layer the most recent class on top.
+	var mangled_prefix = "_I" + klass.length.toString() + klass;
+	for (var mangled_name in ctype) {
+	    if (mangled_name.length > mangled_prefix.length && mangled_name.substring(0, mangled_prefix.length) == mangled_prefix) {
+		var field = ctype[mangled_name];
+		var field_static = field.modifiers | Juliet.QUALIFIER_STATIC;
+		if (is_static && field_static) {
+		    addIdentifier(field.name, 
+				  'Juliet.program.' + klass + '._Z' + mangled_name.substring(2),
+				  field.type,
+				  true,
+				  field.kind);
+		} else {
+		    addIdentifier(field.name, 
+				  "this._Z" + mangled_name.substring(2),
+				  field.type,
+				  true,
+				  field.kind);
+		}
+	    }
+	}
+    };
+
+  var addClassCode = function(ast_type) {
+    if (Juliet.options.trace) print('addClassCode: ' + ast_type.name);
+
+      var ctype = Juliet.program[ast_type.name];
+
+      // Inheritance: incorporate parent class generated code
+      if (ast_type.base_class && ast_type.base_class.name) {
+	  var base_class = Juliet.program[ast_type.base_class.name];
+	  if (base_class == undefined) {
+	      print("Class "  + ast_type.base_class.name + " is undefined.");
+	      quit();
+	  }
+	  for (var mangled_name in base_class) {
+	      if (mangled_name.length > 2 && mangled_name.substring(0, 2) == "_Z") {
+		  ctype[mangled_name] = base_class[mangled_name];
+	      }
+	  }
       }
-      type[name] = new Function(params, body);
-      popScope();
-    }
-  };
 
-  var addClass = function(type) {
-    if (Juliet.options.trace) print('Class: ' + type.name);
 
-    if (Juliet.program[type.name]) {
-      print(type.name + ' is already defined');
-      quit();
-    }
-
-    var ctype = Juliet.program[type.name] = {name:type.name};
-
-    addIdentifier(type.name,
-                  'Juliet.program.' + type.name,
-                  type,
+    addIdentifier(ast_type.name,
+                  'Juliet.program.' + ast_type.name,
+                  ast_type,
                   true,
                   'class');
 
     pushScope();
 
     /*
-     * Interfaces
-     */
+     * Interfaces: TODO
+     *
     if (type.interfaces) {
       if (Juliet.options.trace) print('have interfaces');
       for (var j = 0; j < type.interfaces.length; j++) {
@@ -2128,231 +2283,60 @@ Juliet.compiler = function() {
         }
       }
     }
+*/
 
-    /*
-     * Inheritance
-     */
-    var base_class = null;
-    if (type.base_class) {
-      // look up the named base class
-      base_class = classByName(type.base_class.name);
+      // Add static identifiers
+      addClassIdentifiers(ctype, ctype.name, true, true);
 
-      // incorporate its non-private static members
-      if (base_class.class_properties) {
-        if (Juliet.options.trace) print('have super class_properties');
-        for (var j = 0; j < base_class.class_properties.length; j++) {
-          var cp = base_class.class_properties[j];
-          if (!(cp.qualifiers & Juliet.QUALIFIER_PRIVATE)) {
-            if (!type.class_properties) type.class_properties = [];
-            type.class_properties.unshift(cp);
-          }
-        }
+      // Add code for class properties
+      for (var j = 0; j < ast_type.properties.length; j++) {
+          var property = ast_type.properties[j];
+	  if (property.qualifiers & Juliet.QUALIFER_STATIC) {
+	      addClassProperty(ctype, property);
+	  }
       }
 
-      // incorporate its non-private members
-      if (base_class.properties) {
-        if (Juliet.options.trace) print('have super properties');
-        for (var j = 0; j < base_class.properties.length; j++) {
-          var p = base_class.properties[j];
-          if (!(p.qualifiers & Juliet.QUALIFIER_PRIVATE)) {
-            if (!type.properties) type.properties = [];
-            type.properties.unshift(p);
-          }
-        }
+      // Add code for class methods
+      for (var j = 0; j < ast_type.methods.length; j++) {
+          var method = ast_type.methods[j];
+	  if (method.qualifiers & Juliet.QUALIFER_STATIC) {
+              addClassMethod(ctype, method);
+	  }
       }
 
-      // incorporate its non-private static methods
-      if (base_class.class_methods) {
-        if (Juliet.options.trace) print('have super class_methods');
-        for (var j = 0; j < base_class.class_methods.length; j++) {
-          var cm = base_class.class_methods[j];
-          if (!(cm.qualifiers & Juliet.QUALIFIER_PRIVATE)) {
-            if (!type.class_methods) type.class_methods = [];
-            type.class_methods.unshift(cm);
-          }
-        }
+      // Add instance identifiers
+      addClassIdentifiers(ctype, ctype.name, true, false);
+
+      // Add code for instance properties
+      for (var j = 0; j < ast_type.properties.length; j++) {
+          var property = ast_type.properties[j];
+	  if (!(property.qualifiers & Juliet.QUALIFER_STATIC)) {
+	      addProperty(ast_type, ctype, property);
+	  }
       }
 
-      // incorporate its non-private methods
-      // See below: Inheritance (Methods)
-
-    }
-
-    /*
-     * Inheritance (Methods)
-     */
-    if (base_class && base_class.methods) {
-      if (Juliet.options.trace) print('have super methods');
-      for (var j = 0; j < base_class.methods.length; j++) {
-        var m = base_class.methods[j];
-        if (!(m.qualifiers & Juliet.QUALIFIER_PRIVATE))
-          if (m.kind != 'constructor') {
-            if (!type.methods) type.methods = [];
-            type.methods.unshift(m);
-          }
+      // add 'this' to the scope
+      addIdentifier('this',
+                    'this',
+                    ast_type,
+                    false,
+                    'this');
+      
+      // Add code for instance methods
+      for (var j = 0; j < ast_type.methods.length; j++) {
+          var method = ast_type.methods[j];
+	  if (!(method.qualifiers & Juliet.QUALIFER_STATIC)) {
+              addMethod(ast_type, ctype, method);
+	  }
       }
-    }
-
-    /*
-     * Add Identifiers
-     */
-    if (type.class_properties) {
-      if (Juliet.options.trace) print('add identifiers for class_properties');
-      for (var j = 0; j < type.class_properties.length; j++) {
-        var cp = type.class_properties[j];
-        addIdentifier(cp.name,
-                  'Juliet.program.' + type.name + '.' + cp.name,
-                  cp.type,
-                  true,
-                  'field');
-      }
-    }
-    if (type.properties) {
-      if (Juliet.options.trace) print('have properties');
-      for (var j = 0; j < type.properties.length; j++) {
-        var p = type.properties[j];
-        if (!(p.qualifiers & Juliet.QUALIFIER_PRIVATE)) {
-          addIdentifier(p.name, 'this.' + p.name, p.type, true, 'field');
-        }
-      }
-    }
-    if (type.class_methods) {
-      if (Juliet.options.trace) print('have class_methods');
-      for (var j = 0; j < type.class_methods.length; j++) {
-        var cm = type.class_methods[j];
-        var name = methodSignature(cm);
-        addIdentifier(name, name, cm.return_type, true, 'method');
-      }
-    }
-    if (type.methods) {
-      if (Juliet.options.trace) print('have methods');
-      for (var j = 0; j < type.methods.length; j++) {
-        var m = type.methods[j];
-        if (!(m.qualifiers & Juliet.QUALIFIER_PRIVATE)) {
-          var name = methodSignature(m);
-          addIdentifier(name, name, m.return_type, true, 'method');
-        }
-      }
-    }
-
-    /*
-     * Static Members
-     */
-    if (type.class_properties) {
-      if (Juliet.options.trace) print('have class_properties');
-      for (var j = 0; j < type.class_properties.length; j++) {
-        var cp = type.class_properties[j];
-        addClassProperty(ctype, cp);
-      }
-    }
-
-    /*
-     * Members
-     */
-    if (type.properties) {
-      if (Juliet.options.trace) print('have properties');
-      for (var j = 0; j < type.properties.length; j++) {
-        var p = type.properties[j];
-        addProperty(ctype, p);
-      }
-    }
-
-    /*
-     * Static Methods
-     */
-    if (type.class_methods) {
-      if (Juliet.options.trace) print('have class_methods');
-      for (var j = 0; j < type.class_methods.length; j++) {
-        var cm = type.class_methods[j];
-        addClassMethod(ctype, cm);
-      }
-    }
-
-    // add 'this' to the scope
-    addIdentifier('this',
-                  'this',
-                  type,
-                  false,
-                  'this');
-
-    /*
-     * Methods
-     */
-    if (type.methods) {
-      if (Juliet.options.trace) print('have methods');
-      for (var j = 0; j < type.methods.length; j++) {
-        var m = type.methods[j];
-        addMethod(ctype, m);
-      }
-    }
-
-    /*
-     * Private Methods
-     */
-    var private_methods = '';
-    if (ctype.private_methods) {
-      if (Juliet.options.trace) print('have private methods');
-      for (var mKey in ctype.private_methods) {
-        var m = ctype.private_methods[mKey];
-        pushScope();
-        var params = parameterList(m.parameters);
-        var body = flatten(m.statements);
-        addIdentifier(m.name, m.name, m.type, true, 'field');
-        private_methods = private_methods
-            + m.name + ': function (' + params.join(',') + ') {'
-            + body
-            + '}';
-        popScope();
-        private_methods = private_methods + ',';
-      }
-      delete ctype.private_methods;
-    }
-
-    /*
-     * Private Members
-     */
-    var private_properties = {};
-    if (ctype.private_properties) {
-      if (Juliet.options.trace) print('have private properties');
-      for (var p in ctype.private_properties) {
-        addProperty(private_properties, ctype.private_properties[p], true);
-      }
-      delete ctype.private_properties;
-    }
-
-    /*
-     * Private Runtime Support
-     */
-    ctype['<class>'] =
-        (new Function(
-          'if (this[\'<private>\']) {'
-              + 'print(\'class already initialized.\');'
-              + 'quit();'
-              + '}'
-              + 'this[\'<private>\'] = function(self) {'
-              + 'var privates = ' + JSON.stringify(private_properties) + ';'
-              + 'return {' + private_methods
-              + '\'<mutate>\': function (field, x) {'
-              + 'if (typeof(x) === \'undefined\') {'
-              + ' return privates[field];'
-              + '} else {'
-              + ' privates[field] = x;'
-              + '}}}}(this);'));
-
-    /*
-     * Dynamic Dispatch Support
-     */
-    ctype['___dispatch___'] = function(name, context) {
-      Juliet.runtime.dispatch.apply(this, arguments);
-    };
 
     /*
      * Static Initializers
      */
-    if (type.static_initializers) {
+    if (ast_type.static_initializers) {
       if (Juliet.options.trace) print('have static_initializers');
-      for (var j = 0; j < type.static_initializers.length; j++) {
-        var si = type.static_initializers[j];
+      for (var j = 0; j < ast_type.static_initializers.length; j++) {
+        var si = ast_type.static_initializers[j];
         addStaticInitializer(ctype, si);
       }
     }
@@ -2360,13 +2344,17 @@ Juliet.compiler = function() {
     /*
      * Instance Initializers
      */
-    if (type.instance_initializers) {
+    if (ast_type.instance_initializers) {
       if (Juliet.options.trace) print('have instance_initializers');
-      for (var j = 0; j < type.instance_initializers.length; j++) {
-        var si = type.instance_initializers[j];
+      for (var j = 0; j < ast_type.instance_initializers.length; j++) {
+        var si = ast_type.instance_initializers[j];
         addInstanceInitializer(ctype, si);
       }
     }
+
+      //print("ENDING ================");
+      //Juliet.util.print_ast(ctype);
+      //quit();
 
     popScope();
   };
@@ -2389,12 +2377,25 @@ Juliet.compiler = function() {
       if (Juliet.options.trace) print('compile');
 
       var ast = Juliet.AST;
-      if (!ast) { print('Nothing to compile.'); return; }
+      if (!ast) {
+	  print('Nothing to compile.');
+	  return; 
+      }
+
+      // TODO: implement Object..
+      Juliet.program['Object'] = {
+	  'name': 'Object',
+	  'base_class': undefined,
+	  'static_initializers': [],
+	  'instance_initializers': []
+      };
 
       // TODO: there is a possible naming collision here if
       // someone defines a class named "package" or a class
       // named "imports"
-      if (ast['package']) Juliet.program['package'] = ast['package'];
+      if (ast['package']) {
+	  Juliet.program['package'] = ast['package'];
+      }
       if (ast.imports) {
         // TODO: recursively add imports
       }
@@ -2412,12 +2413,19 @@ Juliet.compiler = function() {
         pushScope();
       }
 
+	// print("Generating RTTI.");
       for (var i in needToCompile) {
         var typeKey = needToCompile[i];
-        var type = null;
-        type = ast.parsed_types[typeKey];
-        addClass(type);
+        var type = ast.parsed_types[typeKey];
+        addClassRTTI(type);
       }
+
+	// print("Generating code.");
+	for (var i in needToCompile) {
+            var typeKey = needToCompile[i];
+            var type = ast.parsed_types[typeKey];
+            addClassCode(type);
+	}
 
       if (scope.length != 1) {
         print('there should be only 1 level in the scope stack');

@@ -13,15 +13,18 @@ Juliet.runtime = function() {
       if (!constructor) {
         constructor = '<init>___';
       }
+
       if (typeof(inst['<class>']) === 'function')
         inst['<class>'].call(inst);
-      if (inst['<instance-initializers>']) {
-        var len = inst['<instance-initializers>'].length;
+
+      if (inst['instance_initializers']) {
+        var len = inst['instance_initializers'].length;
         for (var i = 0; i < len; i++) {
-          var ii = inst['<instance-initializers>'][i];
+          var ii = inst['instance_initializers'][i];
           if (typeof(ii) === 'function') ii.call(inst);
         }
       }
+
       if (typeof(inst[constructor]) === 'function')
         inst[constructor].apply(inst, args);
       return inst;

@@ -133,23 +133,23 @@ Juliet = function() {
       'LITERAL_JAVASCRIPT'
     ],
 
-    QUALIFIER_PUBLIC:          1,
-    QUALIFIER_PROTECTED:       2,
-    QUALIFIER_PRIVATE:         4,
-    QUALIFIER_STATIC:          8,
-    QUALIFIER_NATIVE:         16,
-    QUALIFIER_CLASS:          32,
-    QUALIFIER_INTERFACE:      64,
-    QUALIFIER_PRIMITIVE:     128,
-    QUALIFIER_CONSTRUCTOR:   256,
-    QUALIFIER_ABSTRACT:      512,
-    QUALIFIER_FINAL:        1024,
-    QUALIFIER_STRICTFP:     2048,
-    QUALIFIER_TRANSIENT:    4096,
-    QUALIFIER_VOLATILE:     8192,
-    QUALIFIER_SYNCRONIZED: 16384,
+    MODIFIER_PUBLIC:          1,
+    MODIFIER_PROTECTED:       2,
+    MODIFIER_PRIVATE:         4,
+    MODIFIER_STATIC:          8,
+    MODIFIER_NATIVE:         16,
+    MODIFIER_CLASS:          32,
+    MODIFIER_INTERFACE:      64,
+    MODIFIER_PRIMITIVE:     128,
+    MODIFIER_CONSTRUCTOR:   256,
+    MODIFIER_ABSTRACT:      512,
+    MODIFIER_FINAL:        1024,
+    MODIFIER_STRICTFP:     2048,
+    MODIFIER_TRANSIENT:    4096,
+    MODIFIER_VOLATILE:     8192,
+    MODIFIER_SYNCRONIZED: 16384,
 
-    QUALIFIER_REFERENCE: (this.QUALIFIER_CLASS | this.QUALIFIER_INTERFACE),
+    MODIFIER_REFERENCE: (this.MODIFIER_CLASS | this.MODIFIER_INTERFACE),
 
     /*
      * stdout is used to capture the output of print and
@@ -210,8 +210,10 @@ Juliet = function() {
         if (noMain) {
           Juliet.runtime['new'](Juliet.program[className]);
         } else {
-          //var main = Juliet.program[className].public_static_void_main;
-          var main = Juliet.program[className]['main___String[]'];
+	  // TODO: Check return type of main method.
+          // TODO: Check inherited static method main?
+	    var mmain = '_Z' + className.length + className + '4main10String___$';
+          var main = Juliet.program[className][mmain];
           if (!main) {
             print(className + ' does not have a main method.');
             quit();

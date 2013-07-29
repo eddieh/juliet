@@ -107,18 +107,35 @@ Juliet.util = function() {
 
     equal: function(a, b) {
       if (typeof(a) !== typeof(b)) return false;
-      for (var prop in a) {
-        if (a.hasOwnProperty(prop) && b.hasOwnProperty(prop)) {
-          if (typeof(a[prop]) !== 'object') {
-            if (a[prop] != b[prop]) return false;
+      
+      var c1 = a;
+      var c2 = b;
+
+      for (var i=0; i<2; i++) {
+        for (var prop in c1) {
+          if (c1 && c2 && c1.hasOwnProperty(prop) && c2.hasOwnProperty(prop)) {
+            if (typeof(c1[prop]) !== 'object') {
+              if (c1[prop] != c2[prop]) {
+                print("Property, " + prop + ", differs (" + c1[prop] + "," + c2[prop] + ")");
+                return false;
+              }
+            } else {
+              var r = this.equal(c1[prop], c2[prop]);
+              if (!r) {
+                print("Property, " + prop + ", differs (" + c1[prop] + "," + c2[prop] + ")");
+                return false;
+              }
+            }
           } else {
-            var r = this.equal(a[prop], b[prop]);
-            if (!r) return false;
+            print("Property, " + prop + " is missing.");
+            return false;
           }
-        } else {
-          return false;
         }
+        // swap
+        c1 = b;
+        c2 = a;
       }
+
       return true;
     },
 

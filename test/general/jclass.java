@@ -1,15 +1,32 @@
 class JClass {
   private int foo;
   public int bar;
-  
+
   public JClass() {
-    this.foo = 3;
+    this.foo = 10;
     this.bar = 7;
   }
-  
+
   public JClass(int a, int b) {
     this.foo = a;
     this.bar = b;
+  }
+
+  public int getSeven() {
+    return 7;
+  }
+
+  public int vlah(JClass z, int x) {
+    return 4;
+  }
+
+  public int getSevenPlus() {
+    int x;
+    if (x = 4) {
+      12 + 13;
+      x += 1;
+    }
+    return 7 + 9;
   }
 
   public int getFoo() {
@@ -28,6 +45,10 @@ class JClass {
     this.clearBar();
     this.bar = 12;
   }
+}
+
+class KClass extends JClass {
+  public int bar;
 }
 
 class Runner {
