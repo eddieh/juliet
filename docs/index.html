@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Juliet</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="">
+  <meta name="author" content="">
+  <link href="style.css" rel="stylesheet" />
+</head>
+
+<body>
+  <h1>Juliet</h1>
+
+  <blockquote id="die" class="pull-right">
+    <p>
+      Juliet (noun): a code word representing the letter J, used in
+      radio communication
+    </p>
+
+    <small>
+      <cite title="">
+        New Oxford American Dictionary 3rd edition &copy; 2010 by
+        Oxford University Press, Inc.
+      </cite>
+    </small>
+  </blockquote>
+
+  <p>
+    Juliet is a pure JavaScript compiler for the Java&trade;
+    Programming Language. It can compile Java source code to
+    JavaScript so that Java programs can be run directly in the
+    browser without the need for plugins.
+  </p>
+
+  <p>
+    Juliet aims to be source compatible with Java Standard Edition 7
+    and SE 8 in the future.
+  </p>
+
+  <!-- "That which we call java, by any other name would compile and
+    execute." -->
+
+  <p>
+    <b>Note:</b> Juliet is a work in progress. Type checking, source
+    annotations, package system, and the standard class libraries are
+    some examples of features that are incomplete or non-existent.
+  </p>
+
+  <p>
+    The project
+    is <a href="https://bitbucket.org/jdpalmer/juliet">hosted on
+    BitBucket</a> in a Mercurial repository.
+  </p>
+
+  <h2>Downloads</h2>
+  <p>
+    <ul class="">
+      <li>No official releases, yet.</li>
+    </ul>
+  </p>
+
+  <h2>Introduction</h2>
+  <p>
+    Juliet works in a browser or from the command line using
+    either <a href="https://github.com/joyent/node">Node.js</a>
+    or standalone <a href="http://code.google.com/p/v8/">V8</a>.
+  </p>
+
+<pre class="prettyprint linenums language-java">
+class Loops {
+    public static void main(String[] args) {
+        int n = 2;
+        while (n--) {
+            System.out.println("twice");
+        }
+        for (int i = 0; i < 3; i++) {
+            System.out.println("thrice");
+        }
+    }
+}</pre>
+
+As expected the program above produces:
+
+<pre class="">
+twice
+twice
+thrice
+thrice
+thrice</pre>
+
+  <h3>Running in the Browser</h3>
+  <p>
+    To run a Java program in the browser with Juliet simply include
+    the <code>juliet-browser.js</code> script in your page and
+    call <code>Juliet.compileAndRun()</code> as follows:
+  </p>
+
+<pre class="prettyprint linenums language-js">
+var sourceString =
+    "class Example {\n" +
+    "    public static void main(String[] args) {\n" +
+    "        System.out.println(\"My only love sprung from my only hate!\");\n" +
+    "    }\n" +
+    "}";
+var principalClassString = "Example";
+var output = Juliet.compileAndRun(sourceString, principalClassString);</pre>
+
+  <h3>Running a Java program with V8</h3>
+  <p>
+    You can run <code>make bootrap</code> from the project's root
+    directory to download and compile V8's development console. Once
+    the developer console is compiled you can run a Java program from
+    a file <code>Example.java</code> with principal
+    class <code>Example</code> as follows:
+  </p>
+
+<pre class="">
+$ vendor/v8/d8 juliet-cli.js -- --run Example Example.java
+</pre>
+
+  <p>
+    Note the odd <code>--</code> after the the first argument to the
+    V8 console. The <code>--</code> is used to indicate that
+    everything following should be passed to the script. Anything
+    proceeding the <code>--</code> passed to V8.
+  </p>
+
+  <p>
+    From the command line Juliet understands the following options:
+  </p>
+
+<pre>
+--trace      log which internal functions are called
+--ast        read the Java file and print its abstract syntax tree
+--js         read the Java file and print the compiled JavaScript
+--verbose    nearly the same as --trace
+--run NAME   run the principal class NAME
+</pre>
+
+  <h2>Abstract Syntax Tree</h2>
+  <p>
+    The abstract syntax tree produced by Juliet's parser is a simple
+    JavaScript object. You can think of the AST as being nothing more
+    than JavaScript's object literal notation.
+  </p>
+
+  <p>
+    Let's look at a few examples.
+  </p>
+
+<pre class="prettyprint linenums language-js">
+Juliet.parseStatement('3.14');</pre>
+
+Produces the AST:
+
+<pre class="prettyprint linenums language-js">
+{
+  token:Juliet.LITERAL_DOUBLE,
+  kind:'literal',
+  value:3.14
+}</pre>
+
+<pre class="prettyprint linenums language-js">
+Juliet.parseStatement('42');</pre>
+
+Produces the AST:
+
+<pre class="prettyprint linenums language-js">
+{
+  token:Juliet.LITERAL_INT,
+  kind:'literal',
+  value:42
+}</pre>
+
+<pre class="prettyprint linenums language-js">
+Juliet.parseStatement('int num = 1;');</pre>
+
+<pre class="prettyprint linenums language-js">
+[
+  {
+    token:Juliet.TOKEN_ID,
+    kind:'local',
+    type:{
+      token:Juliet.TOKEN_INT,
+      kind:'construct',
+      name:'int'
+    },
+    name:'num',
+    initial_value:{
+      token:Juliet.LITERAL_INT,
+      kind:'literal',
+      value:1
+    }
+  }
+]</pre>
+
+<pre class="prettyprint linenums language-js">
+Juliet.parseStatement(
+  'class Test {' +
+  '  Test () {' +
+  '    Object obj = "Works";' +
+  '    String str = (String)obj;' +
+  '    println(str);' +
+  '  }' +
+  '}');
+</pre>
+
+<pre class="prettyprint linenums language-js">
+{
+  parsed_types: [{
+    token:TOKEN_CLASS,
+    qualifiers:JOG_QUALIFIER_CLASS | JOG_QUALIFIER_PROTECTED,
+    name:'Test',
+    static_initializers:[{
+      token: TOKEN_CLASS,
+      qualifiers:JOG_QUALIFIER_STATIC,
+      return_type:null,
+      name:'static'
+    }],
+    methods:[{
+      token:TOKEN_ID,
+      qualifiers:JOG_QUALIFIER_CONSTRUCTOR,
+      return_type: null,
+      name:'<init>',
+      statements:[[{
+        token:TOKEN_ID,
+        type:{token:TOKEN_ID, name:'Object'},
+        name:'obj',
+        initial_value:{token:LITERAL_STRING, value:'Works'}
+      }],
+      [{
+        token:TOKEN_ID,
+        type:{token:TOKEN_STRING, name:'String'},
+        name:'str',
+        initial_value:{
+          token:TOKEN_LPAREN,
+          operand:{token:TOKEN_ID, name:'obj'},
+          to_type:{token:TOKEN_STRING, name:'String'}}
+      }],
+      {
+        token:TOKEN_ID,
+        name:'println',
+        args:[
+          {token:TOKEN_ID, name:'str'}
+        ]
+      }]
+    }],
+  }]
+}</pre>
+
+<script src="http://cdnjs.cloudflare.com/ajax/libs/prettify/188.0.0/prettify.js"></script>
+<script>
+  // make code pretty
+  window.prettyPrint && prettyPrint()
+</script>
+
+</body>
+</html>
