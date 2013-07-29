@@ -675,7 +675,7 @@ Juliet.lexer = function() {
                 return false;
               }
               if (z < -9223372036854775808) {
-                print('Long value to small.');
+                print('Long value too small.');
                 next.type = Juliet.TOKEN_ERROR;
                 return false;
               }

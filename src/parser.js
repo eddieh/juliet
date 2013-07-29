@@ -1,14 +1,6 @@
 // http://docs.oracle.com/javase/specs/jls/se7/html/jls-18.html
 // http://docs.oracle.com/javase/specs/jls/se7/html/index.html
 
-Juliet.AST = function() {
-  return {
-    'package': null,
-    imports: [],
-    parsed_types: {}
-  };
-}();
-
 Juliet.parser = function() {
 
   /* Privates*/
@@ -18,7 +10,8 @@ Juliet.parser = function() {
   };
 
   var has_another = function() {
-    return (peek().type != Juliet.Juliet.TOKEN_EOF);
+    if (peek() == null) return false;
+    return (peek().type != Juliet.TOKEN_EOF);
   };
 
   var read = function() {
@@ -151,7 +144,8 @@ Juliet.parser = function() {
     throw new Error('Expected >.');
   };
 
-  var must_consume_semicolon = function(t) {
+  var must_consume_semicolon = function() {
+    var t = peek();
     if (!consume(Juliet.TOKEN_SEMICOLON)) {
       throw t.error('Syntax error: expected ;.');
       // TODO: complete semicolon handling
@@ -335,18 +329,29 @@ Juliet.parser = function() {
 
   function parse_CompilationUnit() {
     
-    var _ast;
+    var unit = {
+      package: null,
+      imports: [],
+      types: []
+    };
 
     if (_ast = parse_PackageDeclaration()) {
-      Juliet.AST.package = _ast;
+      unit.package = _ast;
     }
 
     while (_ast = parse_ImportDeclaration()) {
-      Juliet.AST.imports.push(_ast);
+      unit.imports.push(_ast);
     }
 
     while (_ast = parse_TypeDeclaration()) {
+      unit.types.push(_ast);
     }
+
+    if (has_another()) {
+      throw peek().error("class, interface, or enum expected.");
+    }
+
+    return unit;
 
   };
 
@@ -358,6 +363,8 @@ Juliet.parser = function() {
   // TODO: Add annotations to parse_PackageDeclaration.
 
   var parse_PackageDeclaration = function() {
+
+    var t = peek();
     if (!consume(Juliet.TOKEN_PACKAGE)) {
       return null;
     }
@@ -365,7 +372,7 @@ Juliet.parser = function() {
     var name = expect(parse_QualifiedIdentifier(),
                       "Expected identifier.");
 
-    must_consume_semicolon(t);
+    must_consume_semicolon();
 
     return {
       token: t.type,
@@ -398,7 +405,7 @@ Juliet.parser = function() {
       name += '.' + must_read_id('Expected identifier.');
     }
 
-    must_consume_semicolon(t);
+    must_consume_semicolon();
 
     return {
       token: t.type,
@@ -2016,7 +2023,7 @@ Juliet.parser = function() {
         //}
       } while (consume(Juliet.TOKEN_COMMA));
 
-      must_consume_semicolon(t);
+      must_consume_semicolon();
     }
 
     return true;
@@ -2655,7 +2662,7 @@ Juliet.parser = function() {
         kind:'abrupt'
       };
       //if (require_semicolon) 
-      must_consume_semicolon(t);
+      must_consume_semicolon();
       return tend(debug, cmd);
     }
 
@@ -2670,7 +2677,7 @@ Juliet.parser = function() {
         kind: 'abrupt'
       };
       //if (require_semicolon) 
-      must_consume_semicolon(t);
+      must_consume_semicolon();
       return tend(debug, cmd);
     }
 
@@ -2690,7 +2697,7 @@ Juliet.parser = function() {
         });
       }
       var expr = parse_Expression();
-      must_consume_semicolon(t);
+      must_consume_semicolon();
       return tend(debug, {
         token: t.type,
         kind: 'return',
@@ -2717,7 +2724,7 @@ Juliet.parser = function() {
         kind: 'throw',
         expression: expr};
       //if (require_semicolon) 
-      must_consume_semicolon(t);
+      must_consume_semicolon();
       return tend(debug, cmd);
     }
 
@@ -3128,7 +3135,7 @@ Juliet.parser = function() {
       locals.push(decl);
     } while (consume(Juliet.TOKEN_COMMA));
 
-    if (req_semi) must_consume_semicolon(t);
+    if (req_semi) must_consume_semicolon();
 
     return locals;
   };
@@ -4073,37 +4080,29 @@ Juliet.parser = function() {
     },
     
     parse: function () {
-      if (Juliet.options.trace) print('parse');
-      Juliet.parser._type_names = [];
-
-      Juliet.AST.package = null;
-      Juliet.AST.imports = [];
-
-      parse_CompilationUnit();
-
-      var ret = Juliet.parser._type_names;
-      delete Juliet.parser._type_names;
-      return ret;
+      tstack = [];
+      return parse_CompilationUnit();
     },
 
-    /*
-     * Used for testing the parser.
-     */
+    // Only use for testing
     parseStatement: function() {
       tstack = [];
       return parse_Statement();
     },
 
+    // Only use for testing
     parseBlockStatement: function() {
       tstack = [];
       return parse_BlockStatement();
     },
 
+    // Only use for testing
     parseExpression: function() {
       tstack = [];
       return parse_Expression();
     },
 
+    // Only use for testing
     parseTypeDeclaration: function() {
       tstack = [];
       return parse_TypeDeclaration();

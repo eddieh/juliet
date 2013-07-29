@@ -167,13 +167,8 @@ Juliet = function() {
     },
 
     reset: function() {
+      Juliet.packages = {};
       Juliet.source = '';
-      Juliet.AST = {
-        'package': null,
-        imports: [],
-        parsed_types: {}
-      };
-      Juliet.program = {};
       Juliet.stdout = '';
       Juliet.compiler.reset();
     },
@@ -185,8 +180,8 @@ Juliet = function() {
       Juliet.parser.init();
       Juliet.compiler.init();
 
-      var types = Juliet.parser.parse();
-      Juliet.compiler.compile(types);
+      var unit = Juliet.parser.parse();
+      Juliet.compiler.compile(unit);
     },
 
     run: function(className, noMain) {
