@@ -305,11 +305,11 @@ Juliet.parser = function() {
     if (peek().type != Juliet.TOKEN_ID) {
       return null;
     }
-    var identifier = read().content;
+    var lst = [read().content];
     while (consume(Juliet.TOKEN_PERIOD)) {
-      identifier = identifier + '.' + must_read_id('Expected identifier.');
+      lst.push(must_read_id('Expected identifier.'));
     }
-    return identifier;
+    return lst;
   };
 
   function parse_QualifiedIdentifierList() {
@@ -374,11 +374,7 @@ Juliet.parser = function() {
 
     must_consume_semicolon();
 
-    return {
-      token: t.type,
-      kind: 'package',
-      name: name
-    };
+    return name;
   };
 
   // 7.5
@@ -388,6 +384,7 @@ Juliet.parser = function() {
 
   var parse_ImportDeclaration = function() {
 
+    var t = peek();
     if (!consume(Juliet.TOKEN_IMPORT)) {
       return null;
     }
@@ -396,13 +393,13 @@ Juliet.parser = function() {
       // TODO: We shouldn't ignore handle static package imports.
     }
 
-    var name = must_read_id('Expected package or type name.');
+    var name = [must_read_id('Expected package or type name.')];
     while (consume(Juliet.TOKEN_PERIOD)) {
       if (consume(Juliet.TOKEN_STAR)) {
-        name += '.*';
+        name.push('*');
         break;
       }
-      name += '.' + must_read_id('Expected identifier.');
+      name.push(must_read_id('Expected identifier.'));
     }
 
     must_consume_semicolon();
