@@ -1,7 +1,192 @@
 Juliet.util = function() {
 
   return {
-    is_token: function(a) { return typeof(a) == 'number' },
+
+    clone: function(obj) {
+      // This is a shallow copy!
+      if (this.isArray(obj)) {
+        return obj.slice(0);
+      }
+
+      var newObj = {};
+      for (var propKey in obj) {
+        if (obj.hasOwnProperty(propKey)) {
+          newObj[propKey] = obj[propKey];
+        }
+      }
+      return newObj;
+    },
+
+    contains: function(obj, target) {
+      var self = this;
+      if (obj == null) return false;
+      return this.some(obj, function(src) {
+        return self.equal(src, target);
+      });
+    },
+
+    escapeStr: function(str) {
+      var ret = '';
+      var ch = 0;
+      for (var i = 0; i < str.length; i++) {
+        ch = str.charCodeAt(i);
+        switch (ch) {
+          // backspace
+        case 8:
+          ch = '\\b';
+          break;
+          // horizontal tab
+        case 9:
+          ch = '\\t';
+          break;
+          // newline
+        case 10:
+          ch = '\\n';
+          break;
+          // form feed
+        case 12:
+          ch = '\\f';
+          break;
+          // carriage return
+        case 13:
+          ch = '\\r';
+          break;
+          // single quote
+        case 39:
+          ch = '\\\'';
+          break;
+          // backslash
+        case 92:
+          ch = '\\\\';
+          break;
+        default:
+          ch = str.charAt(i);
+        }
+        ret = ret + ch;
+      }
+      return ret;
+    },
+
+    equal: function(a, b) {
+      if (typeof(a) !== typeof(b)) return false;
+
+      var c1 = a;
+      var c2 = b;
+
+      for (var i = 0; i < 2; i++) {
+        for (var prop in c1) {
+          if (c1 && c2 && c1.hasOwnProperty(prop) && c2.hasOwnProperty(prop)) {
+            if (typeof(c1[prop]) !== 'object') {
+              if (c1[prop] != c2[prop]) {
+                print('Property, ' + prop + ', differs (' + c1[prop] + ',' +
+                      c2[prop] + ')');
+                return false;
+              }
+            } else {
+              var r = this.equal(c1[prop], c2[prop]);
+              if (!r) {
+                print('Property, ' + prop + ', differs (' + c1[prop] + ',' +
+                      c2[prop] + ')');
+                return false;
+              }
+            }
+          } else {
+            // print('Property, ' + prop + ' is missing.');
+            return false;
+          }
+        }
+        // swap
+        c1 = b;
+        c2 = a;
+      }
+
+      return true;
+    },
+
+    extends: function(obj1, obj2) {
+      // Extend obj1 w/ obj2 (shallow)
+      for (var propKey in obj2) {
+        if (obj2.hasOwnProperty(propKey)) {
+          obj1[propKey] = obj2[propKey];
+        }
+      }
+      return obj1;
+    },
+
+    forEach: function(obj, iterator, context) {
+
+      if (obj == null) return;
+
+      // Use native foreach
+      if (Array.prototype.forEach && obj.forEach === Array.prototype.forEach) {
+        return obj.forEach(iterator, context);
+      }
+
+      // Iterate as an array
+      if (Juliet.util.isArray(obj)) {
+        for (var i = 0, l = obj.length; i < l; i++) {
+          iterator.call(context, obj[i], i, obj);
+        }
+        return;
+      }
+
+      // Iterate as an object
+      for (var key in obj) {
+        if (hasOwnProperty.call(obj, key)) {
+          iterator.call(context, obj[key], key, obj);
+        }
+      }
+      return;
+    },
+
+    isArray: Array.isArray || (function(obj) {
+      if (!obj) return false;
+      return toString.call(obj) == '[object Array]';
+    }),
+
+    isNumber: function(obj) {
+      return Object.prototype.toString.call(obj) == '[object Number]';
+    },
+
+    isObject: function(obj) {
+      return obj === Object(obj);
+    },
+
+    isString: function(obj) {
+      return Object.prototype.toString.call(obj) == '[object String]';
+    },
+
+    keys: Object.keys || (function(obj) {
+      var keys = [];
+      for (var key in obj) {
+        if (hasOwnProperty.call(obj, key)) keys.push(key);
+      }
+      return keys;
+    }),
+
+    some: function(obj, iterator, context) {
+
+      var result = false;
+      if (obj == null) return result;
+      if (Array.prototype.some && obj.some === Array.prototype.some)
+        return obj.some(iterator, context);
+
+      // Iterate as an array
+      if (this.isArray(obj)) {
+        for (var i = 0, l = obj.length; i < l; i++) {
+          if (iterator.call(context, obj[i], i, obj)) return;
+        }
+        return;
+      }
+
+      // Iterate as an object
+      for (var key in obj) {
+        if (hasOwnProperty.call(obj, key)) {
+          if (iterator.call(context, obj[key], key, obj)) return;
+        }
+      }
+      return;
+    },
 
     token_str: function(token) {
       var ret = Juliet.tokens[token];
@@ -76,121 +261,8 @@ Juliet.util = function() {
 
     print_ast: function(a) {
       print(this.ast_str(a));
-    },
-
-    has: function(a, o) {
-      var self = this;
-      return a.some(function(e) {
-        return self.equal(e, o);
-      });
-    },
-
-    copy: function(obj, without) {
-      var theCopy = (this.isArray(obj)) ? [] : {};
-      for (var propKey in obj) {
-        if (obj.hasOwnProperty(propKey)) {
-          if (without && this.has(without, propKey)) continue;
-          if (typeof(obj[propKey]) === 'object') {
-            theCopy[propKey] = this.copy(obj[propKey], without);
-          } else {
-            theCopy[propKey] = obj[propKey];
-          }
-        }
-      }
-      return theCopy;
-    },
-
-    isArray: function(obj) {
-      if (!obj) return false;
-      return (obj.constructor.toString().indexOf('Array') != -1)
-    },
-
-    equal: function(a, b) {
-      if (typeof(a) !== typeof(b)) return false;
-      
-      var c1 = a;
-      var c2 = b;
-
-      for (var i=0; i<2; i++) {
-        for (var prop in c1) {
-          if (c1 && c2 && c1.hasOwnProperty(prop) && c2.hasOwnProperty(prop)) {
-            if (typeof(c1[prop]) !== 'object') {
-              if (c1[prop] != c2[prop]) {
-                print("Property, " + prop + ", differs (" + c1[prop] + "," + c2[prop] + ")");
-                return false;
-              }
-            } else {
-              var r = this.equal(c1[prop], c2[prop]);
-              if (!r) {
-                print("Property, " + prop + ", differs (" + c1[prop] + "," + c2[prop] + ")");
-                return false;
-              }
-            }
-          } else {
-            print("Property, " + prop + " is missing.");
-            return false;
-          }
-        }
-        // swap
-        c1 = b;
-        c2 = a;
-      }
-
-      return true;
-    },
-
-    capitalize:function(str) {
-      return str.charAt(0).toLocaleUpperCase() + str.slice(1);
-    },
-
-    keys: function(a) {
-      var ret = [];
-      for (key in a) {
-        ret.push(key);
-      }
-      return ret;
-    },
-
-    escapeStr: function(str) {
-      var ret = '';
-      var ch = 0;
-      for (var i = 0; i < str.length; i++) {
-        ch = str.charCodeAt(i);
-        switch (ch) {
-          // backspace
-        case 8:
-          ch = '\\b';
-          break;
-          // horizontal tab
-        case 9:
-          ch = '\\t';
-          break;
-          // newline
-        case 10:
-          ch = '\\n';
-          break;
-          // form feed
-        case 12:
-          ch = '\\f';
-          break;
-          // carriage return
-        case 13:
-          ch = '\\r';
-          break;
-          // single quote
-        case 39:
-          ch = '\\\'';
-          break;
-          // backslash
-        case 92:
-          ch = '\\\\';
-          break;
-        default:
-          ch = str.charAt(i);
-        }
-        ret = ret + ch;
-      }
-      return ret;
     }
+
   };
+
 }();

@@ -108,6 +108,7 @@ Juliet = function() {
       'TOKEN_TRUE',
       'TOKEN_TRY',
       'TOKEN_VOLATILE',
+      'TOKEN_VOID',
       'TOKEN_WHILE',
 
       'TOKEN_CHAR',
@@ -133,20 +134,20 @@ Juliet = function() {
       'LITERAL_JAVASCRIPT'
     ],
 
-    MODIFIER_PUBLIC:          1,
-    MODIFIER_PROTECTED:       2,
-    MODIFIER_PRIVATE:         4,
-    MODIFIER_STATIC:          8,
-    MODIFIER_NATIVE:         16,
-    MODIFIER_CLASS:          32,
-    MODIFIER_INTERFACE:      64,
-    MODIFIER_PRIMITIVE:     128,
-    MODIFIER_CONSTRUCTOR:   256,
-    MODIFIER_ABSTRACT:      512,
-    MODIFIER_FINAL:        1024,
-    MODIFIER_STRICTFP:     2048,
-    MODIFIER_TRANSIENT:    4096,
-    MODIFIER_VOLATILE:     8192,
+    MODIFIER_PUBLIC: 1,
+    MODIFIER_PROTECTED: 2,
+    MODIFIER_PRIVATE: 4,
+    MODIFIER_STATIC: 8,
+    MODIFIER_NATIVE: 16,
+    MODIFIER_CLASS: 32,
+    MODIFIER_INTERFACE: 64,
+    MODIFIER_PRIMITIVE: 128,
+    MODIFIER_CONSTRUCTOR: 256,
+    MODIFIER_ABSTRACT: 512,
+    MODIFIER_FINAL: 1024,
+    MODIFIER_STRICTFP: 2048,
+    MODIFIER_TRANSIENT: 4096,
+    MODIFIER_VOLATILE: 8192,
     MODIFIER_SYNCRONIZED: 16384,
 
     MODIFIER_REFERENCE: (this.MODIFIER_CLASS | this.MODIFIER_INTERFACE),
@@ -167,7 +168,6 @@ Juliet = function() {
     },
 
     reset: function() {
-      Juliet.packages = {};
       Juliet.source = '';
       Juliet.stdout = '';
       Juliet.compiler.reset();
@@ -181,7 +181,8 @@ Juliet = function() {
       Juliet.compiler.init();
 
       var unit = Juliet.parser.parse();
-      Juliet.compiler.compile(unit);
+      Juliet.compiler.prepare(unit);
+      Juliet.compiler.compile();
     },
 
     run: function(className, noMain) {
@@ -205,9 +206,9 @@ Juliet = function() {
         if (noMain) {
           Juliet.runtime['new'](Juliet.program[className]);
         } else {
-	  // TODO: Check return type of main method.
+          // TODO: Check return type of main method.
           // TODO: Check inherited static method main?
-	    var mmain = '_Z' + className.length + className + '4main10String___$';
+          var mmain = '_Z' + className.length + className + '4main10String___$';
           var main = Juliet.program[className][mmain];
           if (!main) {
             print(className + ' does not have a main method.');

@@ -16,6 +16,8 @@ if (typeof(print) === 'undefined') {
   }
 }
 
+log = print;
+
 if (typeof(quit) === 'undefined') {
   if (typeof(process) !== 'undefined' && process.exit) {
     quit = process.exit;
@@ -28,16 +30,16 @@ if (typeof(readFile) === 'undefined') {
     readFile = read;
   } else if (typeof(nodeRequire) !== 'undefined') {
     // could be Node.js
-    readFile = function (filename) {
+    readFile = function(filename) {
       var fs = nodeRequire('fs');
       return fs.readFileSync(filename, 'utf8');
-    }
+    };
   } else {
     try {
-      readFile = function (filename) {
+      readFile = function(filename) {
         var fs = require('fs');
         return fs.readFileSync(filename, 'utf8');
-      }
+      };
     } catch (e) {
     }
   }

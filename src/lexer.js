@@ -132,6 +132,7 @@ Juliet.lexer = function() {
     'transient': Juliet.TOKEN_TRANSIENT,
     'true': Juliet.TOKEN_TRUE,
     'try': Juliet.TOKEN_TRY,
+    'void': Juliet.TOKEN_VOID,
     'volatile': Juliet.TOKEN_VOLATILE,
     'while': Juliet.TOKEN_WHILE,
     '???': Juliet.TOKEN_UNKNOWN
@@ -215,7 +216,7 @@ Juliet.lexer = function() {
         return new Error(error_message);
       };
 
-      while(true) {
+      while (true) {
         var ch = Juliet.source.charCodeAt(data_i);
 
         //
@@ -229,9 +230,9 @@ Juliet.lexer = function() {
 
         if (ch == 10) {
           if (Juliet.options.trace) print('newline');
-          data_i++
+          data_i++;
           col_i = 1;
-          line_i++
+          line_i++;
           continue;
         }
 
@@ -465,20 +466,23 @@ Juliet.lexer = function() {
               if (data_i == 0) {
                 valid_underscore = false;
               }
-              else if (!underscore_neighbor(Juliet.source.charCodeAt(data_i - 1))) {
+              else if (!underscore_neighbor(
+                Juliet.source.charCodeAt(data_i - 1))) {
                 valid_underscore = false;
               }
               else if (data_i == Juliet.source.length - 1) {
                 valid_underscore = false;
               }
-              else if (!underscore_neighbor(Juliet.source.charCodeAt(data_i + 1))) {
+              else if (!underscore_neighbor(
+                Juliet.source.charCodeAt(data_i + 1))) {
                 valid_underscore = false;
               }
             } else {
               var base_syntax = 0;
               if ((base == 10) && (i == 1)) {
-                // The number starts with a zero which could indicate a different
-                // base. Java supports 4 numeric bases with 3 different syntaxes:
+                // The number starts with a zero which could indicate
+                // a different base. Java supports 4 numeric bases
+                // with 3 different syntaxes:
                 // 123 - Decimal (Syntax 0)
                 // 0123 - Octal (Syntax 1)
                 // 0x05F - Hexadecimal (Syntax 2)
@@ -611,7 +615,8 @@ Juliet.lexer = function() {
                   return false;
                 }
                 state = 2;
-                if (next.type == TYPE_DEFAULT) next.type = Juliet.LITERAL_DOUBLE;
+                if (next.type == TYPE_DEFAULT)
+                  next.type = Juliet.LITERAL_DOUBLE;
               }
               if (base < 10) {
                 print('Invalid number (Error4).');
@@ -633,7 +638,8 @@ Juliet.lexer = function() {
             }
           }
 
-          if ((next.type == Juliet.LITERAL_DOUBLE) || (next.type == Juliet.LITERAL_FLOAT)) {
+          if ((next.type == Juliet.LITERAL_DOUBLE) ||
+              (next.type == Juliet.LITERAL_FLOAT)) {
             if (is_negative) buffer = '-' + buffer;
             var z = parseFloat(buffer);
             if (z == Number.POSITIVE_INFINITY) {
@@ -657,7 +663,7 @@ Juliet.lexer = function() {
             if (is_negative) buffer = '-' + buffer;
             // TODO: properly handle longs
             var z = parseInt(buffer, base);
-            if(next.type == Juliet.LITERAL_INT) {
+            if (next.type == Juliet.LITERAL_INT) {
               if (z > 2147483647) {
                 print('Integer value too large.');
                 next.type = Juliet.TOKEN_ERROR;
@@ -750,7 +756,7 @@ Juliet.lexer = function() {
         // qualified name
         if (ch == '46') {
           next.type = Juliet.TOKEN_PERIOD;
-          next.content = '.'
+          next.content = '.';
           data_i++;
           next.line = line_i;
           next.col = col_i;

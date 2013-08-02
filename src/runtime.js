@@ -1,6 +1,6 @@
 Juliet.runtime = function() {
   return {
-    'new': function (klass, constructor) {
+    'new': function(klass, constructor) {
       var inst = Object.create(klass);
       var args = [];
       if (arguments.length > 2) {
@@ -30,7 +30,7 @@ Juliet.runtime = function() {
       return inst;
     },
 
-    'dispatch': function (name, context) {
+    'dispatch': function(name, context) {
       if (typeof(context) === 'string') {
         context = Juliet.program[context];
       }
@@ -40,7 +40,7 @@ Juliet.runtime = function() {
       for (var i = 2; i < arguments.length; i++) {
         var a = arguments[i];
         args.push(a);
-        switch(typeof(a)) {
+        switch (typeof(a)) {
         case 'object':
           // TODO: what is the objects Java type
           argTypeSig = argTypeSig + 'Object';

@@ -1,6 +1,5 @@
 Juliet.CLI = function() {
 
-  /* Privates */
   var filepath = '';
   var showAST = false;
   var showJS = false;
@@ -22,7 +21,7 @@ Juliet.CLI = function() {
         // So we *always* look for the .java extension on files to compile.
 
         for (var i = 1; i < argc; i++) {
-	  var ext = scriptArgs[i].split('.').pop();
+          var ext = scriptArgs[i].split('.').pop();
           if (scriptArgs[i] == '--trace') Juliet.options.trace = true;
           else if (scriptArgs[i] == '--ast') showAST = true;
           else if (scriptArgs[i] == '--js') showJS = true;
@@ -36,15 +35,15 @@ Juliet.CLI = function() {
               quit();
             }
           } else if (ext == 'java') {
-	      // The argument was *probably* the file to compile
-	      filepath = scriptArgs[i];
-	  }
+            // The argument was *probably* the file to compile
+            filepath = scriptArgs[i];
+          }
         }
 
-	if (filepath == '') {
-	  print('No input file given.');
-	  quit();
-	}
+        if (filepath == '') {
+          print('No input file given.');
+          quit();
+        }
 
         if (verbose) print('Compiling :' + filepath);
 

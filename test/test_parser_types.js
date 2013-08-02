@@ -18,20 +18,39 @@ load('src/parser.js');
 
 Juliet.options.trace = true;
 
-var test_parse_types = function () {
+var test_parse_types = function() {
   var tests = [
-    ['class Empty {}', 
+    ['class Empty {}',
      {
-       token: Juliet.TOKEN_CLASS, 
-       kind:'definition', 
-       modifiers:34, 
-       members:[
-       ], 
-       _implements:[
-       ], 
-       _extends:null, 
+       token: Juliet.TOKEN_CLASS,
+       kind: 'definition',
+       modifiers: 34,
+       members: [
+       ],
+       interfaces: [
+       ],
+       superclass: null,
        types: [],
-       name:'Empty'
+       name: 'Empty'
+     }
+    ],
+    ['class Empty extends Object {}',
+     {
+       token: Juliet.TOKEN_CLASS,
+       kind: 'definition',
+       modifiers: 34,
+       members: [
+       ],
+       types: [
+       ],
+       interfaces: [
+       ],
+       superclass: {
+         token: Juliet.TOKEN_ID,
+         kind: 'type',
+         name: 'Object'
+       },
+       name: 'Empty'
      }
     ],
     ['class Test {' +
@@ -40,7 +59,7 @@ var test_parse_types = function () {
      '    String str = (String)obj;' +
      '    println(str);' +
      '  }' +
-     '}', 
+     '}',
      {
        token: Juliet.TOKEN_CLASS,
        kind: 'definition',
@@ -54,28 +73,37 @@ var test_parse_types = function () {
            return_type: null,
            name: 'Test',
            parameters: [],
-           block:[
+           block: [
              {
                token: Juliet.TOKEN_ID,
                kind: 'local',
-               type:{token: Juliet.TOKEN_ID, name:'Object', kind: 'type'},
-               name:'obj',
-               initial_value:{token:Juliet.LITERAL_STRING, kind: 'literal', value:'Works'}
+               type: {token: Juliet.TOKEN_ID, name: 'Object', kind: 'type'},
+               name: 'obj',
+               initial_value: {
+                 token: Juliet.LITERAL_STRING,
+                 kind: 'literal',
+                 value: 'Works'}
              },
              {
-               name:'str',
+               name: 'str',
                token: Juliet.TOKEN_ID,
                kind: 'local',
                type: {
                  token: Juliet.TOKEN_STRING,
-                 name:'String',
+                 name: 'String',
                  kind: 'type'
                },
-               initial_value:{
+               initial_value: {
                  token: Juliet.TOKEN_LPAREN,
                  kind: 'cast',
-                 operand:{token: Juliet.TOKEN_ID, name:'obj', kind: 'construct'},
-                 to_type:{token: Juliet.TOKEN_STRING, name:'String', kind: 'type'}
+                 operand: {
+                   token: Juliet.TOKEN_ID,
+                   name: 'obj',
+                   kind: 'id'},
+                 to_type: {
+                   token: Juliet.TOKEN_STRING,
+                   name: 'String',
+                   kind: 'type'}
                }
              },
              {
@@ -83,52 +111,52 @@ var test_parse_types = function () {
                kind: 'call',
                operand: {
                  token: Juliet.TOKEN_ID,
-                 kind: 'construct',
-                 name:'println',
+                 kind: 'id',
+                 name: 'println'
                },
-               args:[
-                 {token: Juliet.TOKEN_ID, name:'str', kind: 'construct'}
+               args: [
+                 {token: Juliet.TOKEN_ID, name: 'str', kind: 'id'}
                ]
              }]}],
-       _implements: [],
-       _extends: null,
+       interfaces: [],
+       superclass: null,
        types: []
-       }
-     ],
+     }
+    ],
     ['class Test {' +
      '  public class A {' +
      '    public A () {;}' +
      '  }' +
-     '}', 
+     '}',
      {
        token: Juliet.TOKEN_CLASS,
-       modifiers:Juliet.MODIFIER_CLASS | Juliet.MODIFIER_PROTECTED,
-       name:'Test',
+       modifiers: Juliet.MODIFIER_CLASS | Juliet.MODIFIER_PROTECTED,
+       name: 'Test',
        kind: 'definition',
-       _implements: [],
-       _extends: null,
+       interfaces: [],
+       superclass: null,
        members: [],
        types: [{
          token: Juliet.TOKEN_CLASS,
-         modifiers:Juliet.MODIFIER_CLASS | Juliet.MODIFIER_PUBLIC,
-         name:'A',
-       kind: 'definition',
-       _implements: [],
-       _extends: null,
+         modifiers: Juliet.MODIFIER_CLASS | Juliet.MODIFIER_PUBLIC,
+         name: 'A',
+         kind: 'definition',
+         interfaces: [],
+         superclass: null,
          types: [],
          members: [
            {
-             token:Juliet.TOKEN_ID, 
-             name:'A', 
-             kind:'method', 
-             modifiers:257, 
-             return_type:null, 
-             parameters:[
-             ], 
-             block:[
+             token: Juliet.TOKEN_ID,
+             name: 'A',
+             kind: 'method',
+             modifiers: 257,
+             return_type: null,
+             parameters: [
+             ],
+             block: [
                {
-                 token:Juliet.TOKEN_SEMICOLON, 
-                 kind:'noop'
+                 token: Juliet.TOKEN_SEMICOLON,
+                 kind: 'noop'
                }
              ]
            }
@@ -152,373 +180,388 @@ var test_parse_types = function () {
      '      return (A) new A ();\n' +
      '    }\n' +
      '  }\n' +
-     '}', 
+     '}',
 
-{
-  token: Juliet.TOKEN_CLASS, 
-  kind:'definition', 
-  modifiers:34, 
-  members:[
-    {
-      token: Juliet.TOKEN_ID, 
-      name:'Test', 
-      kind:'method', 
-      modifiers:256, 
-      return_type:null, 
-      parameters:[
-      ], 
-      block:[
-        {
-          token: Juliet.TOKEN_ID, 
-          name:'obj', 
-          initial_value:{
-            token: Juliet.LITERAL_STRING, 
-            kind:'literal', 
-            value:'Works'
-          }, 
-          kind:'local', 
-          type:{
-            token: Juliet.TOKEN_ID, 
-            kind:'type', 
-            name:'Object'
-          }
-        }, 
-        {
-          token: Juliet.TOKEN_ID, 
-          name:'st', 
-          initial_value:{
-            token: Juliet.TOKEN_LPAREN, 
-            kind:'cast', 
-            operand:{
-              token: Juliet.TOKEN_ID, 
-              kind:'construct', 
-              name:'obj'
-            }, 
-            to_type:{
-              token: Juliet.TOKEN_STRING, 
-              kind:'type', 
-              name:'String'
-            }
-          }, 
-          kind:'local', 
-          type:{
-            token: Juliet.TOKEN_STRING, 
-            kind:'type', 
-            name:'String'
-          }
-        }, 
-        {
-          token: Juliet.TOKEN_LPAREN, 
-          kind:'call', 
-          operand:{
-            token: Juliet.TOKEN_ID, 
-            kind:'construct', 
-            name:'println'
-          }, 
-          args:[
-            {
-              token: Juliet.TOKEN_ID, 
-              kind:'construct', 
-              name:'st'
-            }
-          ]
-        }
-      ]
-    }
-  ], 
-  types:[
-    {
-      token: Juliet.TOKEN_CLASS, 
-      kind:'definition', 
-      modifiers:33, 
-      members:[
-        {
-          token: Juliet.TOKEN_ID, 
-          name:'A', 
-          kind:'method', 
-          modifiers:257, 
-          return_type:null, 
-          parameters:[
-          ], 
-          block:[
-            {
-              token: Juliet.TOKEN_SEMICOLON, 
-              kind:'noop'
-            }
-          ]
-        }
-      ], 
-      types:[
-      ], 
-      _implements:[
-      ], 
-      _extends:null, 
-      name:'A'
-    }, 
-    {
-      token: Juliet.TOKEN_CLASS, 
-      kind:'definition', 
-      modifiers:33, 
-      members:[
-        {
-          token: Juliet.TOKEN_ID, 
-          name:'B', 
-          kind:'method', 
-          modifiers:257, 
-          return_type:null, 
-          parameters:[
-          ], 
-          block:[
-            {
-              token: Juliet.TOKEN_SEMICOLON, 
-              kind:'noop'
-            }
-          ]
-        }, 
-        {
-          name:'something', 
-          token: Juliet.TOKEN_ID, 
-          return_type:{
-            token: Juliet.TOKEN_ID, 
-            kind:'type', 
-            name:'A'
-          }, 
-          kind:'method', 
-          parameters:[
-          ], 
-          block:[
-            {
-              token: Juliet.TOKEN_IF, 
-              kind:'if', 
-              expression:{
-                token: Juliet.LITERAL_BOOLEAN, 
-                kind:'literal', 
-                value:true
-              }, 
-              body:{
-                kind:'block', 
-                statements:[
-                  {
-                    token: Juliet.TOKEN_RETURN, 
-                    kind:'return', 
-                    expression:{
-                      token: Juliet.TOKEN_NULL, 
-                      kind:'literal', 
-                      value:'null'
-                    }
-                  }
-                ]
-              }
-            }, 
-            {
-              token: Juliet.TOKEN_RETURN, 
-              kind:'return', 
-              expression:{
-                token: Juliet.TOKEN_LPAREN, 
-                kind:'cast', 
-                operand:{
-                  token: Juliet.TOKEN_NEW, 
-                  kind:'new', 
-                  type:{
-                    token: Juliet.TOKEN_ID, 
-                    kind:'type', 
-                    name:'A'
-                  }, 
-                  args:[
-                  ]
-                }, 
-                to_type:{
-                  token: Juliet.TOKEN_ID, 
-                  kind:'type', 
-                  name:'A'
-                }
-              }
-            }
-          ], 
-          modifiers:1
-        }
-      ], 
-      types:[
-      ], 
-      _implements:[
-      ], 
-      _extends:null, 
-      name:'B'
-    }
-  ], 
-  _implements:[
-  ], 
-  _extends:null, 
-  name:'Test'
-}
-],
+     {
+       token: Juliet.TOKEN_CLASS,
+       kind: 'definition',
+       modifiers: 34,
+       members: [
+         {
+           token: Juliet.TOKEN_ID,
+           name: 'Test',
+           kind: 'method',
+           modifiers: 256,
+           return_type: null,
+           parameters: [
+           ],
+           block: [
+             {
+               token: Juliet.TOKEN_ID,
+               name: 'obj',
+               initial_value: {
+                 token: Juliet.LITERAL_STRING,
+                 kind: 'literal',
+                 value: 'Works'
+               },
+               kind: 'local',
+               type: {
+                 token: Juliet.TOKEN_ID,
+                 kind: 'type',
+                 name: 'Object'
+               }
+             },
+             {
+               token: Juliet.TOKEN_ID,
+               name: 'st',
+               initial_value: {
+                 token: Juliet.TOKEN_LPAREN,
+                 kind: 'cast',
+                 operand: {
+                   token: Juliet.TOKEN_ID,
+                   kind: 'id',
+                   name: 'obj'
+                 },
+                 to_type: {
+                   token: Juliet.TOKEN_STRING,
+                   kind: 'type',
+                   name: 'String'
+                 }
+               },
+               kind: 'local',
+               type: {
+                 token: Juliet.TOKEN_STRING,
+                 kind: 'type',
+                 name: 'String'
+               }
+             },
+             {
+               token: Juliet.TOKEN_LPAREN,
+               kind: 'call',
+               operand: {
+                 token: Juliet.TOKEN_ID,
+                 kind: 'id',
+                 name: 'println'
+               },
+               args: [
+                 {
+                   token: Juliet.TOKEN_ID,
+                   kind: 'id',
+                   name: 'st'
+                 }
+               ]
+             }
+           ]
+         }
+       ],
+       types: [
+         {
+           token: Juliet.TOKEN_CLASS,
+           kind: 'definition',
+           modifiers: 33,
+           members: [
+             {
+               token: Juliet.TOKEN_ID,
+               name: 'A',
+               kind: 'method',
+               modifiers: 257,
+               return_type: null,
+               parameters: [
+               ],
+               block: [
+                 {
+                   token: Juliet.TOKEN_SEMICOLON,
+                   kind: 'noop'
+                 }
+               ]
+             }
+           ],
+           types: [],
+           interfaces: [],
+           superclass: null,
+           name: 'A'
+         },
+         {
+           token: Juliet.TOKEN_CLASS,
+           kind: 'definition',
+           modifiers: 33,
+           members: [
+             {
+               token: Juliet.TOKEN_ID,
+               name: 'B',
+               kind: 'method',
+               modifiers: 257,
+               return_type: null,
+               parameters: [
+               ],
+               block: [
+                 {
+                   token: Juliet.TOKEN_SEMICOLON,
+                   kind: 'noop'
+                 }
+               ]
+             },
+             {
+               name: 'something',
+               token: Juliet.TOKEN_ID,
+               return_type: {
+                 token: Juliet.TOKEN_ID,
+                 kind: 'type',
+                 name: 'A'
+               },
+               kind: 'method',
+               parameters: [
+               ],
+               block: [
+                 {
+                   token: Juliet.TOKEN_IF,
+                   kind: 'if',
+                   expression: {
+                     token: Juliet.LITERAL_BOOLEAN,
+                     kind: 'literal',
+                     value: true
+                   },
+                   body: {
+                     kind: 'block',
+                     statements: [
+                       {
+                         token: Juliet.TOKEN_RETURN,
+                         kind: 'return',
+                         expression: {
+                           token: Juliet.TOKEN_NULL,
+                           kind: 'literal',
+                           value: 'null'
+                         }
+                       }
+                     ]
+                   }
+                 },
+                 {
+                   token: Juliet.TOKEN_RETURN,
+                   kind: 'return',
+                   expression: {
+                     token: Juliet.TOKEN_LPAREN,
+                     kind: 'cast',
+                     operand: {
+                       token: Juliet.TOKEN_NEW,
+                       kind: 'new',
+                       type: {
+                         token: Juliet.TOKEN_ID,
+                         kind: 'type',
+                         name: 'A'
+                       },
+                       args: [
+                       ]
+                     },
+                     to_type: {
+                       token: Juliet.TOKEN_ID,
+                       kind: 'type',
+                       name: 'A'
+                     }
+                   }
+                 }
+               ],
+               modifiers: 1
+             }
+           ],
+           types: [],
+           interfaces: [],
+           superclass: null,
+           name: 'B'
+         }
+       ],
+       interfaces: [],
+       superclass: null,
+       name: 'Test'
+     }
+    ],
     ['class Outer<T> {\n' +
      '  T t;\n' +
      '  class Inner {\n' +
      '    T setOuterT(T t1) {t = t1;return t;}\n' +
      '  }\n' +
-     '}', 
-{
-  token: Juliet.TOKEN_CLASS, 
-  kind:'definition', 
-  modifiers:34, 
-  members:[
-    {
-      token: Juliet.TOKEN_ID, 
-      name:'t', 
-      initial_value:null, 
-      kind:'field', 
-      modifiers:0
-    }
-  ], 
-  types:[
-    {
-      token: Juliet.TOKEN_CLASS, 
-      kind:'definition', 
-      modifiers:32, 
-      members:[
-        {
-          name:'setOuterT', 
-          token: Juliet.TOKEN_ID, 
-          return_type:{
-            token: Juliet.TOKEN_ID, 
-            kind:'type', 
-            name:'T'
-          }, 
-          kind:'method', 
-          parameters:[
-            {
-              token: Juliet.TOKEN_ID, 
-              kind:'parameter', 
-              type:{
-                token: Juliet.TOKEN_ID, 
-                kind:'type', 
-                name:'T'
-              }, 
-              name:'t1'
-            }
-          ], 
-          block:[
-            {
-              token: Juliet.TOKEN_ASSIGN, 
-              kind:'assignment', 
-              location:{
-                token: Juliet.TOKEN_ID, 
-                kind:'construct', 
-                name:'t'
-              }, 
-              new_value:{
-                token: Juliet.TOKEN_ID, 
-                kind:'construct', 
-                name:'t1'
-              }
-            }, 
-            {
-              token: Juliet.TOKEN_RETURN, 
-              kind:'return', 
-              expression:{
-                token: Juliet.TOKEN_ID, 
-                kind:'construct', 
-                name:'t'
-              }
-            }
-          ], 
-          modifiers:0
-        }
-      ], 
-      types:[
-      ], 
-      _implements:[
-      ], 
-      _extends:null, 
-      name:'Inner'
-    }
-  ], 
-  _implements:[
-  ], 
-  _extends:null, 
-  name:'Outer', 
-  parameters:[
-    {
-      token: Juliet.TOKEN_ID, 
-      kind:'construct', 
-      name:'T'
-    }
-  ]
-}
+     '}',
+     {
+       token: Juliet.TOKEN_CLASS,
+       kind: 'definition',
+       modifiers: 34,
+       members: [
+         {
+           token: Juliet.TOKEN_ID,
+           name: 't',
+           initial_value: null,
+           kind: 'field',
+           modifiers: 0,
+           type: {
+             token: Juliet.TOKEN_ID,
+             kind: 'type',
+             name: 'T'
+           }
+         }
+       ],
+       types: [
+         {
+           token: Juliet.TOKEN_CLASS,
+           kind: 'definition',
+           modifiers: 32,
+           members: [
+             {
+               name: 'setOuterT',
+               token: Juliet.TOKEN_ID,
+               return_type: {
+                 token: Juliet.TOKEN_ID,
+                 kind: 'type',
+                 name: 'T'
+               },
+               kind: 'method',
+               parameters: [
+                 {
+                   token: Juliet.TOKEN_ID,
+                   kind: 'parameter',
+                   type: {
+                     token: Juliet.TOKEN_ID,
+                     kind: 'type',
+                     name: 'T'
+                   },
+                   name: 't1'
+                 }
+               ],
+               block: [
+                 {
+                   token: Juliet.TOKEN_ASSIGN,
+                   kind: 'assignment',
+                   location: {
+                     token: Juliet.TOKEN_ID,
+                     kind: 'id',
+                     name: 't'
+                   },
+                   new_value: {
+                     token: Juliet.TOKEN_ID,
+                     kind: 'id',
+                     name: 't1'
+                   }
+                 },
+                 {
+                   token: Juliet.TOKEN_RETURN,
+                   kind: 'return',
+                   expression: {
+                     token: Juliet.TOKEN_ID,
+                     kind: 'id',
+                     name: 't'
+                   }
+                 }
+               ],
+               modifiers: 0
+             }
+           ],
+           types: [
+           ],
+           interfaces: [],
+           superclass: null,
+           name: 'Inner'
+         }
+       ],
+       interfaces: [],
+       superclass: null,
+       name: 'Outer',
+       parameters: [
+         {
+           token: Juliet.TOKEN_ID,
+           kind: 'id',
+           name: 'T'
+         }
+       ]
+     }
     ],
     ['/* Test class with comments */\n' +
      '/* 1\n' +
      '   2\n' +
      '*/\n' +
-      'class Empty {\n' +
-      '  // single-line comment\n' +
-      '  /* multi-line comment */\n' +
-     '}', 
+     'class Empty {\n' +
+     '  // single-line comment\n' +
+     '  /* multi-line comment */\n' +
+     '}',
      {
-       token: Juliet.TOKEN_CLASS, 
-       kind:'definition', 
-       modifiers:34, 
-       members:[
-       ], 
-       types:[
-       ], 
-       _implements:[
-       ], 
-       _extends:null, 
-       name:'Empty'
-     }]
-/*,
-    ['package java.lang;', {
-      parsed_types:[
-      ],
-      'package':{
-        token: Juliet.TOKEN_PACKAGE,
-        name:'java.lang'
-      }
-    }],
-    ['package java.lang;\n' +
-     'import java.io;\n' +
-     'import java.error.*;', {
-       parsed_types:[
+       token: Juliet.TOKEN_CLASS,
+       kind: 'definition',
+       modifiers: 34,
+       members: [
        ],
-       'package':{
-         token: Juliet.TOKEN_PACKAGE,
-         name:'java.lang'
-       },
-       imports:[
-         {
-           token: Juliet.TOKEN_IMPORT,
-           name:'java.io'
-         },
-         {
-           token: Juliet.TOKEN_IMPORT,
-           name:'java.error.*'
-         }
-       ]
+       types: [
+       ],
+       interfaces: [],
+       superclass: null,
+       name: 'Empty'
      }],
-    ['import java.io;\n' +
-     'class Empty {}', {
-      parsed_types:[{
-        token: Juliet.TOKEN_CLASS,
-        modifiers:Juliet.MODIFIER_CLASS | Juliet.MODIFIER_PROTECTED,
-        name:'Empty',
-        static_initializers:[{
-          token: Juliet.TOKEN_CLASS,
-          modifiers:Juliet.MODIFIER_STATIC,
-          // TODO: type_context:,
-          return_type:null,
-          name:'static'
-        }]
-      }],
-      imports:[
-        {
-          token: Juliet.TOKEN_IMPORT,
-          name:'java.io'
-        }
-      ]
-    }]
-*/
+    ['class Empty {' +
+     '  void x() {}' +
+     '}',
+     {
+       token: Juliet.TOKEN_CLASS,
+       kind: 'definition',
+       modifiers: 34,
+       members: [
+         {
+           name: 'x',
+           token: Juliet.TOKEN_ID,
+           return_type: {
+             token: Juliet.TOKEN_VOID,
+             kind: 'basic_type',
+             name: 'void'
+           },
+           kind: 'method',
+           parameters: [],
+           block: [],
+           modifiers: 0
+         }
+       ],
+       types: [
+       ],
+       interfaces: [
+       ],
+       superclass: null,
+       name: 'Empty'
+     }],
+    ['class Empty {' +
+     '  <T> void x() {}' +
+     '}',
+     {
+       token: Juliet.TOKEN_CLASS,
+       kind: 'definition',
+       modifiers: 34,
+       members: [
+         {
+           name: 'x',
+           token: Juliet.TOKEN_ID,
+           return_type: {
+             token: Juliet.TOKEN_VOID,
+             kind: 'basic_type',
+             name: 'void'
+           },
+           kind: 'method',
+           parameters: [
+           ],
+           type_parameters: [
+             {
+               token: Juliet.TOKEN_ID,
+               kind: 'id',
+               name: 'T'
+             }
+           ],
+           block: [
+           ],
+           modifiers: 0
+         }
+       ],
+       types: [
+       ],
+       interfaces: [
+       ],
+       superclass: null,
+       name: 'Empty'
+     }
+    ]
+
   ];
 
   print('BEGIN TESTS');
@@ -541,10 +584,10 @@ var test_parse_types = function () {
       print('Passed.');
       pass_count++;
     } else {
-      print('Expected:');
+      print('Expected: ');
       Juliet.util.print_ast(t[1]);
 
-      print('Actual:');
+      print('Actual: ');
       Juliet.util.print_ast(stm);
 
       print('FAILED.');
@@ -561,4 +604,3 @@ var test_parse_types = function () {
   print('Failed ' + fail_count + ' tests.');
   print('END TESTS');
 }();
-

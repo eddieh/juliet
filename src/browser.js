@@ -1,8 +1,8 @@
-Juliet.stdlib.System.out.println = function (a) {
+Juliet.stdlib.System.out.println = function(a) {
   Juliet.stdout = Juliet.stdout + a + '\n';
 };
 
-quit = function () {
+quit = function() {
   throw new Error('QUIT');
 };
 

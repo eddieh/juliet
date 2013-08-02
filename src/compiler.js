@@ -1,45 +1,83 @@
 Juliet.program = {};
 
 Juliet.compiler = function() {
-  /* Privates */
-  var scope = [];
   var static_context = null;
-
-  var prevScope = null;
-
-  var mangle = function(class_name, field_name, parameters) {
-      if (parameters == undefined) {
-	  parameters = [];
-      } else if (parameters.length == 0) {
-	  parameters = ['void'];
-      } else {
-	  parameters = clone(parameters);
-      }
-      parameters.unshift(class_name, field_name);
-      var mangled = "";
-      for (var i=0; i<parameters.length; i++) {
-	  var pname = "";
-	  if (!parameters[i].kind) {
-	      pname = parameters[i];
-	  } else {
-	      if (parameters[i].kind == 'parameter') {
-		  pname = parameters[i].type.name;
-	      } else {
-		  print("Unknown element in parameter list.");
-		  quit();
-	      }
-	  }
-	  pname = pname.replace("[]", "___$");
-	  mangled += pname.length.toString();
-	  mangled += pname;
-      }
-      return mangled;
+  var prepared_units = [];
+  var prepared_types = [];
+  var unit_package = null;
+  var basic_types = {
+    'char': true,
+    'int': true,
+    'long': true,
+    'short': true,
+    'float': true,
+    'double': true,
+    'void': true
   };
 
-  var clone = (function(){ 
-      return function (obj) { Clone.prototype=obj; return new Clone() };
-      function Clone(){}
-  }());
+  var forEach = Juliet.util.forEach;
+
+  //  var is_class = function(a) {
+  //    return a.modifiers & Juliet.MODIFIER_CLASS;
+  //  };
+
+  //  var is_interface = function(a) {
+  //    return a.modifiers & Juliet.MODIFIER_INTERFACE;
+  //  };
+
+  //  var is_template = function(a) {
+  //    return a.placeholder_types;
+  //  };
+
+  //  var is_static = function(a) {
+  //    return a.modifiers & Juliet.MODIFIER_STATIC;
+  //  };
+
+  //  var is_abstract = function(a) {
+  //    return a.modifiers & Juliet.MODIFIER_ABSTRACT;
+  //  };
+
+  //  var is_constructor = function(a) {
+  //    return a.modifiers & Juliet.MODIFIER_CONSTRUCTOR;
+  //  };
+
+
+  var mangle = function(class_path, field_name, parameters) {
+    if (parameters == undefined) {
+      parameters = [];
+    } else if (parameters.length == 0) {
+      parameters = ['void'];
+    } else {
+      parameters = parameters.slice(0);
+    }
+    parameters.unshift(field_name);
+    parameters = class_path.concat(parameters);
+
+    var mangled = '';
+    for (var i = 0; i < parameters.length; i++) {
+      var pname = '';
+      if (!parameters[i].kind) {
+        pname = parameters[i];
+      } else {
+        if (parameters[i].kind == 'parameter') {
+          pname = parameters[i].type.name;
+        } else {
+          print('Unknown element in parameter list.');
+          quit();
+        }
+      }
+      pname = pname.replace('[]', '___$');
+      mangled += pname.length.toString();
+      mangled += pname;
+    }
+    return mangled;
+  };
+
+  /*var clone = (function(){
+    return function (obj) { Clone.prototype=obj; return new Clone() };
+    function Clone(){}
+    }());
+  */
 
   var typeName = function(type) {
     var ret = '';
@@ -69,7 +107,48 @@ Juliet.compiler = function() {
     return lst;
   };
 
-  var typeDescriptorForName = function(id) {
+  function printScope(obj) {
+    function fn(obj, i) {
+      forEach(obj.scope, function(member, member_name) {
+        print('scope[' + i + ']: ' + member_name);
+      });
+      fn(obj.scopeParent, i++);
+    }
+    fn(obj, 0);
+  }
+
+  function typeFromNode(obj, ast) {
+    function fn(obj, ast) {
+      if (ast.name in obj.scope) {
+        return obj.scope[ast.name];
+      }
+      if (obj.scopeParent) {
+        return fn(obj.scopeParent, ast);
+      }
+    }
+    var t = fn(obj, ast);
+    if (t) return t;
+    printScope(unit);
+    throw token.name + ' is undefined.';
+  }
+
+  function newScope(obj, parent) {
+    obj.scope = {};
+    obj.scopeParent = parent;
+  }
+
+  function addToScope(obj, name, obj2) {
+    obj.scope[name] = obj2;
+  }
+
+  function fullyQualifiedName(type, sep) {
+    if (type.name in basic_types) return type.name;
+    if (sep === undefined) sep = '.';
+    return type.path.join(sep) + sep + type.name;
+  }
+
+/*
+  function typeDescriptorForName(id) {
     var name = (typeof(id) === 'object') ? id.name : id;
     if (Juliet.options.trace) print('typeDescriptorForName: ' + name);
     var curScope = scope.length - 1;
@@ -81,9 +160,10 @@ Juliet.compiler = function() {
     }
     // TODO: super
     return null;
-  };
+  }
+*/
 
-  var typeListSignature = function(typeList) {
+  function typeListSignature(typeList) {
     var ret = '';
     var arity = 0;
     if (typeList) arity = typeList.length;
@@ -103,7 +183,7 @@ Juliet.compiler = function() {
           break;
         case Juliet.LITERAL_DOUBLE:
           ret = ret + 'double';
-          break
+          break;
         case Juliet.LITERAL_INT:
           ret = ret + 'int';
           break;
@@ -139,174 +219,175 @@ Juliet.compiler = function() {
     return ret;
   }
 
-  var methodSignature = function (m) {
+  var methodSignature = function(m) {
     var sig = m.name;
     return sig + typeListSignature(m.parameters);
   };
 
-    var nameInContextClass = function(cxt_class, id) {
-	// Is it just the name, or an object with the name in it?
-	//var name = (typeof(id) === 'object') ? id.name : name;
-	var name = undefined;
+  var nameInContextClass = function(cxt_class, id) {
+    // Is it just the name, or an object with the name in it?
+    //var name = (typeof(id) === 'object') ? id.name : name;
+    var name = undefined;
 
-	if (id.kind == 'new') {
-	    name = id.type.name;
-	} else {
-	    name = id.name;
-	}
+    if (id.kind == 'new') {
+      name = id.type.name;
+    } else {
+      name = id.name;
+    }
 
-	// Use the class to lookup the appropriate field.
-	while (cxt_class && cxt_class.name) {
+    // Use the class to lookup the appropriate field.
+    while (cxt_class && cxt_class.name) {
 
-	    if (Juliet.options.trace) print('  cxt_class: ' + cxt_class.name);
-	    var mname = mangle(cxt_class.name, name);
+      if (Juliet.options.trace) print('  cxt_class: ' + cxt_class.name);
+      var mname = mangle(cxt_class.name, name);
 
-	    if ('_I' + mname in cxt_class) {
+      if ('_I' + mname in cxt_class) {
 
-		if (id.args) {
-		    var methods = cxt_class['_I' + mname];
+        if (id.args) {
+          var methods = cxt_class['_I' + mname];
 
-		    if (!Juliet.util.isArray(methods)) {
-			print(name + " is defined as a field, not a method in " + context);
-			quit();
-		    }
-		    
-		    // Overloading:
-		    // We have to find the most specific signature.
-		    // http://docs.oracle.com/javase/specs/jls/se7/html/jls-15.html#jls-15.12
-		    var best_method = null;
+          if (!Juliet.util.isArray(methods)) {
+            print(name + ' is defined as a field, not a method in ' + context);
+            quit();
+          }
 
-		    for (var k=0; k < methods.length; k++) {
-			var method_name = methods[k];
-			var method = cxt_class[method_name];
-			// TODO: Find the most specific signature.  Currently we only find the first fit based on arity.
-			if (id.args.length == method.parameters.length) {
-			    best_method = method_name;
-			}
-			// print("CHECKING.." + id.args.length + " == " + method.parameters.length);
-		    }
-		    
-		    // TODO: Check access qualifiers
+          // Overloading:
+          // We have to find the most specific signature.
+          // http://docs.oracle.com/javase/specs/jls/se7/html/jls-15.html#jls-15.12
+          var best_method = null;
 
-		    if (best_method) {
-			return "_Z" + best_method.substring(2);
-		    }
-		    
-		    // TODO: Better error.
-		    print("No matching signature for call to '" + name + "' in " + context);
-		    quit();
+          for (var k = 0; k < methods.length; k++) {
+            var method_name = methods[k];
+            var method = cxt_class[method_name];
+            // TODO: Find the most specific signature.  Currently we
+            // only find the first fit based on arity.
+            if (id.args.length == method.parameters.length) {
+              best_method = method_name;
+            }
+          }
 
-		} else {
+          // TODO: Check access qualifiers
 
-		    // Property lookup
-		    if (Juliet.util.isArray(methods)) {
-			print(name + " is defined as a method, not a field in " + context);
-			quit();
-		    }
+          if (best_method) {
+            return '_Z' + best_method.substring(2);
+          }
 
-		    // TODO: Check access qualifiers
+          // TODO: Better error.
+          print('No matching signature for call to \'' + name + '\' in ' +
+                context);
+          quit();
 
-		    return '_Z' + mname;
-		}
+        } else {
 
-	    }
+          // Property lookup
+          if (Juliet.util.isArray(methods)) {
+            print(name + ' is defined as a method, not a field in ' + context);
+            quit();
+          }
 
-	    if (cxt_class.base_class) {
-		cxt_class = Juliet.program[cxt_class.base_class];
-	    } else {
-		cxt_class = null;
-	    }
-	}
+          // TODO: Check access qualifiers
 
-	return cxt_class;
-    };
+          return '_Z' + mname;
+        }
 
-    // context: string like 'this'
-    // name: construct dict or just a name..?
-    var nameInContext = function(context, id) {
+      }
 
-	// Is it just the name, or an object with the name in it?
-	var name = (typeof(id) === 'object') ? id.name : name;
+      if (cxt_class.base_class) {
+        cxt_class = Juliet.program[cxt_class.base_class];
+      } else {
+        cxt_class = null;
+      }
+    }
 
-	if (Juliet.options.trace) print('nameInContext: ' + context);
-	//if (Juliet.options.trace) print('  name: ' + name);
+    return cxt_class;
+  };
 
-	// Get the type for the context.
-	var cxt_type = typeDescriptorForName(context);
+  // context: string like 'this'
+  // name: construct dict or just a name..?
+  var nameInContext = function(context, id) {
 
-	// Then look up the class for the type.
-	var cxt_class = Juliet.program[cxt_type.type.name];
+    // Is it just the name, or an object with the name in it?
+    var name = (typeof(id) === 'object') ? id.name : name;
 
-	var r = nameInContextClass(cxt_class, id);
+    if (Juliet.options.trace) print('nameInContext: ' + context);
+    //if (Juliet.options.trace) print('  name: ' + name);
 
-	if (r) return r;
+    // Get the type for the context.
+    var cxt_type = typeDescriptorForName(context);
 
-	print(name + ' is not a member of ' + context);
-	quit();
-    };
+    // Then look up the class for the type.
+    var cxt_class = Juliet.program[cxt_type.type.name];
+
+    var r = nameInContextClass(cxt_class, id);
+
+    if (r) return r;
+
+    print(name + ' is not a member of ' + context);
+    quit();
+  };
 
   var nameInScope = function(id, simple) {
-      var name = (typeof(id) === 'object') ? id.name : id;
-      if (Juliet.options.trace) print('nameInScope: ' + name);
-      
-      var args = id.args;
-      var argTypeSig = '';
-      if (args) {
-	  argTypeSig = typeListSignature(args);
-	  //if (argTypeSig === '') {
-          //    return 'Juliet.runtime.dispatch(\'' + name + '\',this,';
-	  //    
-	  //}
-      }
-      
-      var curScope = scope.length - 1;
-      for (var i = curScope; i >= 0; i--) {
-	  
-	  //Juliet.util.print_ast(scope[i]);
-	  
-	  if (name in scope[i]) {
-              var n = scope[i][name];
-              return n.name;
-	  }
+    var name = (typeof(id) === 'object') ? id.name : id;
+    if (Juliet.options.trace) print('nameInScope: ' + name);
 
-	  cname = name.split('.');
-	  cname = cname[cname.length - 1];
-	  if ((cname in scope[i]) && (scope[i][cname].name == name)) {
-	      return n.name;
-	  }
-	  
-	  
-	  if ((name + argTypeSig) in scope[i]) {
-              var context = 'this.';
-	      
-              if (static_context) {
-		  context = 'Juliet.program.' + static_context.name + '.';
-              }
-	      
-              if (simple) {
-		  context = '';
-              }
-	      
-              var n = context + name + argTypeSig;
-              return n;
-	  }
-	  
+    var args = id.args;
+    var argTypeSig = '';
+    if (args) {
+      argTypeSig = typeListSignature(args);
+      //if (argTypeSig === '') {
+      //    return 'Juliet.runtime.dispatch(\'' + name + '\',this,';
+      //
+      //}
+    }
+
+    var curScope = scope.length - 1;
+    for (var i = curScope; i >= 0; i--) {
+
+      //Juliet.util.print_ast(scope[i]);
+
+      if (name in scope[i]) {
+        var n = scope[i][name];
+        return n.name;
       }
 
-      var typeDescriptor = typeDescriptorForName('this');
-      var typeName = null;
-      if (typeDescriptor && typeDescriptor.type) {
-	  typeName = typeDescriptor.type.name;
+      cname = name.split('.');
+      cname = cname[cname.length - 1];
+      if ((cname in scope[i]) && (scope[i][cname].name == name)) {
+        return n.name;
       }
-      
-      // TODO: super
-      // TODO: single-static-import declarations
-      // TODO: static-import-on-demand declarations
-      // TODO: if in static context, check if this is an instance
-      // identifier and print appropriate message
-      // (update tests/scope/test17.java to reflect this change)
-      print(name + ' is not defined');
-      quit();
+
+
+      if ((name + argTypeSig) in scope[i]) {
+        var context = 'this.';
+
+        if (static_context) {
+          context = 'Juliet.program.' + static_context.name + '.';
+        }
+
+        if (simple) {
+          context = '';
+        }
+
+        var n = context + name + argTypeSig;
+        return n;
+      }
+
+    }
+
+    var typeDescriptor = typeDescriptorForName('this');
+    var typeName = null;
+    if (typeDescriptor && typeDescriptor.type) {
+      typeName = typeDescriptor.type.name;
+    }
+
+    // TODO: super
+    // TODO: single-static-import declarations
+    // TODO: static-import-on-demand declarations
+    // TODO: if in static context, check if this is an instance
+    // identifier and print appropriate message
+    // (update tests/scope/test17.java to reflect this change)
+    print(name + ' is not defined');
+    quit();
   };
 
   var addIdentifier = function(name, canonicalName, type, shadowable, kind) {
@@ -322,15 +403,42 @@ Juliet.compiler = function() {
       }
     }
 
-    scope[scope.length - 1][name] = {name:canonicalName,
-                                     type:type,
-                                     shadowable:shadowable,
-                                     kind:kind};
+    scope[scope.length - 1][name] = {
+      name: canonicalName,
+      type: type,
+      shadowable: shadowable,
+      kind: kind};
   };
 
-//  var constructorForArguments = function(args) {
-//    return '\'__init__' + typeListSignature(args) + '\'';
-//  };
+  function getPackage(pkg) {
+    var partial = Juliet.packages;
+    for (var i in pkg) {
+      var name = pkg[i].name;
+      if (!(name in partial)) {
+        return null;
+      }
+      partial = partial[name];
+    }
+    return partial;
+  }
+
+  function makePackage(pkg) {
+    var partial = Juliet.packages;
+    for (var i in pkg) {
+      var name = pkg[i].name;
+      if (!(name in partial)) {
+        partial[name] = {
+          $types: {}
+        };
+      }
+      partial = partial[name];
+    }
+    return partial;
+  }
+
+  //  var constructorForArguments = function(args) {
+  //    return '\'__init__' + typeListSignature(args) + '\'';
+  //  };
 
   var pushScope = function() {
     if (Juliet.options.trace) print('pushScope');
@@ -411,13 +519,13 @@ Juliet.compiler = function() {
   var primitiveTypeWidth = function(name) {
     switch (name) {
     case 'boolean': return 1;
-    case 'byte':    return 2;
-    case 'short':   return 3;
-    case 'char':    return 4;
-    case 'int':     return 5;
-    case 'long':    return 6;
-    case 'float':   return 7;
-    case 'double':  return 8;
+    case 'byte': return 2;
+    case 'short': return 3;
+    case 'char': return 4;
+    case 'int': return 5;
+    case 'long': return 6;
+    case 'float': return 7;
+    case 'double': return 8;
     }
     return 0;
   };
@@ -446,7 +554,7 @@ Juliet.compiler = function() {
     return name.substring(i).split('[]').length - 1;
   };
 
-  var primitiveStr = function(t) {
+  function primitiveStr(t) {
     switch (t) {
     case Juliet.LITERAL_DOUBLE:
       return 'double';
@@ -497,7 +605,7 @@ Juliet.compiler = function() {
     }
 
     if (a.kind == 'array') {
-      return a.type;;
+      return a.type;
     }
 
     if (a.kind == 'local') {
@@ -510,7 +618,7 @@ Juliet.compiler = function() {
 
     print('getType: no handler for ' + a.kind);
     quit();
-  }
+  };
 
   var getTypeName = function(a) {
     if (a.kind == 'literal') {
@@ -522,7 +630,6 @@ Juliet.compiler = function() {
         var typeDescriptor = typeDescriptorForName(a.name);
 
         if (!typeDescriptor) {
-	    print("Q");
           var name = nameInScope(a, true);
           typeDescriptor = typeDescriptorForName(name);
         }
@@ -747,7 +854,7 @@ Juliet.compiler = function() {
   var reduceByOneDimension = function(name) {
     var i = name.lastIndexOf('[');
     return name.substring(0, i);
-  }
+  };
 
   var arrayAccessExpressionType = function(expr) {
     var depth = 1;
@@ -756,7 +863,7 @@ Juliet.compiler = function() {
       depth++;
     }
 
-	    print("R");
+    print('R');
     var name = nameInScope(expr.operand, true);
     typeDescriptor = typeDescriptorForName(name);
 
@@ -813,8 +920,8 @@ Juliet.compiler = function() {
 
     // TODO: should we return a special value type?
     return {
-      token:Juliet.TOKEN_INT,
-      kind:'value'
+      token: Juliet.TOKEN_INT,
+      kind: 'value'
     };
   };
 
@@ -829,7 +936,7 @@ Juliet.compiler = function() {
         quit();
       }
 
-	    print("S");
+      print('S');
       var name = nameInScope(expr.operand, true);
       var type = typeDescriptorForName(name);
       if ((type.kind != 'local') && (type.kind != 'property')) {
@@ -863,7 +970,8 @@ Juliet.compiler = function() {
     // var operand = typeCheckExpr(expr.operand);
 
     // ++, -- must be applied to variables with numeric types
-    if ((expr.token == Juliet.TOKEN_INCREMENT) || (expr.token == Juliet.TOKEN_DECREMENT)) {
+    if ((expr.token == Juliet.TOKEN_INCREMENT) ||
+        (expr.token == Juliet.TOKEN_DECREMENT)) {
       return typeCheckIncDecExpr(expr);
     }
 
@@ -875,7 +983,8 @@ Juliet.compiler = function() {
     var operand = typeCheckExpr(expr.operand);
 
     // ++, -- must be applied to variables with numeric types
-    if ((expr.token == Juliet.TOKEN_INCREMENT) || (expr.token == Juliet.TOKEN_DECREMENT)) {
+    if ((expr.token == Juliet.TOKEN_INCREMENT) ||
+        (expr.token == Juliet.TOKEN_DECREMENT)) {
       return typeCheckIncDecExpr(expr);
     }
 
@@ -884,7 +993,8 @@ Juliet.compiler = function() {
 
     // +, - must be applied to a type that can be converted to a
     // numeric (primitive?) type
-    if ((expr.token == Juliet.TOKEN_PLUS) || (expr.token == Juliet.TOKEN_MINUS)) {
+    if ((expr.token == Juliet.TOKEN_PLUS) ||
+        (expr.token == Juliet.TOKEN_MINUS)) {
       if (!numericType(operandTypeName)) {
         print('operator ' +
               Juliet.lexer.operatorStr(expr.token) +
@@ -963,7 +1073,7 @@ Juliet.compiler = function() {
       return false;
     };
 
-    var equality = function (a) {
+    var equality = function(a) {
       switch (a) {
       case Juliet.TOKEN_EQ:
       case Juliet.TOKEN_NE:
@@ -1021,9 +1131,9 @@ Juliet.compiler = function() {
       // concatenation
       if (stringType(leftTypeName) || stringType(rightTypeName)) {
         return {
-          token:Juliet.TOKEN_ID,
-          kind:'type',
-          name:'java.lang.String'
+          token: Juliet.TOKEN_ID,
+          kind: 'type',
+          name: 'java.lang.String'
         };
       }
 
@@ -1236,131 +1346,133 @@ Juliet.compiler = function() {
       if (trueValueTypeName == 'byte' || trueValueTypeName == 'Byte') {
         if (falseValueTypeName == 'short' || falseValueTypeName == 'Short') {
           return {
-            token:Juliet.TOKEN_SHORT,
-            kind:'type',
-            name:'short'
+            token: Juliet.TOKEN_SHORT,
+            kind: 'type',
+            name: 'short'
           };
         }
       }
 
-      if (Juliet.util.has(['byte', 'short', 'char'], trueValueTypeName)) {
+      if (Juliet.util.contains(['byte', 'short', 'char'], trueValueTypeName)) {
         if (falseValueType.token == Juliet.LITERAL_INT) {
           switch (trueValueTypeName) {
           case 'byte':
             if (falseValue.value >= -128 && falseValue.value <= 127) {
               return {
-                token:Juliet.TOKEN_BYTE,
-                kind:'type',
-                name:'byte'
+                token: Juliet.TOKEN_BYTE,
+                kind: 'type',
+                name: 'byte'
               };
             }
           case 'short':
             if (falseValue.value >= -32768 && falseValue.value <= 32767) {
               return {
-                token:Juliet.TOKEN_SHORT,
-                kind:'type',
-                name:'short'
+                token: Juliet.TOKEN_SHORT,
+                kind: 'type',
+                name: 'short'
               };
             }
           case 'char':
             if (falseValue.value >= -32768 && falseValue.value <= 32767) {
               return {
-                token:Juliet.TOKEN_CHAR,
-                kind:'type',
-                name:'char'
+                token: Juliet.TOKEN_CHAR,
+                kind: 'type',
+                name: 'char'
               };
             }
           }
         }
       }
 
-      if (Juliet.util.has(['byte', 'short', 'char'], falseValueTypeName)) {
+      if (Juliet.util.contains(['byte', 'short', 'char'], falseValueTypeName)) {
         if (trueValueType.token == Juliet.LITERAL_INT) {
           switch (falseValueTypeName) {
           case 'byte':
             if (trueValue.value >= -128 && trueValue.value <= 127) {
               return {
-                token:Juliet.TOKEN_BYTE,
-                kind:'type',
-                name:'byte'
+                token: Juliet.TOKEN_BYTE,
+                kind: 'type',
+                name: 'byte'
               };
             }
           case 'short':
             if (trueValue.value >= -32768 && trueValue.value <= 32767) {
               return {
-                token:Juliet.TOKEN_SHORT,
-                kind:'type',
-                name:'short'
+                token: Juliet.TOKEN_SHORT,
+                kind: 'type',
+                name: 'short'
               };
             }
           case 'char':
             if (trueValue.value >= -32768 && trueValue.value <= 32767) {
               return {
-                token:Juliet.TOKEN_CHAR,
-                kind:'type',
-                name:'char'
+                token: Juliet.TOKEN_CHAR,
+                kind: 'type',
+                name: 'char'
               };
             }
           }
         }
       }
 
-      if (Juliet.util.has(['Byte', 'Short', 'Character'], trueValueTypeName)) {
+      if (Juliet.util.contains(['Byte', 'Short', 'Character'],
+                               trueValueTypeName)) {
         if (falseValueType.token == Juliet.LITERAL_INT) {
           switch (trueValueTypeName) {
           case 'Byte':
             if (falseValue.value >= -128 && falseValue.value <= 127) {
               return {
-                token:Juliet.TOKEN_BYTE,
-                kind:'type',
-                name:'byte'
+                token: Juliet.TOKEN_BYTE,
+                kind: 'type',
+                name: 'byte'
               };
             }
           case 'Short':
             if (falseValue.value >= -32768 && falseValue.value <= 32767) {
               return {
-                token:Juliet.TOKEN_SHORT,
-                kind:'type',
-                name:'short'
+                token: Juliet.TOKEN_SHORT,
+                kind: 'type',
+                name: 'short'
               };
             }
           case 'Character':
             if (falseValue.value >= -32768 && falseValue.value <= 32767) {
               return {
-                token:Juliet.TOKEN_CHAR,
-                kind:'type',
-                name:'char'
+                token: Juliet.TOKEN_CHAR,
+                kind: 'type',
+                name: 'char'
               };
             }
           }
         }
       }
 
-      if (Juliet.util.has(['Byte', 'Short', 'Character'], falseValueTypeName)) {
+      if (Juliet.util.contains(['Byte', 'Short', 'Character'],
+                               falseValueTypeName)) {
         if (trueValueType.token == Juliet.LITERAL_INT) {
           switch (falseValueTypeName) {
           case 'Byte':
             if (trueValue.value >= -128 && trueValue.value <= 127) {
               return {
-                token:Juliet.TOKEN_BYTE,
-                kind:'type',
-                name:'byte'
+                token: Juliet.TOKEN_BYTE,
+                kind: 'type',
+                name: 'byte'
               };
             }
           case 'Short':
             if (trueValue.value >= -32768 && trueValue.value <= 32767) {
               return {
-                token:Juliet.TOKEN_SHORT,
-                kind:'type',
-                name:'short'
+                token: Juliet.TOKEN_SHORT,
+                kind: 'type',
+                name: 'short'
               };
             }
           case 'Character':
             if (trueValue.value >= -32768 && trueValue.value <= 32767) {
               return {
-                token:Juliet.TOKEN_CHAR,
-                kind:'type',
-                name:'char'
+                token: Juliet.TOKEN_CHAR,
+                kind: 'type',
+                name: 'char'
               };
             }
           }
@@ -1399,9 +1511,9 @@ Juliet.compiler = function() {
     if (expr.kind == 'construct') {
       var name = nameInScope(expr, true);
       typeDescriptor = typeDescriptorForName(name);
-	//if (Juliet.options.trace) {
-	//    Juliet.util.print_ast(typeDescriptor.type);
-	//}
+      //if (Juliet.options.trace) {
+      //    Juliet.util.print_ast(typeDescriptor.type);
+      //}
 
       return typeDescriptor.type;
     }
@@ -1471,7 +1583,7 @@ Juliet.compiler = function() {
     }
 
     compatibleTypes(localType, initialValueType);
-  }
+  };
 
   function getContext(expr) {
     var context = null;
@@ -1588,8 +1700,8 @@ Juliet.compiler = function() {
       }
 
     }
-      print("SHOULD NOT GET HERE");
-      quit();
+    print('SHOULD NOT GET HERE');
+    quit();
   };
 
   var typeCheckContextualAccess = function(expr) {
@@ -1605,7 +1717,7 @@ Juliet.compiler = function() {
 
     print('unexpected type: must assign to a variable');
     quit();
-  }
+  };
 
   var typeCheckFieldAccessExpression = function(expr) {
     if (Juliet.options.trace) print('typeCheckFieldAccessExpression');
@@ -1620,11 +1732,11 @@ Juliet.compiler = function() {
     if (typeDescriptor) {
       typeDescriptor = propertyInContext(typeDescriptor.type.name, name);
     } else {
-	//print("EXPRESSION");
-            //Juliet.util.print_ast(expr);	
+      //print('EXPRESSION');
+      //Juliet.util.print_ast(expr);
       var context = getContext(expr);
-	//print("CONTEXT");
-            //Juliet.util.print_ast(context);	
+      //print('CONTEXT');
+      //Juliet.util.print_ast(context);
       typeDescriptor = propertyInContext(context, name);
     }
 
@@ -1658,10 +1770,9 @@ Juliet.compiler = function() {
     // TODO: error if there are too many array accesses
     // Consider: int[] i = {}; i[0][0] = 1; // should error
 
-    var effectiveTypeDescriptor = Juliet.util.copy(
-      typeDescriptor,
-      ['initial_value']
-    );
+    var effectiveTypeDescriptor = Juliet.util.copy(typeDescriptor);
+    delete effectiveTypeDescriptor['initial_value'];
+
     effectiveTypeDescriptor.type.name = effectiveTypeName;
 
     // print('ARRAY ACCESS');
@@ -1809,9 +1920,9 @@ Juliet.compiler = function() {
         //compatibleTypes(stm.location, stm.new_value);
         typeCheckAssignmentExpr(stm);
         var loc = flatten(stm.location, sep, context);
-          ret = ret + loc;
-          ret = ret + Juliet.lexer.operatorStr(token);
-          ret = ret + flatten(stm.new_value);
+        ret = ret + loc;
+        ret = ret + Juliet.lexer.operatorStr(token);
+        ret = ret + flatten(stm.new_value);
         break;
       case 'ternary':
         if (Juliet.options.trace) print('ternary');
@@ -1839,19 +1950,18 @@ Juliet.compiler = function() {
       case 'new':
         if (Juliet.options.trace) print('new');
         ret = ret + 'Juliet.runtime.new(' + flatten(stm.type) + ',';
-	  var cxt_class = Juliet.program[stm.type.name];
-	  var n = nameInContextClass(cxt_class, stm);
-	  if (!n) {
-	      print("Unknown constructor for class " + cxt_class.name + ".");
-	      quit();
-	  }
-	  ret = ret + "'" + n + "'";
-          //ret = ret + "'" + mangle(stm.type.name, stm.type.name, stm.args) + "'";
+        var cxt_class = Juliet.program[stm.type.name];
+        var n = nameInContextClass(cxt_class, stm);
+        if (!n) {
+          print('Unknown constructor for class ' + cxt_class.name + '.');
+          quit();
+        }
+        ret = ret + '\'' + n + '\'';
         if (stm.args && stm.args.length > 0) {
           ret = ret + ',';
           ret = ret + flatten(stm.args, ',');
         }
-        ret = ret + ');'
+        ret = ret + ');';
         break;
       case 'prefix':
         if (Juliet.options.trace) print('prefix');
@@ -1867,7 +1977,7 @@ Juliet.compiler = function() {
         if (stm.term) {
           var cntx = stm.operand.name;
           var term = flatten_in_context(cntx, stm.term);
-            ret = ret + '.'
+          ret = ret + '.';
           ret = ret + term;
         } else if (stm.expression) {
           ret = ret + '[';
@@ -1969,7 +2079,10 @@ Juliet.compiler = function() {
         var name = '';
 
         // TODO: remove this kludge
-        if (stm.name == 'System' || stm.name == 'out' || stm.name == 'println' || stm.name == 'print')
+        if (stm.name == 'System' ||
+            stm.name == 'out' ||
+            stm.name == 'println' ||
+            stm.name == 'print')
           if (stm.name == 'System') {
             name = 'Juliet.stdlib.System';
           } else {
@@ -1977,10 +2090,10 @@ Juliet.compiler = function() {
           }
         else {
           if (context) {
-              name = nameInContext(context, stm);
+            name = nameInContext(context, stm);
           } else {
-	      //Juliet.util.print_ast(stm);
-	      
+            //Juliet.util.print_ast(stm);
+
             name = nameInScope(stm);
           }
         }
@@ -2003,7 +2116,7 @@ Juliet.compiler = function() {
         break;
       case 'literal':
         if (Juliet.options.trace) print('literal: ' + token);
-        switch(token) {
+        switch (token) {
         case Juliet.LITERAL_CHAR:
         case Juliet.LITERAL_STRING:
           ret = ret + '\'';
@@ -2051,18 +2164,18 @@ Juliet.compiler = function() {
     type[cp.name] = value;
   };
 
-    var addProperty = function(ast_type, ctype, property) {
-	if (Juliet.options.trace) print('addProperty:' + property);
+  var addProperty = function(ast_type, ctype, property) {
+    if (Juliet.options.trace) print('addProperty:' + property);
 
-	var mangled_name = '_Z' + mangle(ast_type.name, property.name);
-	
-	if (property.initial_value && property.initial_value.kind == 'literal') {
-            ctype[mangled_name] = property.initial_value.value;
-	} else {
-            // TODO: non-static initializer block
-            ctype[mangled_name] = flatten(property.initial_value);
-	}
-    };
+    var mangled_name = '_Z' + mangle(ast_type.name, property.name);
+
+    if (property.initial_value && property.initial_value.kind == 'literal') {
+      ctype[mangled_name] = property.initial_value.value;
+    } else {
+      // TODO: non-static initializer block
+      ctype[mangled_name] = flatten(property.initial_value);
+    }
+  };
 
 
   var addClassMethod = function(type, cm) {
@@ -2085,168 +2198,183 @@ Juliet.compiler = function() {
   };
 
 
-    var addMethod = function(ast_type, ctype, m) {
-	if (Juliet.options.trace) print('addMethod: ' + m.name);
-	
-	pushScope();
-	var params = parameterList(m.parameters);
+  var addMethod = function(ast_type, ctype, m) {
+    if (Juliet.options.trace) print('addMethod: ' + m.name);
 
-	var parameter_types = [];
-	for (var i=0; i<m.parameters.length; i++) {
-	    parameter_types.push(m.parameters[i].type.name);
-	}
-	
-	var mangled_name = mangle(ast_type.name, m.name, parameter_types);
-	var mangled_poly = mangle("_", m.name, parameter_types);
+    pushScope();
+    var params = parameterList(m.parameters);
 
-	var body = flatten(m.statements);
-	print(mangled_name);
-	ctype["_Z" + mangled_name] = new Function(params, body);
-	body = 'this._Z' + mangled_name + '(' + params.join() + ');'
-	ctype["_Z" + mangled_poly] = new Function(params, body);
-	popScope();
-    };
+    var parameter_types = [];
+    for (var i = 0; i < m.parameters.length; i++) {
+      parameter_types.push(m.parameters[i].type.name);
+    }
+
+    var mangled_name = mangle(ast_type.name, m.name, parameter_types);
+    var mangled_poly = mangle('_', m.name, parameter_types);
+
+    var body = flatten(m.statements);
+    print(mangled_name);
+    ctype['_Z' + mangled_name] = new Function(params, body);
+    body = 'this._Z' + mangled_name + '(' + params.join() + ');';
+    ctype['_Z' + mangled_poly] = new Function(params, body);
+    popScope();
+  };
 
 
-    var addClassRTTI = function(ast_type) {
+  function generateRTTI(js_type) {
 
-	if (Juliet.options.trace) print('addClassRTTI');
-	
-	if (Juliet.program[ast_type.name]) {
-	    print(ast_type.name + ' is already defined');
-	    quit();
-	}
+    /*
+    // Inheritance: incorporate parent class RTTI
+    if (ast_type.extends) {
+    var base_class = unit_package['<namespace>'][ast_type.extends.name];
+    if (base_class == undefined) {
+    print('Class '  + ast_type.base_class.name + ' is undefined.');
+    quit();
+    }
+    for (var mangled_name in base_class) {
+    if (mangled_name.length > 2 && mangled_name.substring(0, 2) == '_I') {
+    ctype[mangled_name] = base_class[mangled_name];
+    }
+    }
+    }
+    */
 
-	var ctype = Juliet.program[ast_type.name] = {
-	    'name': ast_type.name,
-	    'base_class': ast_type.base_class.name,
-	    'static_initializers': [],
-	    'instance_initializers': []
-	};
+    js_type.members = {};
 
-	// Inheritance: incorporate parent class RTTI
-	if (Juliet.options.trace) print('addClassRTTI: adding inherited fields');
-	if (ast_type.base_class && ast_type.base_class.name) {
-	    var base_class = Juliet.program[ast_type.base_class.name];
-	    if (base_class == undefined) {
-		print("Class "  + ast_type.base_class.name + " is undefined.");
-		quit();
-	    }
-	    for (var mangled_name in base_class) {
-		if (mangled_name.length > 2 && mangled_name.substring(0, 2) == "_I") {
-		    ctype[mangled_name] = base_class[mangled_name];
-		}
-	    }
-	}
+    // Create RTTI for new properties
+    log('generateRTTI: adding fields');
+    forEach(js_type.ast_type.members, function(member) {
 
-	// Create RTTI for new properties
-	if (Juliet.options.trace) print('addClassRTTI: adding properties');
-	for (var j = 0; j < ast_type.properties.length; j++) {
-	    var property = ast_type.properties[j];
-	    var mangled_name = "_I" + mangle(ast_type.name, property.name);
-	    ctype[mangled_name] = {
-		"name": property.name,
-		"kind": "property",
-		"mname": "_Z" + mangled_name,
-		"type": property.type.name,
-		"qualifiers": property.qualifiers
-	    };
-	}
+      var path = js_type.path.slice(0);
+      path.push(js_type.name);
 
-	// Create RTTI for new methods
-	// RTTI for methods has three entry points:
-	// 1. The full (mangled) method name prefixed by class and suffixed by parameters.
-	//    This points to the RTTI record with return type and qualifier information.
-	// 2. sname = The (mangled) class prefixed method name that points to an array of (1).
-	// 3. dname = The (mangled) unprefixed name that points to an array of (1).
-	// (2) is used for super lookups (3) is used for polymorphic calls.
-	if (Juliet.options.trace) print('addClassRTTI: adding methods');
-	for (var j = 0; j < ast_type.methods.length; j++) {
-	    var method = ast_type.methods[j];
-
-	    var parameters = [];
-	    for (var i=0; i<method.parameters.length; i++) {
-		parameters.push(method.parameters[i].type.name);
-	    }
-
-	    var sname = "_I" + mangle(ast_type.name, method.name);
-	    var fname = "_I" + mangle(ast_type.name, method.name, parameters);
-
-	    // Add fname to the sname record
-	    if (!ctype[sname]) {
-		ctype[sname] = [];
-	    }
-	    ctype[sname].push(fname);
-
-	    var rtype = 'void';
-	    if (method.return_type) {
-		rtype = method.return_type.name;
-	    }
-
-	    // Create the fname record
-	    ctype[fname] = {
-		"kind": "method",
-		"name": method.name,
-		"rtype": rtype,
-		"parameters": parameters
-	    };
-	}
-	
-    };
-    
-
-    // Add accessible instance identifiers to the current scope based on RTTI
-    var addClassIdentifiers = function(ctype, klass, allow_private, is_static) {
-
-	if (Juliet.options.trace) print('addClassIdentifiers: ' + klass);
-	
-	base_class = Juliet.program[klass].base_class;
-	if (base_class) {
-	    addClassIdentifiers(ctype, base_class, false);
-	}
-
-	// Layer the most recent class on top.
-	var mangled_prefix = "_I" + klass.length.toString() + klass;
-	for (var mangled_name in ctype) {
-	    if (mangled_name.length > mangled_prefix.length && mangled_name.substring(0, mangled_prefix.length) == mangled_prefix) {
-		var field = ctype[mangled_name];
-		var field_static = field.modifiers | Juliet.QUALIFIER_STATIC;
-		if (is_static && field_static) {
-		    addIdentifier(field.name, 
-				  'Juliet.program.' + klass + '._Z' + mangled_name.substring(2),
-				  field.type,
-				  true,
-				  field.kind);
-		} else {
-		    addIdentifier(field.name, 
-				  "this._Z" + mangled_name.substring(2),
-				  field.type,
-				  true,
-				  field.kind);
-		}
-	    }
-	}
-    };
-
-  var addClassCode = function(ast_type) {
-    if (Juliet.options.trace) print('addClassCode: ' + ast_type.name);
-
-      var ctype = Juliet.program[ast_type.name];
-
-      // Inheritance: incorporate parent class generated code
-      if (ast_type.base_class && ast_type.base_class.name) {
-	  var base_class = Juliet.program[ast_type.base_class.name];
-	  if (base_class == undefined) {
-	      print("Class "  + ast_type.base_class.name + " is undefined.");
-	      quit();
-	  }
-	  for (var mangled_name in base_class) {
-	      if (mangled_name.length > 2 && mangled_name.substring(0, 2) == "_Z") {
-		  ctype[mangled_name] = base_class[mangled_name];
-	      }
-	  }
+      if (member.kind == 'field') {
+        var mangled_name = '_I' + mangle(path, member.name);
+        var type = typeFromNode(js_type.unit, member.type);
+        js_type.members[mangled_name] = {
+          name: member.name,
+          kind: member.kind,
+          mname: '_Z' + mangled_name,
+          type: type,
+          modifiers: member.modifiers
+        };
       }
 
+      if (member.kind == 'method') {
+        // Create RTTI for new methods
+        // RTTI for methods has three entry points:
+        // 1. The full (mangled) method name prefixed by class and
+        //    suffixed by parameters. This points to the RTTI record
+        //    with return type and qualifier information.
+        // 2. sname = The (mangled) class prefixed method name that
+        //    points to an array of (1).
+        // 3. dname = The (mangled) unprefixed name that points to an
+        //    array of (1).
+        // (2) is used for super lookups (3) is used for polymorphic calls.
+
+        var parameters = [];
+        var parameters_ = [];
+        forEach(member.parameters, function(parameter) {
+          //if (parameter.type.kind == 'basic_type') {
+          //parameters.push(parameter.type.name);
+          // parameters_.push(parameter.type.name);
+          //} else {
+          var type = typeFromNode(js_type.unit, parameter.type);
+          parameters.push(fullyQualifiedName(type, '$'));
+          parameters_.push(type);
+          //}
+        });
+
+        var sname = '_I' + mangle(path, member.name);
+        var fname = '_I' + mangle(path, member.name, parameters);
+
+        // Add fname to the sname record
+        if (!js_type.members[sname]) {
+          js_type.members[sname] = [];
+        }
+        js_type.members[sname].push(fname);
+
+        if (member.return_type) {
+          var ast_type = member.return_type;
+        } else {
+          var ast_type = {
+            name: 'void',
+            kind: 'type',
+            token: null};
+        }
+
+        type = typeFromNode(js_type.unit, ast_type);
+
+        // Create the fname record
+        js_type.members[fname] = {
+          kind: member.kind,
+          name: member.name,
+          type: type,
+          parameters: parameters_
+        };
+
+      }
+
+    });
+
+  }
+
+
+  // Add accessible instance identifiers to the current scope based on RTTI
+  var addClassIdentifiers = function(ctype, klass, allow_private, is_static) {
+
+    if (Juliet.options.trace) print('addClassIdentifiers: ' + klass);
+
+    base_class = Juliet.program[klass].base_class;
+    if (base_class) {
+      addClassIdentifiers(ctype, base_class, false);
+    }
+
+    // Layer the most recent class on top.
+    var mangled_prefix = '_I' + klass.length.toString() + klass;
+    for (var mangled_name in ctype) {
+      if (mangled_name.length > mangled_prefix.length &&
+          mangled_name.substring(0, mangled_prefix.length) == mangled_prefix) {
+        var field = ctype[mangled_name];
+        var field_static = field.modifiers | Juliet.QUALIFIER_STATIC;
+        if (is_static && field_static) {
+          addIdentifier(field.name,
+                        'Juliet.program.' + klass + '._Z' +
+                          mangled_name.substring(2),
+                        field.type,
+                        true,
+                        field.kind);
+        } else {
+          addIdentifier(field.name,
+                        'this._Z' + mangled_name.substring(2),
+                        field.type,
+                        true,
+                        field.kind);
+        }
+      }
+    }
+  };
+
+  function generateCode(js_type) {
+    log('generateCode: ' + ast_type.name);
+
+    //var ctype = Juliet.program[ast_type.name];
+
+    // Inheritance: incorporate parent class generated code
+    /*
+      if (ast_type.base_class && ast_type.base_class.name) {
+      var base_class = Juliet.program[ast_type.base_class.name];
+      if (base_class == undefined) {
+      print('Class '  + ast_type.base_class.name + ' is undefined.');
+      quit();
+      }
+      for (var mangled_name in base_class) {
+      if (mangled_name.length > 2 && mangled_name.substring(0, 2) == '_Z') {
+      ctype[mangled_name] = base_class[mangled_name];
+      }
+      }
+      }
+    */
 
     addIdentifier(ast_type.name,
                   'Juliet.program.' + ast_type.name,
@@ -2259,76 +2387,76 @@ Juliet.compiler = function() {
     /*
      * Interfaces: TODO
      *
-    if (type.interfaces) {
-      if (Juliet.options.trace) print('have interfaces');
-      for (var j = 0; j < type.interfaces.length; j++) {
-        // look up the named interface
-        var anInterface = classByName(type.interfaces[j].name);
+     if (type.interfaces) {
+     if (Juliet.options.trace) print('have interfaces');
+     for (var j = 0; j < type.interfaces.length; j++) {
+     // look up the named interface
+     var anInterface = classByName(type.interfaces[j].name);
 
-        // incorporate its static members
-        if (anInterface.class_properties) {
-          if (Juliet.options.trace) print('have interface class_properties');
-          for (var j = 0; j < anInterface.class_properties.length; j++) {
-            var cp = anInterface.class_properties[j];
-            if (!type.class_properties) type.class_properties = [];
-            // add to the fron of the class properties
-            type.class_properties.unshift(cp);
-          }
-        }
+     // incorporate its static members
+     if (anInterface.class_properties) {
+     if (Juliet.options.trace) print('have interface class_properties');
+     for (var j = 0; j < anInterface.class_properties.length; j++) {
+     var cp = anInterface.class_properties[j];
+     if (!type.class_properties) type.class_properties = [];
+     // add to the fron of the class properties
+     type.class_properties.unshift(cp);
+     }
+     }
 
-        // require implementation of its abstract methods
-        if (anInterface.methods) {
-          if (Juliet.options.trace) print('have interface methods');
-          // TODO: ensure methods are implemented
-        }
+     // require implementation of its abstract methods
+     if (anInterface.methods) {
+     if (Juliet.options.trace) print('have interface methods');
+     // TODO: ensure methods are implemented
+     }
+     }
+     }
+    */
+
+    // Add static identifiers
+    addClassIdentifiers(ctype, ctype.name, true, true);
+
+    // Add code for class properties
+    for (var j = 0; j < ast_type.properties.length; j++) {
+      var property = ast_type.properties[j];
+      if (property.qualifiers & Juliet.QUALIFER_STATIC) {
+        addClassProperty(ctype, property);
       }
     }
-*/
 
-      // Add static identifiers
-      addClassIdentifiers(ctype, ctype.name, true, true);
-
-      // Add code for class properties
-      for (var j = 0; j < ast_type.properties.length; j++) {
-          var property = ast_type.properties[j];
-	  if (property.qualifiers & Juliet.QUALIFER_STATIC) {
-	      addClassProperty(ctype, property);
-	  }
+    // Add code for class methods
+    for (var j = 0; j < ast_type.methods.length; j++) {
+      var method = ast_type.methods[j];
+      if (method.qualifiers & Juliet.QUALIFER_STATIC) {
+        addClassMethod(ctype, method);
       }
+    }
 
-      // Add code for class methods
-      for (var j = 0; j < ast_type.methods.length; j++) {
-          var method = ast_type.methods[j];
-	  if (method.qualifiers & Juliet.QUALIFER_STATIC) {
-              addClassMethod(ctype, method);
-	  }
+    // Add instance identifiers
+    addClassIdentifiers(ctype, ctype.name, true, false);
+
+    // Add code for instance properties
+    for (var j = 0; j < ast_type.properties.length; j++) {
+      var property = ast_type.properties[j];
+      if (!(property.qualifiers & Juliet.QUALIFER_STATIC)) {
+        addProperty(ast_type, ctype, property);
       }
+    }
 
-      // Add instance identifiers
-      addClassIdentifiers(ctype, ctype.name, true, false);
+    // add 'this' to the scope
+    addIdentifier('this',
+                  'this',
+                  ast_type,
+                  false,
+                  'this');
 
-      // Add code for instance properties
-      for (var j = 0; j < ast_type.properties.length; j++) {
-          var property = ast_type.properties[j];
-	  if (!(property.qualifiers & Juliet.QUALIFER_STATIC)) {
-	      addProperty(ast_type, ctype, property);
-	  }
+    // Add code for instance methods
+    for (var j = 0; j < ast_type.methods.length; j++) {
+      var method = ast_type.methods[j];
+      if (!(method.qualifiers & Juliet.QUALIFER_STATIC)) {
+        addMethod(ast_type, ctype, method);
       }
-
-      // add 'this' to the scope
-      addIdentifier('this',
-                    'this',
-                    ast_type,
-                    false,
-                    'this');
-      
-      // Add code for instance methods
-      for (var j = 0; j < ast_type.methods.length; j++) {
-          var method = ast_type.methods[j];
-	  if (!(method.qualifiers & Juliet.QUALIFER_STATIC)) {
-              addMethod(ast_type, ctype, method);
-	  }
-      }
+    }
 
     /*
      * Static Initializers
@@ -2352,9 +2480,9 @@ Juliet.compiler = function() {
       }
     }
 
-      //print("ENDING ================");
-      //Juliet.util.print_ast(ctype);
-      //quit();
+    //print('ENDING ================');
+    //Juliet.util.print_ast(ctype);
+    //quit();
 
     popScope();
   };
@@ -2365,7 +2493,42 @@ Juliet.compiler = function() {
 
   return {
     init: function()  {
-      scope = [];
+      Juliet.packages = {
+        java: {
+          lang: {
+            $types: {
+              int: {
+                name: 'int',
+                path: ['java', 'lang'],
+                superclass: null,
+                interfaces: []
+              },
+              long: {
+                name: 'long'
+              },
+              char: {
+                name: 'char'
+              },
+              float: {
+                name: 'float'
+              },
+              double: {
+                name: 'double'
+              },
+              void: {
+                name: 'void'
+              },
+              Object: {
+                name: 'Object',
+                path: ['java', 'lang'],
+                superclass: null,
+                interfaces: []
+              }
+            }
+          }
+        }
+      };
+      //scope = [];
       static_context = null;
     },
 
@@ -2373,67 +2536,199 @@ Juliet.compiler = function() {
       prevScope = null;
     },
 
-    compile: function(types) {
-      if (Juliet.options.trace) print('compile');
-
-      var ast = Juliet.AST;
-      if (!ast) {
-	  print('Nothing to compile.');
-	  return; 
+    prepare: function(unit) {
+      if (!unit) {
+        print('Nothing to compile.');
+        return;
       }
 
-      // TODO: implement Object..
-      Juliet.program['Object'] = {
-	  'name': 'Object',
-	  'base_class': undefined,
-	  'static_initializers': [],
-	  'instance_initializers': []
-      };
+      newScope(unit, null);
 
-      // TODO: there is a possible naming collision here if
-      // someone defines a class named "package" or a class
-      // named "imports"
-      if (ast['package']) {
-	  Juliet.program['package'] = ast['package'];
-      }
-      if (ast.imports) {
-        // TODO: recursively add imports
+      var package = getPackage(unit.package);
+      if (!package) {
+        package = makePackage(unit.package);
       }
 
-      var needToCompile = []
-      if (!types) {
-        needToCompile = Juliet.util.keys(ast.parsed_types);
-      } else {
-        needToCompile = types;
-      }
+      var path = [];
+      forEach(unit.package, function(element) {
+        path.push(element.name);
+      });
 
-      if (prevScope) {
-        scope = prevScope;
-      } else {
-        pushScope();
-      }
+      // Juliet.util.print_ast(unit.types);
 
-	// print("Generating RTTI.");
-      for (var i in needToCompile) {
-        var typeKey = needToCompile[i];
-        var type = ast.parsed_types[typeKey];
-        addClassRTTI(type);
-      }
+      forEach(unit.types, function(ast_type) {
 
-	// print("Generating code.");
-	for (var i in needToCompile) {
-            var typeKey = needToCompile[i];
-            var type = ast.parsed_types[typeKey];
-            addClassCode(type);
-	}
+        if (ast_type.name in package.$types) {
+          throw 'Error: ' + ast_type.name +
+            ' already defined in package ' + path.join('.') + '.';
+        }
+
+        package.$types[ast_type.name] = {
+          name: ast_type.name,
+          path: path,
+          superclass: null,
+          interfaces: [],
+          // We hold onto references to the ast_type and unit until
+          // the compilation process is over.
+          ast_type: ast_type,
+          unit: unit
+        };
+        prepared_types.push(package.$types[ast_type.name]);
+      });
+
+      prepared_units.push(unit);
+    },
+
+    generateRTTI: function() {
+      // Step 1. Import types into scopes and verify that they exist.
+
+      forEach(prepared_units, function(unit) {
+        // The compilation unit scope only exists explicitly during
+        // compilation so we attach it temporarily to the
+        // compilation unit AST.
+        unit.scope = [{}];
+        var package_path = [];
+        var package = null;
+        var typeName = null;
+
+        forEach(unit.package, function(p) {
+          package_path.push(p.name);
+        });
+
+        // TODO: Remove any java.lang imports already in unit.imports.
+
+        // java.lang is always imported.
+        var imports =
+          [{token: null,
+            kind: 'import',
+            name: [
+              {token: null,
+               kind: 'id',
+               name: 'java'},
+              {token: null,
+               kind: 'id',
+               name: 'lang'},
+              {token: null,
+               kind: 'id',
+               name: '*'}]}].concat(unit.imports);
+
+        // Handle types that are imported:
+        forEach(imports, function(_import) {
+          if (_import.length == 1) {
+            package = getPackage([{name: '$default'}]);
+            typeName = _import.name[0].name;
+          } else {
+            package = getPackage(_import.name.slice(0, -1));
+            typeName = _import.name[_import.name.length - 1].name;
+          }
+          if (!package) throw 'Could not find package ' +
+            package_path.join('.');
+
+          if (typeName == '*') {
+            // Case 1: Star imports.
+            // e.g., import foo.bar.*
+            forEach(package.$types, function(type) {
+              //Juliet.util.print_ast(type);
+              addToScope(unit, type.name, type);
+            });
+          } else {
+            // Case 2: Class imports.
+            // e.g., import foo.bar.MyClass;
+            if (!(typeName in package.$types))
+              throw 'Could not find ' + typeName + ' in package ' +
+              package_path.join('.');
+            addToScope(unit, typeName, package.$types[typeName]);
+          }
+        });
+
+        // Handle types that are defined in this compilation unit:
+        var package = getPackage(unit.package);
+        if (!package) throw 'Could not find package ' + unit.package.join('.');
+
+        forEach(unit.types, function(type) {
+          if (!(type.name in package.$types))
+            throw 'Could not find ' + type.name + ' in package ' +
+            package_path.join('.');
+          addToScope(unit, type.name, package.$types[type.name]);
+        });
+      });
+
+      // Step 2. Fill in superclass relationships.
+
+      forEach(prepared_types, function(js_type) {
+
+        if (js_type.ast_type.superclass == null) {
+          js_type.superclass = Juliet.packages.java.lang.$types.Object;
+        } else {
+          var superclass = typeFromNode(js_type.unit,
+                                        js_type.ast_type.superclass);
+          if (!superclass)
+            throw js_type.ast_type.superclass.name + ' is undefined.';
+          js_type.superclass = superclass;
+        }
+
+      });
+
+      // Step 3. Find any circular class dependencies
+
+      forEach(prepared_types, function(js_type) {
+
+        var path = [];
+
+        function verify_superclass(js_type) {
+          if (js_type.superclass == null) {
+            throw 'Internal compiler error: bad superclass for ' +
+              js_type.name;
+          }
+          if (js_type.superclass === Juliet.packages.java.lang.$types.Object) {
+            return;
+          }
+          path.push(js_type);
+          if (Juliet.utils.contains(path, js_type.superclass)) {
+            throw 'Found circular super class dependency from ' +
+              js_type.name + ' to ' + js_type.superclass.name;
+          }
+          verify_superclass(js_type.superclass);
+          forEach(js_type.interfaces, function(interface) {
+            verify_superclass(interface);
+          });
+          path.pop();
+          return;
+        }
+
+        verify_superclass(js_type);
+
+      });
+
+      // Step 4. Fill out RTTI for methods and fields.
+
+      log('Generating RTTI.');
+
+      forEach(prepared_types, function(js_type) {
+        generateRTTI(js_type);
+      });
+
+    },
+
+    compile: function() {
+
+      // Step 5. Generate code.
+
+      log('Generating code.');
+
+      forEach(prepared_types, function(js_type) {
+        generateCode(js_type);
+      });
+
+      // Done!
 
       if (scope.length != 1) {
-        print('there should be only 1 level in the scope stack');
+        log('there should be only 1 level in the scope stack');
         quit();
       }
 
       prevScope = Juliet.util.copy(scope);
       popScope();
     }
-  }
+  };
 }();

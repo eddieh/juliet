@@ -15,7 +15,7 @@ load('src/juliet.js');
 load('src/util.js');
 load('src/lexer.js');
 
-var test_tokenize = function () {
+var test_tokenize = function() {
   var tests = [
     ['123', Juliet.LITERAL_INT, 123],
     ['123l', Juliet.LITERAL_LONG, 123],
@@ -104,6 +104,7 @@ var test_tokenize = function () {
     ['+++3', Juliet.TOKEN_ERROR],
     ['---3', Juliet.TOKEN_ERROR],
     ['--3', Juliet.TOKEN_DECREMENT],
+    ['void', Juliet.TOKEN_VOID],
     ['""', Juliet.LITERAL_STRING, ''],
     ['while', Juliet.TOKEN_WHILE],
     ['while()',
@@ -113,23 +114,30 @@ var test_tokenize = function () {
     ['while ( ) ',
      [Juliet.TOKEN_WHILE, Juliet.TOKEN_LPAREN, Juliet.TOKEN_RPAREN]],
     ['while() {}',
-     [Juliet.TOKEN_WHILE, Juliet.TOKEN_LPAREN, Juliet.TOKEN_RPAREN, Juliet.TOKEN_LCURLY, Juliet.TOKEN_RCURLY]],
+     [Juliet.TOKEN_WHILE, Juliet.TOKEN_LPAREN, Juliet.TOKEN_RPAREN,
+      Juliet.TOKEN_LCURLY, Juliet.TOKEN_RCURLY]],
     ['int a = 7;',
-     [Juliet.TOKEN_INT, Juliet.TOKEN_ID, Juliet.TOKEN_ASSIGN, Juliet.LITERAL_INT, Juliet.TOKEN_SEMICOLON]],
+     [Juliet.TOKEN_INT, Juliet.TOKEN_ID, Juliet.TOKEN_ASSIGN,
+      Juliet.LITERAL_INT, Juliet.TOKEN_SEMICOLON]],
     ['int[] a = new int[77];',
-     [Juliet.TOKEN_INT, Juliet.TOKEN_LBRACKET, Juliet.TOKEN_RBRACKET, Juliet.TOKEN_ID, Juliet.TOKEN_ASSIGN,
-      Juliet.TOKEN_NEW, Juliet.TOKEN_INT, Juliet.TOKEN_LBRACKET, Juliet.LITERAL_INT, Juliet.TOKEN_RBRACKET,
-      Juliet.TOKEN_SEMICOLON]],
+     [Juliet.TOKEN_INT, Juliet.TOKEN_LBRACKET, Juliet.TOKEN_RBRACKET,
+      Juliet.TOKEN_ID, Juliet.TOKEN_ASSIGN, Juliet.TOKEN_NEW,
+      Juliet.TOKEN_INT, Juliet.TOKEN_LBRACKET, Juliet.LITERAL_INT,
+      Juliet.TOKEN_RBRACKET, Juliet.TOKEN_SEMICOLON]],
     ['"\\n"', Juliet.LITERAL_STRING, '\n'],
     ['"\\u77"', Juliet.TOKEN_ERROR],
     ['"Hello\\nWorld"', Juliet.LITERAL_STRING, 'Hello\nWorld'],
     ['"abc', Juliet.TOKEN_ERROR],
-    ['int a = 1 + 2;', [Juliet.TOKEN_INT, Juliet.TOKEN_ID, Juliet.TOKEN_ASSIGN, Juliet.LITERAL_INT,
-                        Juliet.TOKEN_PLUS, Juliet.LITERAL_INT, Juliet.TOKEN_SEMICOLON]],
-    ['int a = b + c;', [Juliet.TOKEN_INT, Juliet.TOKEN_ID, Juliet.TOKEN_ASSIGN, Juliet.TOKEN_ID,
-                        Juliet.TOKEN_PLUS, Juliet.TOKEN_ID, Juliet.TOKEN_SEMICOLON]],
-    ['int a = 1 << 2;', [Juliet.TOKEN_INT, Juliet.TOKEN_ID, Juliet.TOKEN_ASSIGN, Juliet.LITERAL_INT,
-                        Juliet.TOKEN_SHL, Juliet.LITERAL_INT, Juliet.TOKEN_SEMICOLON]],
+    ['int a = 1 + 2;', [Juliet.TOKEN_INT, Juliet.TOKEN_ID, Juliet.TOKEN_ASSIGN,
+                        Juliet.LITERAL_INT, Juliet.TOKEN_PLUS,
+                        Juliet.LITERAL_INT, Juliet.TOKEN_SEMICOLON]],
+    ['int a = b + c;', [Juliet.TOKEN_INT, Juliet.TOKEN_ID, Juliet.TOKEN_ASSIGN,
+                        Juliet.TOKEN_ID, Juliet.TOKEN_PLUS, Juliet.TOKEN_ID,
+                        Juliet.TOKEN_SEMICOLON]],
+    ['int a = 1 << 2;', [Juliet.TOKEN_INT, Juliet.TOKEN_ID,
+                         Juliet.TOKEN_ASSIGN, Juliet.LITERAL_INT,
+                         Juliet.TOKEN_SHL, Juliet.LITERAL_INT,
+                         Juliet.TOKEN_SEMICOLON]],
     ['a.b', [Juliet.TOKEN_ID, Juliet.TOKEN_PERIOD, Juliet.TOKEN_ID]],
     ['a . b', [Juliet.TOKEN_ID, Juliet.TOKEN_PERIOD, Juliet.TOKEN_ID]],
     ['a. b', [Juliet.TOKEN_ID, Juliet.TOKEN_PERIOD, Juliet.TOKEN_ID]],
@@ -179,7 +187,8 @@ var test_tokenize = function () {
         print('Type FAILED. ***************');
       }
     }
-    if ((t.length > 2) && (Juliet.lexer.pending[0].type != Juliet.TOKEN_ERROR)) {
+    if ((t.length > 2) &&
+        (Juliet.lexer.pending[0].type != Juliet.TOKEN_ERROR)) {
       if (Juliet.lexer.pending[0].content == t[2]) {
         print('Value passed.');
         pass_count++;

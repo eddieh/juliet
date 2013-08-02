@@ -13,7 +13,7 @@ juliet-browser.js: src/*.js
 	java -jar vendor/closure-compiler/compiler.jar --flagfile Build.browser
 
 lint:
-	gjslint --nojsdoc --custom_jsdoc_tags 'augments, returns' *.js
+	gjslint --nojsdoc --disable 220 src/*.js test/*.js
 
 bootstrap: vendor/v8/d8 vendor/closure-compiler/compiler.jar
 

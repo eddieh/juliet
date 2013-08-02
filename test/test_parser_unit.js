@@ -18,39 +18,51 @@ load('src/parser.js');
 
 (function() {
   var tests = [
-    ['class Empty {}', 
+    ['class Empty {}',
      {
-       package:null,
-       imports:[], 
-       types:[
+       package: [{
+         name: '$default',
+         token: null,
+         kind: 'id'
+       }],
+       imports: [],
+       types: [
          {
-           token: Juliet.TOKEN_CLASS, 
-           kind:'definition', 
-           modifiers:34, 
-           members:[], 
-           types:[], 
-           _implements:[], 
-           _extends:null, 
-           name:'Empty'
+           token: Juliet.TOKEN_CLASS,
+           kind: 'definition',
+           modifiers: 34,
+           members: [],
+           types: [],
+           interfaces: [],
+           superclass: null,
+           name: 'Empty'
          }
        ]
      }
     ],
     ['package foo.bar;\n' +
-     'class Empty {}', 
+     'class Empty {}',
      {
-       package: ['foo', 'bar'],
-       imports:[], 
-       types:[
+       package: [{
+         name: 'foo',
+         token: Juliet.TOKEN_ID,
+         kind: 'id'
+       }, {
+         name: 'bar',
+         token: Juliet.TOKEN_ID,
+         kind: 'id'
+       }],
+       imports: [],
+       types: [
          {
-           token: Juliet.TOKEN_CLASS, 
-           kind:'definition', 
-           modifiers:34, 
-           members:[], 
-           types:[], 
-           _implements:[], 
-           _extends:null, 
-           name:'Empty'
+           token: Juliet.TOKEN_CLASS,
+           kind: 'definition',
+           modifiers: 34,
+           members: [],
+           types: [],
+           interfaces: [],
+           superclass: null,
+           name: 'Empty'
          }
        ]
      }
@@ -58,24 +70,44 @@ load('src/parser.js');
     ['import foo.bar.MyClass;\n' +
      'class Empty {}',
      {
-       package:null, 
-       imports:[
+       package: [{
+         name: '$default',
+         token: null,
+         kind: 'id'
+       }],
+       imports: [
          {
-           token: Juliet.TOKEN_IMPORT, 
-           kind:'import', 
-           name:['foo', 'bar', 'MyClass']
+           token: Juliet.TOKEN_IMPORT,
+           kind: 'import',
+           name: [
+             {
+               token: Juliet.TOKEN_ID,
+               kind: 'id',
+               name: 'foo'
+             },
+             {
+               token: Juliet.TOKEN_ID,
+               kind: 'id',
+               name: 'bar'
+             },
+             {
+               token: Juliet.TOKEN_ID,
+               kind: 'id',
+               name: 'MyClass'
+             }
+           ]
          }
-       ], 
-       types:[
+       ],
+       types: [
          {
-           token: Juliet.TOKEN_CLASS, 
-           kind:'definition', 
-           modifiers:34, 
-           members:[],
-           types:[], 
-           _implements:[], 
-           _extends:null, 
-           name:'Empty'
+           token: Juliet.TOKEN_CLASS,
+           kind: 'definition',
+           modifiers: 34,
+           members: [],
+           types: [],
+           interfaces: [],
+           superclass: null,
+           name: 'Empty'
          }
        ]
      }
@@ -84,24 +116,50 @@ load('src/parser.js');
      'import foo.bar.MyClass;\n' +
      'class Empty {}',
      {
-       package: ['a', 'b'], 
-       imports:[
+       package: [
          {
-           token: Juliet.TOKEN_IMPORT, 
-           kind:'import', 
-           name:['foo', 'bar', 'MyClass']
+           token: Juliet.TOKEN_ID,
+           kind: 'id',
+           name: 'a'
+         },
+         {
+           token: Juliet.TOKEN_ID,
+           kind: 'id',
+           name: 'b'
+         }],
+       imports: [
+         {
+           token: Juliet.TOKEN_IMPORT,
+           kind: 'import',
+           name: [
+             {
+               token: Juliet.TOKEN_ID,
+               kind: 'id',
+               name: 'foo'
+             },
+             {
+               token: Juliet.TOKEN_ID,
+               kind: 'id',
+               name: 'bar'
+             },
+             {
+               token: Juliet.TOKEN_ID,
+               kind: 'id',
+               name: 'MyClass'
+             }
+           ]
          }
        ],
-       types:[
+       types: [
          {
-           token: Juliet.TOKEN_CLASS, 
-           kind:'definition', 
-           modifiers:34, 
-           members:[],
-           types:[], 
-           _implements:[], 
-           _extends:null, 
-           name:'Empty'
+           token: Juliet.TOKEN_CLASS,
+           kind: 'definition',
+           modifiers: 34,
+           members: [],
+           types: [],
+           interfaces: [],
+           superclass: null,
+           name: 'Empty'
          }
        ]
      }
@@ -128,10 +186,10 @@ load('src/parser.js');
       print('Passed.');
       pass_count++;
     } else {
-      print('Expected:');
+      print('Expected: ');
       Juliet.util.print_ast(t[1]);
 
-      print('Actual:');
+      print('Actual: ');
       Juliet.util.print_ast(stm);
 
       print('FAILED.');
